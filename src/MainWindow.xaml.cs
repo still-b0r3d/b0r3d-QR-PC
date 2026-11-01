@@ -62,6 +62,7 @@ namespace B0r3dQR
             Closed += (s, e) => Theme.Changed -= ShowLook;
 
             Exports.ClearDragFolder();
+            SetUpScan();
             ShowLook();
             ShowNote();
             ShowCup();
@@ -82,7 +83,9 @@ namespace B0r3dQR
             }
         }
 
-        string DataText => DataBox.Text.Replace("\r\n", "\n");
+        // what's typed, with Windows line breaks made plain as the website makes them; a scanned
+        // code given by "Make this code again" stays exactly as it was until it's changed
+        string DataText => madeAgain != null && DataBox.Text == madeAgain ? madeAgain : DataBox.Text.Replace("\r\n", "\n");
 
         QrLevel Level =>
             LevelL.IsChecked == true ? QrLevel.L : LevelM.IsChecked == true ? QrLevel.M : LevelH.IsChecked == true ? QrLevel.H : QrLevel.Q;
@@ -199,7 +202,7 @@ namespace B0r3dQR
             }
         }
 
-        void ShowCup() => CupPicture.Source = Cup.For(32, Scale);
+        void ShowCup() => CupPicture.Source = Cup.For(28, Scale);
 
         protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
         {
@@ -357,7 +360,7 @@ namespace B0r3dQR
         {
             try
             {
-                return SaveDialog.Ask(this, title, typeName, extension, Exports.SuggestedName(code.Text) + extension);
+                return FileDialogs.Save(this, title, typeName, extension, Exports.SuggestedName(code.Text) + extension);
             }
             catch (COMException x)
             {
@@ -418,6 +421,7 @@ namespace B0r3dQR
             if (shapes == null) return;
             BitmapSource picture = QrPicture.Render(shapes, PicturePixelsPerModule);
             DataObject data = Exports.DataFor(picture, QrPicture.Png(picture), Exports.SuggestedName(code.Text), true);
+            draggingOut = true;  // dropped back on this window, it isn't something to scan
             try
             {
                 DragDrop.DoDragDrop(Preview, data, DragDropEffects.Copy);
@@ -425,6 +429,10 @@ namespace B0r3dQR
             catch (ExternalException)
             {
                 // the program it was dropped on failed; there's nothing to undo here
+            }
+            finally
+            {
+                draggingOut = false;
             }
         }
 

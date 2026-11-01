@@ -66,7 +66,7 @@ namespace B0r3dQR.Tests
                 Settings odd = Settings.Load();
                 Check(odd.Look == Look.Windows && odd.Level == QrLevel.Q, "garbled look and level should be the defaults: " + odd.ToText());
                 Check(odd.QuietZone == Settings.MaxQuietZone && odd.PictureSize == Settings.MinPictureSize, "numbers out of range should be brought in: " + odd.ToText());
-                Check(odd.WindowWidth == 1000 && odd.WindowHeight == 660 && !odd.Maximized, "a garbled window size should be the default: " + odd.ToText());
+                Check(odd.WindowWidth == 1000 && odd.WindowHeight == 680 && !odd.Maximized, "a garbled window size should be the default: " + odd.ToText());
 
                 File.WriteAllText(file, "look=2\nlevel=3\n");
                 Settings numbers = Settings.Load();

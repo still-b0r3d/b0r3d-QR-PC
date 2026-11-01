@@ -69,7 +69,7 @@ namespace B0r3dQR.Tests
                 Run("one file: the exe runs on its own, with ZXing inside, per-monitor DPI on, and its windows load", ExeRunsOnItsOwn);
                 Run("never goes online: no networking, web, XML, media, native or COM way out in the exe", ExeNeverGoesOnline);
                 Run("safety flags: the one-file exe keeps Windows' address randomisation and DEP", ExeSafetyFlags);
-                Run("save dialog: Windows is told not to add saved files to Recent items", SaveDialogStaysOutOfRecent);
+                Run("file dialogs: Save, Open and folder are told not to add to Recent items", FileDialogsStayOutOfRecent);
                 Run("icon: the cup at every size, small ones as bitmaps, all of them pictures", ExeIcon);
                 Run("icon check: tells static from a picture", StaticIsCaught);
                 Run("build.cmd: plain ASCII with CRLF line endings", BuildCmdIsPlain);
@@ -93,8 +93,28 @@ namespace B0r3dQR.Tests
                 Run("settings: a save that fails once (a held file) doesn't stop the next", SaveFailsOnlyOnce);
                 Run("command line: --data, --selftest, and unknown options", CommandLines);
 
+                Run("reading: every code in a picture, each with what it is, its type and where it was", ReadsEveryCode);
+                Run("reading: light codes on dark backgrounds", ReadsLightOnDark);
+                Run("reading: a small code on a 4K screen, in good time", ReadsSmallCodeOnABigScreen);
+                Run("reading: Aztec and Data Matrix codes away from the middle, among letters", ReadsCodesAwayFromTheMiddle);
+                Run("reading: a barcode on its side", ReadsSidewaysBarcode);
+                Run("reading: noise and blank pictures give nothing, not made-up codes", NothingThereSaysSo);
+                Run("reading: tiny and flat pictures are just pictures with no code", OddPicturesHaveNoCode);
+                Run("reading: a code on a see-through background reads as on white", SeeThroughCountsAsWhite);
+                Run("pictures: PNG, JPEG, BMP, GIF and TIFF pages; a broken or missing file says so", ReadsPictureFiles);
+                Run("folders: a line for every picture (codes, no code, couldn't open), a summary; Cancel stops it", ReadsFolders);
+                Run("clipboard and drops: a PNG, a bitmap or files; Ctrl+V leaves text to the text boxes", ReadsCopiedAndDropped);
+                Run("screens: every screen in real pixels, numbered left to right, and a picture of one", ScreensInRealPixels);
+                Run("snip: a box drawn at 150 % lands on the right real pixels; a click reads the screen", SnipBoxesInRealPixels);
+                Run("snip: closing an overlay or switching programs always brings b0r3d QR back", OverlaysAlwaysComeBack);
+                Run("kinds: what each code is, never a password or secret, product numbers never phones", KindsInWords);
+                Run("links: only web links open, after a question, and odd ones come with warnings", LinksAskFirst);
+                Run("scan tab: a dropped picture is read and listed, named for screen readers; Make this code again", ScanTabShowsAndMakesAgain);
+                Run("make again: the scanned text exactly, plain QR codes only", MakeAgainKeepsTheText);
+
                 Run("look: the three colour sets match, and every colour used is in them", ThemesMatch);
                 Run("window: builds in light and dark with no binding errors", WindowWithoutBindingErrors);
+                Run("window: the tabs' typewriter font stays on the tabs", TabsKeepTheirLookToThemselves);
                 Run("window: typing makes the code, and the check says it reads back", WindowMakesTheCode);
                 Run("window: empty and too-long text explain themselves, with nothing to save", WindowExplainsProblems);
                 Run("window: error correction, quiet zone and picture size change the code", WindowOptions);

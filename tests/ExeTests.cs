@@ -62,6 +62,7 @@ namespace B0r3dQR.Tests
                 Check(found["read"] == "ok" && found["png"] == "ok" && found["svg"] == "ok", all);
                 Check(found["zxing"] == "b0r3dQR", "ZXing came from " + found["zxing"] + ", not from inside the exe");
                 Check(found.TryGetValue("windows", out string windows) && windows == "ok", "the windows didn't build from inside the exe: " + all);
+                Check(found.TryGetValue("scan", out string scan) && scan == "ok", "the Scan tab's reader didn't work inside the exe: " + all);
                 Check(found["dpi"] == "per-monitor-v2", "the exe follows the screens' scaling as \"" + found["dpi"] + "\", not per-monitor-v2 (is the manifest in?)");
                 Check(found["version"] == Program.FullVersion, "the exe says " + found["version"]);
             }
@@ -70,19 +71,35 @@ namespace B0r3dQR.Tests
         }
 
         // Reads the exe's metadata without running it, for every way it could go online: networking
-        // and web types, XML that can fetch files, pictures and media loaded from addresses, native
-        // calls (only user32 and dwmapi are allowed), COM objects (only Windows' Save dialog), and
-        // web addresses in its strings (only b0r3d.org's, which opens in the browser).
+        // and web types, XML that can fetch files, pictures and media loaded from addresses, calls
+        // that take an address, native calls (only the Windows functions listed), COM objects (only
+        // Windows' Save and Open dialogs), and web addresses in its strings and its XAML (only
+        // b0r3d.org's, which opens in the browser).
         static readonly string[] BannedSpaces = { "System.Net", "System.Xml", "System.Windows.Navigation", "System.Web", "System.ServiceModel", "System.Runtime.Remoting" };
         static readonly string[] BannedTypes = { "WebBrowser", "WebClient", "HttpClient", "Socket", "TcpClient", "UdpClient", "BitmapImage", "MediaElement", "MediaPlayer", "XamlReader", "XmlReader", "XmlDocument", "XmlUrlResolver" };
-        static readonly string[] AllowedNative = { "user32.dll", "dwmapi.dll" };
-        static readonly string[] AllowedCom = { "C0B4E2F3-BA21-4773-8DBA-335EC946EB8B" };  // Windows' Save dialog
+        static readonly Dictionary<string, string[]> AllowedNative = new Dictionary<string, string[]>
+        {
+            { "user32.dll", new[] { "GetThreadDpiAwarenessContext", "AreDpiAwarenessContextsEqual", "GetAwarenessFromDpiAwarenessContext",   // screen scaling
+                                    "EnumDisplayMonitors", "GetMonitorInfo", "GetCursorPos", "SetWindowPos", "GetDC", "ReleaseDC" } },  // the screens
+            { "dwmapi.dll", new[] { "DwmSetWindowAttribute" } },                                                                   // title bars, fades
+            { "gdi32.dll", new[] { "CreateCompatibleDC", "CreateCompatibleBitmap", "SelectObject", "BitBlt", "DeleteObject", "DeleteDC" } },  // screen pictures
+            { "shcore.dll", new[] { "GetDpiForMonitor" } },                                                                        // each screen's scaling
+        };
+        static readonly string[] AllowedCom =
+        {
+            "C0B4E2F3-BA21-4773-8DBA-335EC946EB8B",  // Windows' Save dialog
+            "DC1C5A9C-E88A-4DDE-A5A1-60F82A20AEF7",  // Windows' Open dialog
+        };
         static readonly string[] AllowedAddresses =
         {
-            "https://b0r3d.org",                                             // Help → b0r3d.org, opened in the browser
-            "pack://application:,,,/b0r3dQR;component/assets/b0r3dQR.ico",   // the cup, inside the exe
-            "http://www.w3.org/2000/svg",                                    // SVG's namespace name in saved files, never fetched
+            "https://b0r3d.org",            // Help → b0r3d.org, opened in the browser
+            "http://www.w3.org/2000/svg",   // SVG's namespace name in saved files, never fetched
         };
+        // Calls into .NET that take an address (a Uri). Uri's own members only take one apart;
+        // these two only read from inside the exe and refuse anything but a relative address.
+        static readonly string[] AllowedUriTakers = { "System.Windows.Application.LoadComponent", "System.Windows.Application.GetResourceStream" };
+        // XAML's own namespace names, which are names, never fetched
+        const string XamlNamespaces = "http://schemas.microsoft.com/winfx/2006/xaml";
 
         static void ExeNeverGoesOnline()
         {
@@ -105,16 +122,39 @@ namespace B0r3dQR.Tests
                     string name = md.GetString(md.GetAssemblyReference(handle).Name);
                     if (BannedSpaces.Any(s => name.StartsWith(s, StringComparison.Ordinal))) bad.Add("the assembly " + name);
                 }
+                var typeNames = new TypeNames();
                 foreach (MemberReferenceHandle handle in md.MemberReferences)
                 {
-                    string name = md.GetString(md.GetMemberReference(handle).Name);
+                    MemberReference member = md.GetMemberReference(handle);
+                    string name = md.GetString(member.Name);
                     if (name == "GetTypeFromProgID" || name == "GetTypeFromCLSID") bad.Add("COM by name (" + name + ")");
+                    if (member.GetKind() != MemberReferenceKind.Method) continue;
+                    string parent = ParentName(md, member.Parent, typeNames);
+                    if (parent == "System.Uri" || AllowedUriTakers.Contains(parent + "." + name)) continue;
+                    if (member.DecodeMethodSignature(typeNames, null).ParameterTypes.Any(p => p == "System.Uri" || p.StartsWith("System.Uri[", StringComparison.Ordinal)))
+                        bad.Add("a call that takes an address (" + parent + "." + name + ")");
                 }
                 for (int row = 1; row <= md.GetTableRowCount(TableIndex.ModuleRef); row++)
                 {
                     string dll = md.GetString(md.GetModuleReference(MetadataTokens.ModuleReferenceHandle(row)).Name).ToLowerInvariant();
-                    if (!AllowedNative.Contains(dll)) bad.Add("a native call into " + dll);
+                    if (!AllowedNative.ContainsKey(dll)) bad.Add("a native call into " + dll);
                 }
+                int nativeCalls = 0;
+                foreach (MethodDefinitionHandle handle in md.MethodDefinitions)
+                {
+                    MethodDefinition method = md.GetMethodDefinition(handle);
+                    MethodImport import = method.GetImport();
+                    if (import.Module.IsNil) continue;
+                    nativeCalls++;
+                    string dll = md.GetString(md.GetModuleReference(import.Module).Name).ToLowerInvariant();
+                    string entry = md.GetString(import.Name.IsNil ? method.Name : import.Name);
+                    if (!AllowedNative.TryGetValue(dll, out string[] entries) || !entries.Contains(entry)) bad.Add("the native call " + dll + " " + entry);
+                }
+                Check(nativeCalls >= 10, "the scan saw only " + nativeCalls + " native calls (has the code moved?)");
+                int baml = 0;
+                foreach (string address in XamlAddresses(pe, md, ref baml))
+                    if (!address.StartsWith(XamlNamespaces, StringComparison.Ordinal)) bad.Add("the address " + address + " in the XAML");
+                Check(baml >= 6, "the scan saw only " + baml + " compiled XAML files (has the XAML moved?)");
                 foreach (TypeDefinitionHandle handle in md.TypeDefinitions)
                 {
                     TypeDefinition type = md.GetTypeDefinition(handle);
@@ -160,6 +200,75 @@ namespace B0r3dQR.Tests
             }
         }
 
+        // The web addresses in the compiled XAML (BAML) inside the exe's resources. BAML keeps its
+        // strings as UTF-8, so the bytes read as text find them; an address can run on into the
+        // next record's bytes, so callers compare starts, not whole strings.
+        static IEnumerable<string> XamlAddresses(PEReader pe, MetadataReader md, ref int baml)
+        {
+            var found = new List<string>();
+            DirectoryEntry resourcesDirectory = pe.PEHeaders.CorHeader.ResourcesDirectory;
+            foreach (ManifestResourceHandle handle in md.ManifestResources)
+            {
+                ManifestResource resource = md.GetManifestResource(handle);
+                if (!resource.Implementation.IsNil || !md.GetString(resource.Name).EndsWith(".g.resources", StringComparison.Ordinal)) continue;
+                BlobReader blob = pe.GetSectionData(resourcesDirectory.RelativeVirtualAddress).GetReader();
+                blob.Offset = (int)resource.Offset;
+                byte[] bytes = blob.ReadBytes(blob.ReadInt32());
+                using (var reader = new System.Resources.ResourceReader(new MemoryStream(bytes)))
+                    foreach (System.Collections.DictionaryEntry entry in reader)
+                    {
+                        if (!((string)entry.Key).EndsWith(".baml", StringComparison.OrdinalIgnoreCase) || !(entry.Value is Stream stream)) continue;
+                        baml++;
+                        var copy = new MemoryStream();
+                        stream.CopyTo(copy);
+                        string text = System.Text.Encoding.GetEncoding(28591).GetString(copy.ToArray());
+                        foreach (Match address in Regex.Matches(text, @"[A-Za-z][A-Za-z0-9+.\-]*://[!-~]*")) found.Add(address.Value);
+                    }
+            }
+            return found;
+        }
+
+        // "System.Windows.Application" for the type a member belongs to
+        static string ParentName(MetadataReader md, EntityHandle parent, TypeNames names)
+        {
+            switch (parent.Kind)
+            {
+                case HandleKind.TypeReference: return names.GetTypeFromReference(md, (TypeReferenceHandle)parent, 0);
+                case HandleKind.TypeDefinition: return names.GetTypeFromDefinition(md, (TypeDefinitionHandle)parent, 0);
+                case HandleKind.TypeSpecification: return md.GetTypeSpecification((TypeSpecificationHandle)parent).DecodeSignature(names, null);
+                default: return parent.Kind.ToString();
+            }
+        }
+
+        // Type names in a member's signature, enough to spot a Uri among its parameters (ref and
+        // out ones too).
+        sealed class TypeNames : ISignatureTypeProvider<string, object>
+        {
+            public string GetPrimitiveType(PrimitiveTypeCode code) => code.ToString();
+            public string GetTypeFromDefinition(MetadataReader md, TypeDefinitionHandle handle, byte kind)
+            {
+                TypeDefinition type = md.GetTypeDefinition(handle);
+                return md.GetString(type.Namespace) + "." + md.GetString(type.Name);
+            }
+            public string GetTypeFromReference(MetadataReader md, TypeReferenceHandle handle, byte kind)
+            {
+                TypeReference type = md.GetTypeReference(handle);
+                return md.GetString(type.Namespace) + "." + md.GetString(type.Name);
+            }
+            public string GetTypeFromSpecification(MetadataReader md, object context, TypeSpecificationHandle handle, byte kind) =>
+                md.GetTypeSpecification(handle).DecodeSignature(this, context);
+            public string GetSZArrayType(string element) => element + "[]";
+            public string GetArrayType(string element, ArrayShape shape) => element + "[,]";
+            public string GetByReferenceType(string element) => element;
+            public string GetPointerType(string element) => element + "*";
+            public string GetPinnedType(string element) => element;
+            public string GetModifiedType(string modifier, string unmodified, bool required) => unmodified;
+            public string GetGenericInstantiation(string generic, System.Collections.Immutable.ImmutableArray<string> arguments) => generic + "<" + string.Join(",", arguments) + ">";
+            public string GetGenericTypeParameter(object context, int index) => "!" + index;
+            public string GetGenericMethodParameter(object context, int index) => "!!" + index;
+            public string GetFunctionPointerType(MethodSignature<string> signature) => "method*";
+        }
+
         // a type's [Guid("...")], read straight from the metadata
         static string GuidOf(MetadataReader md, TypeDefinition type)
         {
@@ -192,21 +301,36 @@ namespace B0r3dQR.Tests
             }
         }
 
-        // the Save dialog is told not to add saved files to Windows' Recent items (set up, not shown)
-        static void SaveDialogStaysOutOfRecent()
+        // Windows' Save, Open and folder dialogs are told not to add files to Recent items (set up, not shown)
+        static void FileDialogsStayOutOfRecent()
         {
-            SaveDialog.IFileSaveDialog dialog = SaveDialog.Prepare("Save the code as a PNG picture", "PNG picture", ".png", "b0r3d.org.png");
+            FileDialogs.IFileSaveDialog save = FileDialogs.PrepareSave("Save the code as a PNG picture", "PNG picture", ".png", "b0r3d.org.png");
             try
             {
-                dialog.GetOptions(out uint options);
-                Check((options & SaveDialog.NotRecent) != 0, "the Save dialog would add files to Recent items (options " + options.ToString("X") + ")");
-                Check((options & SaveDialog.Options) == SaveDialog.Options, "the Save dialog lost some of its options (" + options.ToString("X") + ")");
-                dialog.GetFileName(out string name);
+                save.GetOptions(out uint options);
+                Check((options & FileDialogs.NotRecent) != 0, "the Save dialog would add files to Recent items (options " + options.ToString("X") + ")");
+                Check((options & FileDialogs.SaveOptions) == FileDialogs.SaveOptions, "the Save dialog lost some of its options (" + options.ToString("X") + ")");
+                save.GetFileName(out string name);
                 Check(name == "b0r3d.org.png", "the Save dialog's file name is " + name);
             }
             finally
             {
-                Marshal.ReleaseComObject(dialog);
+                Marshal.ReleaseComObject(save);
+            }
+            foreach (bool folders in new[] { false, true })
+            {
+                FileDialogs.IFileOpenDialog open = FileDialogs.PrepareOpen(folders);
+                try
+                {
+                    open.GetOptions(out uint options);
+                    uint wanted = folders ? FileDialogs.FolderOptions : FileDialogs.OpenOptions;
+                    Check((options & FileDialogs.NotRecent) != 0, "the " + (folders ? "folder" : "Open") + " dialog would add to Recent items");
+                    Check((options & wanted) == wanted, "the " + (folders ? "folder" : "Open") + " dialog lost some of its options (" + options.ToString("X") + ")");
+                }
+                finally
+                {
+                    Marshal.ReleaseComObject(open);
+                }
             }
         }
 

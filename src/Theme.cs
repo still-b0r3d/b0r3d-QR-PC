@@ -50,7 +50,8 @@ namespace B0r3dQR
             bool highContrast = SystemParameters.HighContrast;
             bool dark = !highContrast && (Choice == Look.Dark || Choice == Look.Windows && WindowsAppsAreDark());
             string name = highContrast ? "HighContrast" : dark ? "Dark" : "Light";
-            var colours = new ResourceDictionary { Source = new Uri("/b0r3dQR;component/Themes/" + name + ".xaml", UriKind.Relative) };
+            // (LoadComponent only reads XAML built into the exe; a dictionary's Source could fetch some)
+            var colours = (ResourceDictionary)Application.LoadComponent(new Uri("/b0r3dQR;component/Themes/" + name + ".xaml", UriKind.Relative));
             app.Resources.MergedDictionaries[0] = colours;
             IsDark = dark;
             IsHighContrast = highContrast;

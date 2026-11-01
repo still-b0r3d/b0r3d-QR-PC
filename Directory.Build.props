@@ -19,9 +19,9 @@
     <!-- The version: raise it here (and in CHANGELOG.md) for each batch of changes. The build
          stamp is the commit GitHub builds from, or "dev" (build.cmd passes it in), so the exe
          says "0.1+abc1234". -->
-    <Version>0.1</Version>
-    <AssemblyVersion>0.1.0.0</AssemblyVersion>
-    <FileVersion>0.1.0.0</FileVersion>
+    <Version>0.2</Version>
+    <AssemblyVersion>0.2.0.0</AssemblyVersion>
+    <FileVersion>0.2.0.0</FileVersion>
     <BuildStamp Condition="'$(BuildStamp)' == ''">dev</BuildStamp>
     <InformationalVersion>$(Version)+$(BuildStamp)</InformationalVersion>
     <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>

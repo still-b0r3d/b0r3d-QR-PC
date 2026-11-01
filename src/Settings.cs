@@ -22,7 +22,7 @@ namespace B0r3dQR
         public QrLevel Level = QrLevel.Q;   // error correction
         public int QuietZone = 4;           // modules of white around the code
         public int PictureSize = 1000;      // pixels across asked for; it saves at whole pixels per module
-        public double WindowWidth = 1000, WindowHeight = 660;   // device-independent pixels
+        public double WindowWidth = 1000, WindowHeight = 680;   // device-independent pixels
         public bool Maximized;
 
         public static Settings Load() => Load(System.IO.Path.Combine(DataFolder.Path, FileName));
@@ -70,7 +70,7 @@ namespace B0r3dQR
             return s;
         }
 
-        // "1000x660", or "1000x660 maximized"
+        // "1000x680", or "1000x680 maximized"
         static void ReadWindow(Settings s, string value)
         {
             string[] parts = value.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);

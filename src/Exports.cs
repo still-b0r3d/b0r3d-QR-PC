@@ -146,13 +146,30 @@ namespace B0r3dQR
             var data = new DataObject();
             data.SetImage(picture);
             data.SetData("PNG", new MemoryStream(png), false);
-            data.SetData("CanUploadToCloudClipboard", new MemoryStream(BitConverter.GetBytes(0)), false);
+            KeepOffTheCloud(data);
             if (withFile)
             {
                 string file = DragFile(png, fileName);
                 if (file != null) data.SetFileDropList(new StringCollection { file });
             }
             return data;
+        }
+
+        // What Copy text hands over: the text, kept out of Windows' cloud clipboard (a scanned code
+        // can hold a Wi-Fi password or a sign-in secret)
+        public static DataObject TextData(string text)
+        {
+            var data = new DataObject();
+            data.SetText(text, TextDataFormat.UnicodeText);
+            KeepOffTheCloud(data);
+            return data;
+        }
+
+        // Windows' cloud clipboard leaves alone what says it can't be uploaded. (Text copied with
+        // Ctrl+C from b0r3d QR's text boxes gets this too: MainWindow's OnTextCopying.)
+        public static void KeepOffTheCloud(IDataObject data)
+        {
+            data.SetData("CanUploadToCloudClipboard", new MemoryStream(BitConverter.GetBytes(0)), false);
         }
 
         // Dragged PNGs wait in a folder of b0r3d QR's own inside the data folder until it closes.

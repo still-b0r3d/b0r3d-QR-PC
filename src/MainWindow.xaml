@@ -3,22 +3,78 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:B0r3dQR"
         xmlns:c="clr-namespace:B0r3dQR.Controls"
-        Title="b0r3d QR" Width="1000" Height="660" MinWidth="760" MinHeight="520"
+        Title="b0r3d QR" Width="1000" Height="680" MinWidth="760" MinHeight="540"
         WindowStartupLocation="CenterScreen"
         Icon="/b0r3dQR;component/assets/b0r3dQR.ico"
         Background="{DynamicResource Back}" Foreground="{DynamicResource Text}"
         FontFamily="Segoe UI" FontSize="13"
-        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display">
+        UseLayoutRounding="True" TextOptions.TextFormattingMode="Display"
+        AllowDrop="True" PreviewDragEnter="OnPreviewDragOver" PreviewDragOver="OnPreviewDragOver" PreviewDrop="OnPreviewDrop"
+        DragEnter="OnDragElsewhere" DragOver="OnDragElsewhere" Drop="OnDragElsewhere"
+        PreviewKeyDown="OnPreviewKeys" KeyDown="OnKeys">
 
     <Window.CommandBindings>
         <CommandBinding Command="{x:Static local:Commands.SavePng}" Executed="OnSavePng" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.SaveSvg}" Executed="OnSaveSvg" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.CopyPicture}" Executed="OnCopyPicture" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.ScanScreen}" Executed="OnScanScreen" CanExecute="WhenNotScanning" />
+        <CommandBinding Command="{x:Static local:Commands.OpenPicture}" Executed="OnOpenPicture" CanExecute="WhenNotScanning" />
+        <CommandBinding Command="{x:Static local:Commands.PastePicture}" Executed="OnPastePicture" CanExecute="WhenNotScanning" />
+        <CommandBinding Command="{x:Static local:Commands.ScanFolder}" Executed="OnScanFolder" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.About}" Executed="OnAbout" />
     </Window.CommandBindings>
 
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="Shown" />
+
+        <!-- one code found by a scan; or, in a batch, a picture with no code or that couldn't be
+             read (no text and no buttons, its title in the warning colour). Screen readers get
+             each card's and button's name from its Label: "Link, b0r3d.org", never a password. -->
+        <DataTemplate x:Key="FoundCard">
+            <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="1" CornerRadius="6" Padding="12" Margin="0,0,0,10"
+                    AutomationProperties.Name="{Binding Label}">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Border Width="96" Height="96" Background="White" CornerRadius="4" Margin="0,0,14,0" VerticalAlignment="Top"
+                            Visibility="{Binding HasThumbnail, Converter={StaticResource Shown}}" ToolTip="{Binding ThumbnailTip}">
+                        <Image Source="{Binding Thumbnail}" Stretch="Uniform" Margin="3" RenderOptions.BitmapScalingMode="NearestNeighbor" />
+                    </Border>
+                    <StackPanel Grid.Column="1">
+                        <TextBlock Text="{Binding Kind}" FontWeight="Bold" FontSize="14" TextWrapping="Wrap">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsProblem}" Value="True">
+                                            <Setter Property="Foreground" Value="{DynamicResource Warn}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource Dim}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        <TextBox Text="{Binding Text, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="120" Margin="0,8,0,0"
+                                 VerticalScrollBarVisibility="Auto" FontFamily="Consolas" AutomationProperties.Name="What the code holds"
+                                 Visibility="{Binding HasText, Converter={StaticResource Shown}}" />
+                        <WrapPanel Margin="0,8,0,0" Visibility="{Binding IsCode, Converter={StaticResource Shown}}">
+                            <Button Content="Copy text" Click="OnCopyFound" Margin="0,0,8,0"
+                                    AutomationProperties.Name="{Binding Label, StringFormat='Copy text ({0})'}" />
+                            <Button Content="Open link…" Click="OnOpenFound" Margin="0,0,8,0" Visibility="{Binding IsWebLink, Converter={StaticResource Shown}}"
+                                    AutomationProperties.Name="{Binding Label, StringFormat='Open link ({0})'}" />
+                            <Button Content="Make this code again" Click="OnMakeAgain" Visibility="{Binding CanMakeAgain, Converter={StaticResource Shown}}"
+                                    AutomationProperties.Name="{Binding Label, StringFormat='Make this code again ({0})'}" />
+                        </WrapPanel>
+                    </StackPanel>
+                </Grid>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
     <DockPanel x:Name="Root" Background="{DynamicResource Back}">
-        <!-- Access keys: F E V H on the bar; S G C for the buttons; each list has its own. -->
+        <!-- Access keys: F E N V H on the bar, M A for the tabs; then S G C on Make,
+             S O P D L C on Scan; each menu list has its own. -->
         <Menu x:Name="MenuBar" DockPanel.Dock="Top">
             <MenuItem Header="_File">
                 <MenuItem Header="Save _PNG…" Command="{x:Static local:Commands.SavePng}" />
@@ -35,6 +91,12 @@
                 <MenuItem Header="Select _all" Command="ApplicationCommands.SelectAll" />
                 <Separator />
                 <MenuItem Header="Copy p_icture" Command="{x:Static local:Commands.CopyPicture}" />
+            </MenuItem>
+            <MenuItem Header="Sca_n">
+                <MenuItem Header="Scan the _screen" Command="{x:Static local:Commands.ScanScreen}" />
+                <MenuItem Header="_Open picture…" Command="{x:Static local:Commands.OpenPicture}" />
+                <MenuItem Header="_Paste picture" Command="{x:Static local:Commands.PastePicture}" />
+                <MenuItem Header="Scan a fol_der…" Command="{x:Static local:Commands.ScanFolder}" />
             </MenuItem>
             <MenuItem Header="_View">
                 <MenuItem Header="_Look">
@@ -61,88 +123,157 @@
         </Border>
 
         <Grid>
-            <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="370" />
-                <ColumnDefinition Width="*" />
-            </Grid.ColumnDefinitions>
-
-            <!-- the settings -->
-            <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
-                <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
-                    <StackPanel Margin="20,16,20,20">
-                        <StackPanel Orientation="Horizontal">
-                            <Image x:Name="CupPicture" Width="32" Height="32" RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center" />
-                            <TextBlock Text="b0r3d QR" FontFamily="Courier New" FontWeight="Bold" FontSize="23" Margin="10,0,0,0" VerticalAlignment="Center" Effect="{DynamicResource TitleGlow}" />
-                        </StackPanel>
-                        <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" FontFamily="Courier New"
-                                   Text="Static codes: nothing expires, nothing is sent anywhere." />
-
-                        <TextBlock Style="{StaticResource Heading}" Text="Data" />
-                        <Grid>
-                            <TextBox x:Name="DataBox" AcceptsReturn="True" AcceptsTab="False" TextWrapping="Wrap" Height="104"
-                                     VerticalScrollBarVisibility="Auto" TextChanged="OnDataChanged" AutomationProperties.Name="Data" />
-                            <TextBlock x:Name="DataHint" Text="Type or paste a link, or any text" Foreground="{DynamicResource Dim}"
-                                       Margin="8,5,0,0" IsHitTestVisible="False" />
-                        </Grid>
-
-                        <TextBlock Style="{StaticResource Heading}" Text="Error correction" />
-                        <StackPanel Orientation="Horizontal">
-                            <RadioButton x:Name="LevelL" Style="{StaticResource Segment}" Content="L" GroupName="Level" Tag="L" Checked="OnLevel" AutomationProperties.Name="Level L, low" />
-                            <RadioButton x:Name="LevelM" Style="{StaticResource Segment}" Content="M" GroupName="Level" Tag="M" Checked="OnLevel" AutomationProperties.Name="Level M, medium" />
-                            <RadioButton x:Name="LevelQ" Style="{StaticResource Segment}" Content="Q" GroupName="Level" Tag="Q" Checked="OnLevel" AutomationProperties.Name="Level Q, quartile" />
-                            <RadioButton x:Name="LevelH" Style="{StaticResource Segment}" Content="H" GroupName="Level" Tag="H" Checked="OnLevel" AutomationProperties.Name="Level H, high" />
-                        </StackPanel>
-                        <TextBlock x:Name="LevelHint" Style="{StaticResource Hint}" />
-
-                        <TextBlock Style="{StaticResource Heading}" Text="Quiet zone" />
-                        <StackPanel Orientation="Horizontal">
-                            <c:NumberBox x:Name="QuietBox" Width="84" Minimum="0" Maximum="20" ValueChanged="OnQuietChanged" AutomationProperties.Name="Quiet zone in modules" />
-                            <TextBlock Text="modules of white around the code" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" Margin="10,0,0,0" />
-                        </StackPanel>
-                        <TextBlock Style="{StaticResource Hint}" Text="4 is the standard: scanners need white space around a code to find it." />
-
-                        <TextBlock Style="{StaticResource Heading}" Text="Picture size" />
-                        <StackPanel Orientation="Horizontal">
-                            <c:NumberBox x:Name="SizeBox" Width="100" Minimum="100" Maximum="4000" Step="100" ValueChanged="OnSizeChanged" AutomationProperties.Name="Picture size in pixels" />
-                            <TextBlock Text="pixels across" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" Margin="10,0,0,0" />
-                        </StackPanel>
-                        <TextBlock x:Name="SizeHint" Style="{StaticResource Hint}" />
-                    </StackPanel>
-                </ScrollViewer>
-            </Border>
-
-            <!-- the code -->
-            <Grid Grid.Column="1" Margin="24,18,24,14">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="*" />
-                    <RowDefinition Height="Auto" />
-                    <RowDefinition Height="Auto" />
-                </Grid.RowDefinitions>
-
-                <Border x:Name="Stage" Background="{DynamicResource Stage}" CornerRadius="8" SizeChanged="OnStageSize">
+            <TabControl x:Name="Tabs" Padding="210,4,14,0" SelectionChanged="OnTabChanged">
+                <TabItem x:Name="MakeTab" Header="_Make">
                     <Grid>
-                        <Image x:Name="Preview" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"
-                               HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
-                               ToolTip="Drag the code into another program, or into a folder as a PNG file"
-                               MouseLeftButtonDown="OnPreviewDown" MouseMove="OnPreviewMove" AutomationProperties.Name="The QR code" />
-                        <TextBlock x:Name="StageNote" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
-                                   TextWrapping="Wrap" MaxWidth="380" Margin="20" Foreground="{DynamicResource Dim}" />
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="370" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+
+                        <!-- the settings -->
+                        <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <StackPanel Margin="20,10,20,20">
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0" FontFamily="Courier New"
+                                               Text="Static codes: nothing expires, nothing is sent anywhere." />
+
+                                    <TextBlock Style="{StaticResource Heading}" Text="Data" />
+                                    <Grid>
+                                        <TextBox x:Name="DataBox" AcceptsReturn="True" AcceptsTab="False" TextWrapping="Wrap" Height="104"
+                                                 VerticalScrollBarVisibility="Auto" TextChanged="OnDataChanged" AutomationProperties.Name="Data" />
+                                        <TextBlock x:Name="DataHint" Text="Type or paste a link, or any text" Foreground="{DynamicResource Dim}"
+                                                   Margin="8,5,0,0" IsHitTestVisible="False" />
+                                    </Grid>
+
+                                    <TextBlock Style="{StaticResource Heading}" Text="Error correction" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton x:Name="LevelL" Style="{StaticResource Segment}" Content="L" GroupName="Level" Tag="L" Checked="OnLevel" AutomationProperties.Name="Level L, low" />
+                                        <RadioButton x:Name="LevelM" Style="{StaticResource Segment}" Content="M" GroupName="Level" Tag="M" Checked="OnLevel" AutomationProperties.Name="Level M, medium" />
+                                        <RadioButton x:Name="LevelQ" Style="{StaticResource Segment}" Content="Q" GroupName="Level" Tag="Q" Checked="OnLevel" AutomationProperties.Name="Level Q, quartile" />
+                                        <RadioButton x:Name="LevelH" Style="{StaticResource Segment}" Content="H" GroupName="Level" Tag="H" Checked="OnLevel" AutomationProperties.Name="Level H, high" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="LevelHint" Style="{StaticResource Hint}" />
+
+                                    <TextBlock Style="{StaticResource Heading}" Text="Quiet zone" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:NumberBox x:Name="QuietBox" Width="84" Minimum="0" Maximum="20" ValueChanged="OnQuietChanged" AutomationProperties.Name="Quiet zone in modules" />
+                                        <TextBlock Text="modules of white around the code" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource Hint}" Text="4 is the standard: scanners need white space around a code to find it." />
+
+                                    <TextBlock Style="{StaticResource Heading}" Text="Picture size" />
+                                    <StackPanel Orientation="Horizontal">
+                                        <c:NumberBox x:Name="SizeBox" Width="100" Minimum="100" Maximum="4000" Step="100" ValueChanged="OnSizeChanged" AutomationProperties.Name="Picture size in pixels" />
+                                        <TextBlock Text="pixels across" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" Margin="10,0,0,0" />
+                                    </StackPanel>
+                                    <TextBlock x:Name="SizeHint" Style="{StaticResource Hint}" />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+
+                        <!-- the code -->
+                        <Grid Grid.Column="1" Margin="24,18,24,14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="*" />
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="Auto" />
+                            </Grid.RowDefinitions>
+
+                            <Border x:Name="Stage" Background="{DynamicResource Stage}" CornerRadius="8" SizeChanged="OnStageSize">
+                                <Grid>
+                                    <Image x:Name="Preview" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"
+                                           HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
+                                           ToolTip="Drag the code into another program, or into a folder as a PNG file"
+                                           MouseLeftButtonDown="OnPreviewDown" MouseMove="OnPreviewMove" AutomationProperties.Name="The QR code" />
+                                    <TextBlock x:Name="StageNote" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                               TextWrapping="Wrap" MaxWidth="380" Margin="20" Foreground="{DynamicResource Dim}" />
+                                </Grid>
+                            </Border>
+
+                            <StackPanel Grid.Row="1" Margin="2,12,2,0">
+                                <TextBlock x:Name="CheckLine" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock x:Name="WarnLine" Foreground="{DynamicResource Warn}" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed" />
+                                <TextBlock x:Name="InfoLine" Foreground="{DynamicResource Dim}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                            </StackPanel>
+
+                            <WrapPanel Grid.Row="2" Margin="0,12,0,0">
+                                <Button x:Name="SavePngButton" Content="_Save PNG…" Command="{x:Static local:Commands.SavePng}" Margin="0,0,8,0" />
+                                <Button x:Name="SaveSvgButton" Content="Save SV_G…" Command="{x:Static local:Commands.SaveSvg}" Margin="0,0,8,0" />
+                                <Button x:Name="CopyButton" Content="_Copy picture" Command="{x:Static local:Commands.CopyPicture}" Margin="0,0,12,0" />
+                                <TextBlock Text="or drag the code into another program" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" />
+                            </WrapPanel>
+                        </Grid>
                     </Grid>
-                </Border>
+                </TabItem>
 
-                <StackPanel Grid.Row="1" Margin="2,12,2,0">
-                    <TextBlock x:Name="CheckLine" FontWeight="SemiBold" TextWrapping="Wrap" />
-                    <TextBlock x:Name="WarnLine" Foreground="{DynamicResource Warn}" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed" />
-                    <TextBlock x:Name="InfoLine" Foreground="{DynamicResource Dim}" TextWrapping="Wrap" Margin="0,4,0,0" />
-                </StackPanel>
+                <TabItem x:Name="ScanTab" Header="Sc_an">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="370" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
 
-                <WrapPanel Grid.Row="2" Margin="0,12,0,0">
-                    <Button x:Name="SavePngButton" Content="_Save PNG…" Command="{x:Static local:Commands.SavePng}" Margin="0,0,8,0" />
-                    <Button x:Name="SaveSvgButton" Content="Save SV_G…" Command="{x:Static local:Commands.SaveSvg}" Margin="0,0,8,0" />
-                    <Button x:Name="CopyButton" Content="_Copy picture" Command="{x:Static local:Commands.CopyPicture}" Margin="0,0,12,0" />
-                    <TextBlock Text="or drag the code into another program" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" />
-                </WrapPanel>
-            </Grid>
+                        <!-- where to read from -->
+                        <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                <StackPanel Margin="20,10,20,20">
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0" FontFamily="Courier New"
+                                               Text="Read QR codes and barcodes. Pictures stay on this PC." />
+
+                                    <TextBlock Style="{StaticResource Heading}" Text="Off the screen" />
+                                    <Button x:Name="ScanScreenButton" Content="Scan the _screen" Command="{x:Static local:Commands.ScanScreen}" HorizontalAlignment="Stretch" />
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="b0r3d QR steps aside and every screen freezes. Drag a box around a code, or click a screen to read all of it. Enter reads every screen; Esc cancels." />
+
+                                    <TextBlock Style="{StaticResource Heading}" Text="From pictures" />
+                                    <Button x:Name="OpenPictureButton" Content="_Open picture…" Command="{x:Static local:Commands.OpenPicture}" HorizontalAlignment="Stretch" />
+                                    <Button x:Name="PastePictureButton" Content="_Paste picture" Command="{x:Static local:Commands.PastePicture}" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
+                                    <Button x:Name="ScanFolderButton" Content="Scan a fol_der…" Command="{x:Static local:Commands.ScanFolder}" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
+                                    <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
+                                               Text="Or drop pictures or a folder anywhere on this window, or press Ctrl+V with a picture copied. PNG, JPEG, BMP, GIF and TIFF, and WebP or HEIC where Windows can open them. For a PDF, open it and scan the screen." />
+                                </StackPanel>
+                            </ScrollViewer>
+                        </Border>
+
+                        <!-- what was found -->
+                        <Grid Grid.Column="1" Margin="24,18,24,14">
+                            <Grid.RowDefinitions>
+                                <RowDefinition Height="Auto" />
+                                <RowDefinition Height="*" />
+                            </Grid.RowDefinitions>
+                            <DockPanel>
+                                <Button x:Name="ClearButton" DockPanel.Dock="Right" Content="C_lear" Click="OnClearFound" Margin="8,0,0,0" />
+                                <Button x:Name="CancelScanButton" DockPanel.Dock="Right" Content="_Cancel" Click="OnCancelScan" Margin="8,0,0,0" Visibility="Collapsed"
+                                        ToolTip="Stop reading (Esc)" />
+                                <TextBlock x:Name="ScanStatus" FontWeight="SemiBold" TextWrapping="Wrap" VerticalAlignment="Center" AutomationProperties.LiveSetting="Polite" />
+                            </DockPanel>
+                            <Border Grid.Row="1" Background="{DynamicResource Stage}" CornerRadius="8" Margin="0,12,0,0">
+                                <Grid>
+                                    <ScrollViewer x:Name="FoundScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                                        <ItemsControl x:Name="FoundList" ItemTemplate="{StaticResource FoundCard}" Margin="12,12,12,2" Focusable="False">
+                                            <ItemsControl.ItemContainerStyle>
+                                                <Style TargetType="ContentPresenter">
+                                                    <Setter Property="AutomationProperties.Name" Value="{Binding Label}" />
+                                                </Style>
+                                            </ItemsControl.ItemContainerStyle>
+                                        </ItemsControl>
+                                    </ScrollViewer>
+                                    <TextBlock x:Name="FoundHint" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
+                                               TextWrapping="Wrap" MaxWidth="380" Margin="20" Foreground="{DynamicResource Dim}"
+                                               Text="Codes you read show up here." />
+                                </Grid>
+                            </Border>
+                        </Grid>
+                    </Grid>
+                </TabItem>
+            </TabControl>
+
+            <!-- the name, on the tab strip -->
+            <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="18,4,0,0" IsHitTestVisible="False">
+                <Image x:Name="CupPicture" Width="28" Height="28" RenderOptions.BitmapScalingMode="HighQuality" VerticalAlignment="Center" />
+                <TextBlock Text="b0r3d QR" FontFamily="Courier New" FontWeight="Bold" FontSize="20" Margin="9,0,0,0" VerticalAlignment="Center" Effect="{DynamicResource TitleGlow}" />
+            </StackPanel>
         </Grid>
     </DockPanel>
 </Window>

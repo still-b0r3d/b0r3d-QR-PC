@@ -1,5 +1,7 @@
 using System;
+using System.IO;
 using System.Linq;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
@@ -15,8 +17,12 @@ namespace B0r3dQR
         {
             if (frames == null)
             {
-                var icon = BitmapDecoder.Create(new Uri("pack://application:,,,/b0r3dQR;component/assets/b0r3dQR.ico"), BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
-                frames = icon.Frames.OrderBy(f => f.PixelWidth).ToArray();
+                // (read from inside the exe as a stream: BitmapDecoder given an address could fetch one)
+                using (Stream stream = Application.GetResourceStream(new Uri("/b0r3dQR;component/assets/b0r3dQR.ico", UriKind.Relative)).Stream)
+                {
+                    var icon = BitmapDecoder.Create(stream, BitmapCreateOptions.None, BitmapCacheOption.OnLoad);
+                    frames = icon.Frames.OrderBy(f => f.PixelWidth).ToArray();
+                }
             }
             double wanted = size * scale;
             return frames.FirstOrDefault(f => f.PixelWidth >= wanted - 0.5) ?? frames.Last();

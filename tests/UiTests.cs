@@ -74,6 +74,8 @@ namespace B0r3dQR.Tests
                     foreach (Match m in Regex.Matches(code, @"SetResourceReference\([^,]+,\s*""([A-Za-z]+)""\)")) used.Add(m.Groups[1].Value);
                     foreach (Match m in Regex.Matches(code, @"ShowCheck\(""[a-z-]+"",[^;]*,\s*""([A-Za-z]+)""\)")) used.Add(m.Groups[1].Value);
                     foreach (Match m in Regex.Matches(code, @"(?:Flash|ShowStage)\([^;]*?""(Good|Bad|Warn|Dim)""\)")) used.Add(m.Groups[1].Value);
+                    foreach (Match call in Regex.Matches(code, @"ShowSummary\([^;]*\);"))   // ShowSummary(text, ok ? "Text" : "Warn")
+                        foreach (Match m in Regex.Matches(call.Value, @"""([A-Z][A-Za-z]+)""")) used.Add(m.Groups[1].Value);
                 }
                 var unknown = used.Where(k => !keys[0].Contains(k) && !controls.Contains(k)).ToList();
                 Check(used.Count > 15, "found only " + used.Count + " colour names in src (has the code moved?)");
@@ -118,6 +120,50 @@ namespace B0r3dQR.Tests
                 Theme.Set(Look.Light);
             }
             Check(errors.Lines.Count == 0, errors.Lines.Count + " binding errors, first: " + errors.Lines.FirstOrDefault());
+        }
+
+        // the tab headers' typewriter font stays on the headers; what's on the tabs keeps the window's
+        // font and, in the dark look too, its text colour
+        static void TabsKeepTheirLookToThemselves()
+        {
+            Theme.Set(Look.Dark);
+            try
+            {
+                MainWindow window = NewMain();
+                foreach (TabItem tab in new[] { window.MakeTab, window.ScanTab })
+                {
+                    window.Tabs.SelectedItem = tab;
+                    LayOut(window.Root, MainWidth, MainHeight);
+                }
+                string font = window.FontFamily.Source;
+                var plain = new Control[] { window.DataBox, window.SavePngButton, window.ScanScreenButton, window.ClearButton };
+                foreach (Control control in plain)
+                    Check(control.FontFamily.Source == font && control.FontWeight == FontWeights.Normal, control.Name + " is in " + control.FontFamily.Source + " " + control.FontWeight + ", not the window's " + font);
+                Check(window.ScanStatus.FontFamily.Source == font && window.InfoLine.FontFamily.Source == font, "the lines under the code and over the codes found aren't in " + font);
+
+                Color text = ((SolidColorBrush)window.FindResource("Text")).Color;
+                var headingStyle = (Style)window.FindResource("Heading");
+                var headings = new List<TextBlock>();
+                foreach (TabItem tab in new[] { window.MakeTab, window.ScanTab })
+                    headings.AddRange(LogicalDescendants((DependencyObject)tab.Content).OfType<TextBlock>().Where(t => t.Style == headingStyle));
+                Check(headings.Count >= 6, "only " + headings.Count + " headings found on the tabs");
+                foreach (TextBlock heading in headings)
+                    Check(heading.Foreground is SolidColorBrush brush && brush.Color == text, "the heading \"" + heading.Text + "\" is in " + heading.Foreground + ", not the text colour " + text);
+            }
+            finally
+            {
+                Theme.Set(Look.Light);
+            }
+        }
+
+        static IEnumerable<DependencyObject> LogicalDescendants(DependencyObject parent)
+        {
+            foreach (object child in LogicalTreeHelper.GetChildren(parent))
+            {
+                if (!(child is DependencyObject element)) continue;
+                yield return element;
+                foreach (DependencyObject below in LogicalDescendants(element)) yield return below;
+            }
         }
 
         static void WindowMakesTheCode()
@@ -255,8 +301,9 @@ namespace B0r3dQR.Tests
                 Check(twice.Count == 0, where + ": " + string.Join(", ", twice) + " used twice");
             }
             List<MenuItem> top = window.MenuBar.Items.OfType<MenuItem>().ToList();
-            Unique("the menu bar and the buttons", top.Select(m => Key(m.Header))
-                .Concat(new[] { window.SavePngButton, window.SaveSvgButton, window.CopyButton }.Select(b => Key(b.Content))));
+            IEnumerable<string> always = top.Select(m => Key(m.Header)).Concat(new[] { Key(window.MakeTab.Header), Key(window.ScanTab.Header) });
+            Unique("the Make tab", always.Concat(new[] { window.SavePngButton, window.SaveSvgButton, window.CopyButton }.Select(b => Key(b.Content))));
+            Unique("the Scan tab", always.Concat(new[] { window.ScanScreenButton, window.OpenPictureButton, window.PastePictureButton, window.ScanFolderButton, window.ClearButton, window.CancelScanButton }.Select(b => Key(b.Content))));
             void Lists(MenuItem item)
             {
                 List<MenuItem> lines = item.Items.OfType<MenuItem>().ToList();

@@ -262,6 +262,58 @@
         </Setter>
     </Style>
 
+    <!-- the Make and Scan tabs: words on a strip, the chosen one underlined in the accent -->
+    <!-- (Padding is the strip's own, so a window can leave room beside the tabs) -->
+    <Style TargetType="TabControl">
+        <Setter Property="Foreground" Value="{DynamicResource Text}" />
+        <Setter Property="Background" Value="Transparent" />
+        <Setter Property="BorderThickness" Value="0" />
+        <Setter Property="Padding" Value="14,4,14,0" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabControl">
+                    <DockPanel>
+                        <Border DockPanel.Dock="Top" Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,0,1" Padding="{TemplateBinding Padding}">
+                            <TabPanel IsItemsHost="True" KeyboardNavigation.TabIndex="1" />
+                        </Border>
+                        <ContentPresenter x:Name="PART_SelectedContentHost" ContentSource="SelectedContent" />
+                    </DockPanel>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <!-- (the header's font and colour go on the header alone: set on the tab, everything on it
+         would inherit them. The tab's own colour is the window's, as what's on it inherits that,
+         and Windows' style for tabs would make it black.) -->
+    <Style TargetType="TabItem">
+        <Setter Property="Foreground" Value="{DynamicResource Text}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus}" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="TabItem">
+                    <Border x:Name="Box" Background="Transparent" BorderBrush="Transparent" BorderThickness="0,0,0,3" Padding="18,6,18,5" Margin="0,0,2,0">
+                        <ContentPresenter x:Name="Header" ContentSource="Header" RecognizesAccessKey="True" HorizontalAlignment="Center"
+                                          TextElement.Foreground="{DynamicResource Dim}" TextElement.FontFamily="Courier New"
+                                          TextElement.FontWeight="Bold" TextElement.FontSize="15" />
+                    </Border>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource Text}" />
+                        </Trigger>
+                        <Trigger Property="IsSelected" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                            <Setter TargetName="Header" Property="TextElement.Foreground" Value="{DynamicResource Text}" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- the menu bar and its drop-downs -->
     <Style TargetType="Menu">
         <Setter Property="Background" Value="{DynamicResource MenuBar}" />
