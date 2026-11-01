@@ -31,4 +31,11 @@
     <Authors>b0r3d.org</Authors>
     <Copyright>Copyright (c) 2026 b0r3d.org</Copyright>
   </PropertyGroup>
+
+  <ItemGroup>
+    <!-- .NET Framework 4.8's reference files from NuGet on every PC. GitHub's machines have them
+         installed and many PCs don't; without this the SDK adds the package only where they're
+         missing, and the pinned package list wouldn't match between the two. -->
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
 </Project>
