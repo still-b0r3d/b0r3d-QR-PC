@@ -83,7 +83,11 @@ namespace B0r3dQR.Tests
                     Check(e.Message.StartsWith("Too much", StringComparison.Ordinal), "the message: " + e.Message);
                 }
             }
-            QrCode big = QrCode.Make(new string('a', QrCode.MaxBytes(QrLevel.L)), QrLevel.L);
+            // (read back with ordinary words: 2953 a's in a row come out as a pattern ZXing can't find,
+            // with the website's mask as much as with b0r3d QR's, which is the same module for module)
+            string words = string.Concat(Enumerable.Repeat("The quick brown fox jumps over the lazy dog, b0r3d.org 2026; ", 50)).Substring(0, QrCode.MaxBytes(QrLevel.L));
+            QrCode big = QrCode.Make(words, QrLevel.L);
+            Check(big.Version == 40, "the most text at level L should make version 40, not " + big.Version);
             ScanCheck.Reading reading = DrawAndRead(big, 4);
             Check(reading != null && reading.Text == big.Text, "the biggest code (version 40, level L) didn't read back");
             try

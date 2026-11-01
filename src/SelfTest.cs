@@ -8,7 +8,8 @@ namespace B0r3dQR
 {
     // b0r3dQR.exe --selftest <file>: no window shown. Makes a code, draws it the way a PNG is saved,
     // reads it back (as the scan check and as the Scan tab), checks the SVG, builds the windows
-    // (the Scan tab with a card, and a screen's overlay too), and writes what it found to <file>
+    // (the Scan tab with a card, and a screen's overlay too), draws a designed code (a preset's logo,
+    // a frame), and writes what it found to <file>
     // as key=value lines; the exit code is 0 when it all worked. The tests run it on the finished
     // one-file exe, on its own in a folder, to prove it works with nothing beside it.
     static class SelfTest
@@ -84,6 +85,16 @@ namespace B0r3dQR
                     snip.Close();
                 }
                 lines.Add("windows=ok");
+
+                // the designer inside this exe: the b0r3d Cup preset (its logo is one of the exe's
+                // resources) in a frame, drawn and read back
+                var cup = Design.Presets.Apply("b0r3d Cup", new Design.QrDesign { Data = Text });
+                cup.Frame = Design.Presets.ApplyFrame("Default Frame", null);
+                var art = new QrArt(cup);
+                ReadBack(art, out string designed);
+                bool designerOk = art.Cleared > 0 && art.LogoProblem == null && designed == Text && art.ToSvg().Contains("class=\"qr-logo\"");
+                lines.Add("designer=" + (designerOk ? "ok" : "failed"));
+                ok &= designerOk;
             }
             catch (Exception e)
             {
@@ -91,6 +102,19 @@ namespace B0r3dQR
                 lines.Add("error=" + e.GetType().Name + ": " + e.Message.Replace('\r', ' ').Replace('\n', ' '));
             }
             lines.Add("result=" + (ok ? "ok" : "failed"));
+            return Report(reportPath, lines, ok);
+        }
+
+        // a design drawn at twice its size on white, read back
+        static void ReadBack(QrArt art, out string text)
+        {
+            var picture = art.Render(2, (int)(art.W * 2), (int)(art.H * 2), System.Windows.Media.Colors.White);
+            byte[] grays = ScanCheck.Grays(picture, out int w, out int h);
+            text = ScanCheck.Read(grays, w, h)?.Text;
+        }
+
+        static int Report(string reportPath, List<string> lines, bool ok)
+        {
             try
             {
                 File.WriteAllLines(reportPath, lines);

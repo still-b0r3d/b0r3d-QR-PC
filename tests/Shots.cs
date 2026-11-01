@@ -31,6 +31,33 @@ namespace B0r3dQR.Tests
                 MainWindow empty = NewMain();
                 Shoot(empty.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "empty-" + name + ".png"));
 
+                // the designer: the b0r3d Cup preset in a Default Frame, with the Logo, Frame and Size
+                // sections open instead of Data and Style
+                MainWindow designer = NewMain();
+                Type(designer, "https://b0r3d.org");
+                designer.PresetBox.SelectedItem = "b0r3d Cup";
+                designer.FrameCheck.IsChecked = true;
+                Pump(() => false, 50);
+                WaitForCheck(designer);
+                LayOut(designer.Root, MainWidth, MainHeight);
+                Shoot(designer.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "design-" + name + ".png"));
+                designer.DataSection.IsExpanded = false;
+                designer.StyleSection.IsExpanded = false;
+                designer.LogoSection.IsExpanded = true;
+                designer.FrameSection.IsExpanded = true;
+                LayOut(designer.Root, MainWidth, MainHeight);
+                Pump(() => false, 50);
+                LayOut(designer.Root, MainWidth, MainHeight);
+                Shoot(designer.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "sections-" + name + ".png"));
+                designer.LogoSection.IsExpanded = false;
+                designer.FrameSection.IsExpanded = false;
+                designer.PrintCheck.IsChecked = true;
+                designer.InCodeSection.IsExpanded = true;
+                LayOut(designer.Root, MainWidth, MainHeight);
+                Pump(() => false, 50);
+                LayOut(designer.Root, MainWidth, MainHeight);
+                Shoot(designer.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "size-" + name + ".png"));
+
                 // the Scan tab after reading a picture with three codes
                 MainWindow scanner = NewMain();
                 scanner.Tabs.SelectedItem = scanner.ScanTab;

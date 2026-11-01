@@ -8,28 +8,32 @@ using System.Windows.Input;
 
 namespace B0r3dQR.Controls
 {
-    // A whole number with up and down buttons (WPF has none of its own). Typing takes effect on
-    // Enter or on leaving the box, so a half-typed number never jumps to the limit; the buttons, the
-    // arrow keys and the mouse wheel change it at once.
+    // A number with up and down buttons (WPF has none of its own): whole numbers, or with up to
+    // `Decimals` places. Typing takes effect on Enter or on leaving the box, so a half-typed number
+    // never jumps to the limit; the buttons, the arrow keys and the mouse wheel change it at once.
     public partial class NumberBox : UserControl
     {
         public static readonly DependencyProperty ValueProperty = DependencyProperty.Register(
-            nameof(Value), typeof(int), typeof(NumberBox),
-            new FrameworkPropertyMetadata(0, (d, e) => ((NumberBox)d).OnValueChanged(), (d, v) => ((NumberBox)d).Fit((int)v)));
+            nameof(Value), typeof(double), typeof(NumberBox),
+            new FrameworkPropertyMetadata(0.0, (d, e) => ((NumberBox)d).OnValueChanged(), (d, v) => ((NumberBox)d).Fit((double)v)));
 
         public static readonly DependencyProperty MinimumProperty = DependencyProperty.Register(
-            nameof(Minimum), typeof(int), typeof(NumberBox), new PropertyMetadata(0, (d, e) => d.CoerceValue(ValueProperty)));
+            nameof(Minimum), typeof(double), typeof(NumberBox), new PropertyMetadata(0.0, (d, e) => d.CoerceValue(ValueProperty)));
 
         public static readonly DependencyProperty MaximumProperty = DependencyProperty.Register(
-            nameof(Maximum), typeof(int), typeof(NumberBox), new PropertyMetadata(int.MaxValue, (d, e) => d.CoerceValue(ValueProperty)));
+            nameof(Maximum), typeof(double), typeof(NumberBox), new PropertyMetadata((double)int.MaxValue, (d, e) => d.CoerceValue(ValueProperty)));
 
         public static readonly DependencyProperty StepProperty = DependencyProperty.Register(
-            nameof(Step), typeof(int), typeof(NumberBox), new PropertyMetadata(1));
+            nameof(Step), typeof(double), typeof(NumberBox), new PropertyMetadata(1.0));
 
-        public int Value { get => (int)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
-        public int Minimum { get => (int)GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
-        public int Maximum { get => (int)GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
-        public int Step { get => (int)GetValue(StepProperty); set => SetValue(StepProperty, value); }
+        public static readonly DependencyProperty DecimalsProperty = DependencyProperty.Register(
+            nameof(Decimals), typeof(int), typeof(NumberBox), new PropertyMetadata(0, (d, e) => ((NumberBox)d).Field.Text = ((NumberBox)d).Show(((NumberBox)d).Value)));
+
+        public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
+        public double Minimum { get => (double)GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
+        public double Maximum { get => (double)GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
+        public double Step { get => (double)GetValue(StepProperty); set => SetValue(StepProperty, value); }
+        public int Decimals { get => (int)GetValue(DecimalsProperty); set => SetValue(DecimalsProperty, value); }
 
         public event EventHandler ValueChanged;
 
@@ -46,7 +50,11 @@ namespace B0r3dQR.Controls
         // the text box inside, for a label's target and for the tests
         public TextBox TextField => Field;
 
-        int Fit(int value) => Math.Max(Minimum, Math.Min(Maximum, value));
+        double Fit(double value)
+        {
+            if (double.IsNaN(value)) value = Minimum;
+            return Math.Max(Minimum, Math.Min(Maximum, Math.Round(value, Decimals)));
+        }
 
         void OnValueChanged()
         {
@@ -54,15 +62,16 @@ namespace B0r3dQR.Controls
             ValueChanged?.Invoke(this, EventArgs.Empty);
         }
 
-        static string Show(int value) => value.ToString(CultureInfo.CurrentCulture);
+        string Show(double value) => value.ToString(Decimals == 0 ? "0" : "0." + new string('#', Decimals), CultureInfo.CurrentCulture);
 
-        // takes what's typed, or puts the number back if it isn't one
+        // takes what's typed (in this PC's way of writing numbers, or with a point), or puts the
+        // number back if it isn't one
         public void Commit()
         {
             string typed = Field.Text.Trim();
-            if (int.TryParse(typed, NumberStyles.Integer | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out int number))
+            if (Parse(typed, out double number))
             {
-                int was = Value;
+                double was = Value;
                 Value = number;
                 if (Value == was) Field.Text = Show(Value);  // clamped back to the same number
             }
@@ -72,11 +81,21 @@ namespace B0r3dQR.Controls
             }
         }
 
+        // "4.5" is four and a half whatever the PC's language, as on the website; where a comma is the
+        // decimal mark, "4,5" and "1.000,5" are read that way too
+        internal static bool Parse(string typed, out double number)
+        {
+            string mark = CultureInfo.CurrentCulture.NumberFormat.NumberDecimalSeparator;
+            if (mark != "." && typed.Contains(".") && !typed.Contains(mark))
+                return double.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
+            return double.TryParse(typed, NumberStyles.Float | NumberStyles.AllowThousands, CultureInfo.CurrentCulture, out number) ||
+                   double.TryParse(typed, NumberStyles.Float, CultureInfo.InvariantCulture, out number);
+        }
+
         void Nudge(int steps)
         {
             Commit();
-            long next = (long)Value + (long)steps * Step;
-            Value = (int)Math.Max(int.MinValue, Math.Min(int.MaxValue, next));
+            Value = Value + steps * Step;
         }
 
         void OnUp(object sender, RoutedEventArgs e) => Nudge(1);

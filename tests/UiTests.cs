@@ -146,7 +146,7 @@ namespace B0r3dQR.Tests
                 var headings = new List<TextBlock>();
                 foreach (TabItem tab in new[] { window.MakeTab, window.ScanTab })
                     headings.AddRange(LogicalDescendants((DependencyObject)tab.Content).OfType<TextBlock>().Where(t => t.Style == headingStyle));
-                Check(headings.Count >= 6, "only " + headings.Count + " headings found on the tabs");
+                Check(headings.Count >= 2, "only " + headings.Count + " headings found on the tabs");   // the Scan tab's; Make's are fold-out sections
                 foreach (TextBlock heading in headings)
                     Check(heading.Foreground is SolidColorBrush brush && brush.Color == text, "the heading \"" + heading.Text + "\" is in " + heading.Foreground + ", not the text colour " + text);
             }
@@ -182,8 +182,8 @@ namespace B0r3dQR.Tests
             Check(window.HasCode && window.Code.Version == 2, "https://b0r3d.org should be version 2 at level Q");
             Check(window.InfoLine.Text.Contains("17 characters") && window.InfoLine.Text.Contains("version 2") && window.InfoLine.Text.Contains("25 × 25"), "the info line: " + window.InfoLine.Text);
             var preview = window.Preview.Source as BitmapSource;
-            Check(preview != null && preview.PixelWidth % 33 == 0 && preview.PixelWidth >= 33 * 4, "the preview is " + preview?.PixelWidth + " pixels for 33 modules");
-            Check(window.SizeHint.Text.Contains("990"), "1000 pixels asked for 33 modules should save as 990: " + window.SizeHint.Text);
+            Check(preview != null && preview.PixelWidth >= 33 * 4 && preview.PixelWidth == preview.PixelHeight, "the preview is " + preview?.PixelWidth + " × " + preview?.PixelHeight + " pixels");
+            Check(window.SizeHint.Text.StartsWith("Saves as 200 × 200 pixels", StringComparison.Ordinal), "the website's 200 px should save as 200 × 200: " + window.SizeHint.Text);
 
             Type(window, "Line one\r\nLine two");
             Check(window.Code?.Text == "Line one\nLine two", "Windows line breaks should go into the code as plain line breaks");
@@ -214,16 +214,19 @@ namespace B0r3dQR.Tests
 
             window.QuietBox.Value = 0;
             WaitForCheck(window);
-            Check(window.WarnLine.Visibility == Visibility.Visible && window.WarnLine.Text.Contains("Quiet zone"), "no quiet zone should warn");
-            Check(window.CheckResult == "ok" || window.CheckResult == "needs-room", "no quiet zone: the check says " + window.CheckResult);
+            Check(window.WarnLine.Visibility == Visibility.Visible && window.WarnLine.Text.Contains("Only 0 modules of blank space"), "no quiet zone should warn: " + window.WarnLine.Text);
+            Check(window.CheckResult == "ok" || window.CheckResult == "unreadable", "no quiet zone: the check says " + window.CheckResult);
             window.QuietBox.Value = 4;
             WaitForCheck(window);
             Check(window.WarnLine.Visibility == Visibility.Collapsed && window.CheckResult == "ok", "back to 4: " + window.CheckResult);
 
             window.SizeBox.Value = 2000;
+            Check(window.SizeHint.Text.StartsWith("Saves as " + 2000.ToString("N0") + " × " + 2000.ToString("N0") + " pixels", StringComparison.Ordinal), "2000 pixels: " + window.SizeHint.Text);
+            window.WholePixelsCheck.IsChecked = true;
             int modules = window.Code.Size + 8;
-            int perModule = QrPicture.PixelsPerModule(2000, modules);
-            Check(window.SizeHint.Text.Contains((perModule * modules).ToString("N0")), "2000 pixels: " + window.SizeHint.Text);
+            int perModule = (int)Math.Round(2000.0 / modules);
+            Check(window.SizeHint.Text.Contains((perModule * modules).ToString("N0") + " pixels: " + perModule + " pixels per module"), "whole pixels per module: " + window.SizeHint.Text);
+            window.WholePixelsCheck.IsChecked = false;
             window.SizeBox.Value = 99999;
             Check(window.SizeBox.Value == QrPicture.MaxPixels, "the picture size should stop at " + QrPicture.MaxPixels);
         }
@@ -235,8 +238,8 @@ namespace B0r3dQR.Tests
             LayOut(window.Root, MainWidth, MainHeight);
             var preview = (BitmapSource)window.Preview.Source;
             double room = Math.Min(window.Stage.ActualWidth, window.Stage.ActualHeight) - 40;
-            int perModule = (int)Math.Floor(room * 1.5) / 33;
-            Check(preview.PixelWidth == perModule * 33, "at 150 % the preview should be " + perModule * 33 + " pixels, not " + preview.PixelWidth);
+            int pixels = (int)Math.Floor(room * 1.5);
+            Check(Math.Abs(preview.PixelWidth - pixels) <= 1, "at 150 % the preview should fill " + pixels + " screen pixels, not " + preview.PixelWidth);
             Check(Math.Abs(window.Preview.Width * 1.5 - preview.PixelWidth) < 0.001, "the preview isn't shown pixel for pixel at 150 %");
         }
 
@@ -277,8 +280,7 @@ namespace B0r3dQR.Tests
             window.CatchUp();
             Check(window.Code != null && window.Code.Text == "https://b0r3d.org/after", "an export straight after typing would use \"" + Short(window.Code?.Text) + "\"");
             Check(window.SizeBox.Value == 3000, "the half-typed picture size wasn't taken: " + window.SizeBox.Value);
-            int modules = window.Code.Size + 8;
-            Check(window.SizeHint.Text.Contains((QrPicture.PixelsPerModule(3000, modules) * modules).ToString("N0")), "the size line didn't follow: " + window.SizeHint.Text);
+            Check(window.SizeHint.Text.Contains(3000.ToString("N0") + " × " + 3000.ToString("N0")), "the size line didn't follow: " + window.SizeHint.Text);
         }
 
         // two things on screen at once never share an access key (Alt+letter), and every list's
@@ -302,7 +304,9 @@ namespace B0r3dQR.Tests
             }
             List<MenuItem> top = window.MenuBar.Items.OfType<MenuItem>().ToList();
             IEnumerable<string> always = top.Select(m => Key(m.Header)).Concat(new[] { Key(window.MakeTab.Header), Key(window.ScanTab.Header) });
-            Unique("the Make tab", always.Concat(new[] { window.SavePngButton, window.SaveSvgButton, window.CopyButton }.Select(b => Key(b.Content))));
+            Unique("the Make tab", always.Concat(new ContentControl[] { window.SavePngButton, window.SaveSvgButton, window.CopyButton, window.ChooseLogoButton, window.PasteLogoButton,
+                    window.BackgroundCheck, window.FrameCheck, window.MarkerCheck, window.WholePixelsCheck, window.PrintCheck }.Select(b => Key(b.Content)))
+                .Concat(new[] { window.DataSection, window.StyleSection, window.LogoSection, window.FrameSection, window.SizeSection }.Select(s => Key(s.Header))));
             Unique("the Scan tab", always.Concat(new[] { window.ScanScreenButton, window.OpenPictureButton, window.PastePictureButton, window.ScanFolderButton, window.ClearButton, window.CancelScanButton }.Select(b => Key(b.Content))));
             void Lists(MenuItem item)
             {

@@ -303,9 +303,11 @@ namespace B0r3dQR
             ReadData(data, "the copied picture", NothingCopied);
         }
 
-        // pictures, files or a folder dragged onto the window; text still goes to the data box
+        // pictures, files or a folder dragged onto the window are read; text still goes to the data
+        // box, a picture dropped on the Logo section is the logo, and a design file opens (MakeDrop)
         void OnPreviewDragOver(object sender, DragEventArgs e)
         {
+            if (MakeDrop(e, false)) return;
             if (draggingOut || Scanning || !Pictures.CanRead(e.Data)) return;
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
@@ -313,6 +315,7 @@ namespace B0r3dQR
 
         void OnPreviewDrop(object sender, DragEventArgs e)
         {
+            if (MakeDrop(e, true)) return;
             if (draggingOut || Scanning || !Pictures.CanRead(e.Data)) return;
             e.Handled = true;
             ReadData(e.Data, "the dropped picture", "Nothing to read in what was dropped.");

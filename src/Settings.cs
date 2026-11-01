@@ -19,11 +19,14 @@ namespace B0r3dQR
         public const double MinWindow = 600, MaxWindow = 20000;
 
         public Look Look = Look.Windows;
-        public QrLevel Level = QrLevel.Q;   // error correction
+        public QrLevel Level = QrLevel.Q;   // error correction (the design keeps these three now; read for an older ini)
         public int QuietZone = 4;           // modules of white around the code
-        public int PictureSize = 1000;      // pixels across asked for; it saves at whole pixels per module
+        public int PictureSize = 1000;      // pixels across
         public double WindowWidth = 1000, WindowHeight = 680;   // device-independent pixels
         public bool Maximized;
+        public PrintSize Print = new PrintSize();   // "Size for print", kept apart from designs as the website keeps it
+        public bool WholePixels;            // saved pictures at whole pixels per module
+        public bool FromOlder;              // the ini is from b0r3d QR 0.1 or 0.2 (no whole_pixels line): its level, quiet zone and picture size are the design's
 
         public static Settings Load() => Load(System.IO.Path.Combine(DataFolder.Path, FileName));
 
@@ -41,6 +44,7 @@ namespace B0r3dQR
             {
                 return s;
             }
+            bool wholePixelsLine = false;
             foreach (string line in lines)
             {
                 int eq = line.IndexOf('=');
@@ -65,7 +69,29 @@ namespace B0r3dQR
                     case "window":
                         ReadWindow(s, value);
                         break;
+                    case "print":
+                        s.Print.On = value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "print_width":
+                        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double width) && width > 0 && width <= 1000) s.Print.Width = width;
+                        break;
+                    case "print_unit":
+                        if (value == "mm" || value == "in") s.Print.Unit = value;
+                        break;
+                    case "print_dpi":
+                        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int dpi) && Array.IndexOf(PrintSize.Resolutions, dpi) >= 0) s.Print.Dpi = dpi;
+                        break;
+                    case "whole_pixels":
+                        s.WholePixels = value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                        wholePixelsLine = true;
+                        break;
                 }
+            }
+            if (!wholePixelsLine && lines.Length > 0)
+            {
+                // 0.1 and 0.2 always saved pictures at whole pixels per module
+                s.FromOlder = true;
+                s.WholePixels = true;
             }
             return s;
         }
@@ -94,6 +120,11 @@ namespace B0r3dQR
             text.Append("picture_size=").Append(PictureSize.ToString(CultureInfo.InvariantCulture)).Append("\r\n");
             text.Append("window=").Append(Math.Round(WindowWidth).ToString(CultureInfo.InvariantCulture)).Append('x')
                 .Append(Math.Round(WindowHeight).ToString(CultureInfo.InvariantCulture)).Append(Maximized ? " maximized" : "").Append("\r\n");
+            text.Append("print=").Append(Print.On ? "on" : "off").Append("\r\n");
+            text.Append("print_width=").Append(Print.Width.ToString("0.######", CultureInfo.InvariantCulture)).Append("\r\n");   // inches from millimetres stay the same length
+            text.Append("print_unit=").Append(Print.Unit).Append("\r\n");
+            text.Append("print_dpi=").Append(Print.Dpi.ToString(CultureInfo.InvariantCulture)).Append("\r\n");
+            text.Append("whole_pixels=").Append(WholePixels ? "on" : "off").Append("\r\n");
             return text.ToString();
         }
 

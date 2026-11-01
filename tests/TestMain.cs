@@ -77,6 +77,24 @@ namespace B0r3dQR.Tests
                 Run("codes: every sample reads back exactly, at each level and quiet zone", EveryCodeReadsBack);
                 Run("codes: plain ASCII is packed small; other text is one UTF-8 part, no ECI marker", CompactAndUtf8);
                 Run("codes: too much text is refused with a plain message, and a huge paste at once", TooMuchText);
+                Run("codes: the same modules as the website's own encoder, for 42 of its codes and all 8 masks", SameModulesAsTheWebsite);
+                Run("codes: with the UTF-8 marker, the same modules as zint made for the website, for 58 codes", SameMarkedModulesAsTheWebsite);
+                Run("codes: text split into digit, capital and byte parts by the website's rules", SplitsLikeTheWebsite);
+                Run("design: all 72 dot, ring and centre shape combinations read back", EveryShapeReadsBack);
+                Run("design: the website's shapes (circles, its radii, its fallbacks for unknown types)", ShapesLikeTheWebsite);
+                Run("design: the logo's room by the website's sums; L raised to Q; a web logo left out with a note", LogoRoomLikeTheWebsite);
+                Run("design: frames laid out as the website exports them (234 × 271.6, 239 × 278 px)", FrameLikeTheWebsite);
+                Run("design: print size, module size and scan distance as the website works them out", PrintSizeLikeTheWebsite);
+                Run("design: PNG, JPG, PDF and text files at the website's sizes, each read back", ExportsLikeTheWebsite);
+                Run("design: the website's design files open, ours write all its keys, refusals in its words", DesignFilesLikeTheWebsite);
+                Run("design: colour, quiet-zone and data checks with the website's results", ChecksLikeTheWebsite);
+                Run("designer: a preset from the list, a frame on, off and back, Randomize", PresetsAndFrameInTheWindow);
+                Run("designer: a logo pasted, kept as the website keeps uploads, and removed", LogoInTheWindow);
+                Run("designer: a design file opens into the window with its text, exactly as saved", DesignFilesInTheWindow);
+                Run("designer: the design is kept for next time, never its text", DesignKeptWithoutText);
+                Run("designer: the data checks' fixes, one after another", DataChecksInTheWindow);
+                Run("designer: print size in the window, and inches kept as the same length", PrintSizeInTheWindow);
+                Run("designer: a number typed with a point means the same in any language", NumbersInAnyLanguage);
                 Run("shapes: exactly the dark modules, with the quiet zone around them", ShapesMatchTheCode);
                 Run("picture size: whole pixels per module, as near the size asked for as can be", PictureSizes);
 

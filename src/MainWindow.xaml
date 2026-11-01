@@ -17,6 +17,13 @@
         <CommandBinding Command="{x:Static local:Commands.SavePng}" Executed="OnSavePng" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.SaveSvg}" Executed="OnSaveSvg" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.CopyPicture}" Executed="OnCopyPicture" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.SaveJpg}" Executed="OnSaveJpg" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.SavePdf}" Executed="OnSavePdf" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.SaveText}" Executed="OnSaveText" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.CopySvg}" Executed="OnCopySvg" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.CopyText}" Executed="OnCopyText" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.OpenDesign}" Executed="OnOpenDesign" />
+        <CommandBinding Command="{x:Static local:Commands.SaveDesign}" Executed="OnSaveDesign" />
         <CommandBinding Command="{x:Static local:Commands.ScanScreen}" Executed="OnScanScreen" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.OpenPicture}" Executed="OnOpenPicture" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.PastePicture}" Executed="OnPastePicture" CanExecute="WhenNotScanning" />
@@ -73,12 +80,18 @@
     </Window.Resources>
 
     <DockPanel x:Name="Root" Background="{DynamicResource Back}">
-        <!-- Access keys: F E N V H on the bar, M A for the tabs; then S G C on Make,
-             S O P D L C on Scan; each menu list has its own. -->
+        <!-- Access keys: F E N V H on the bar, M A for the tabs; then S G C and the sections D T L R Z
+             on Make, S O P D L C on Scan; each menu list has its own. -->
         <Menu x:Name="MenuBar" DockPanel.Dock="Top">
             <MenuItem Header="_File">
                 <MenuItem Header="Save _PNG…" Command="{x:Static local:Commands.SavePng}" />
+                <MenuItem Header="Save _JPG…" Command="{x:Static local:Commands.SaveJpg}" />
                 <MenuItem Header="Save _SVG…" Command="{x:Static local:Commands.SaveSvg}" />
+                <MenuItem Header="Save P_DF…" Command="{x:Static local:Commands.SavePdf}" />
+                <MenuItem Header="Save as _text…" Command="{x:Static local:Commands.SaveText}" />
+                <Separator />
+                <MenuItem Header="_Open design…" Command="{x:Static local:Commands.OpenDesign}" />
+                <MenuItem Header="Save desi_gn…" Command="{x:Static local:Commands.SaveDesign}" />
                 <Separator />
                 <MenuItem Header="E_xit" InputGestureText="Alt+F4" Click="OnExit" />
             </MenuItem>
@@ -91,6 +104,8 @@
                 <MenuItem Header="Select _all" Command="ApplicationCommands.SelectAll" />
                 <Separator />
                 <MenuItem Header="Copy p_icture" Command="{x:Static local:Commands.CopyPicture}" />
+                <MenuItem Header="Copy as S_VG" Command="{x:Static local:Commands.CopySvg}" />
+                <MenuItem Header="Copy as te_xt" Command="{x:Static local:Commands.CopyText}" />
             </MenuItem>
             <MenuItem Header="Sca_n">
                 <MenuItem Header="Scan the _screen" Command="{x:Static local:Commands.ScanScreen}" />
@@ -131,43 +146,184 @@
                             <ColumnDefinition Width="*" />
                         </Grid.ColumnDefinitions>
 
-                        <!-- the settings -->
+                        <!-- the settings, in fold-out sections like the website's -->
                         <Border Background="{DynamicResource Panel}" BorderBrush="{DynamicResource Line}" BorderThickness="0,0,1,0">
-                            <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
+                            <ScrollViewer x:Name="MakeScroll" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled" Focusable="False">
                                 <StackPanel Margin="20,10,20,20">
                                     <TextBlock Style="{StaticResource Hint}" Margin="0" FontFamily="Courier New"
                                                Text="Static codes: nothing expires, nothing is sent anywhere." />
 
-                                    <TextBlock Style="{StaticResource Heading}" Text="Data" />
-                                    <Grid>
-                                        <TextBox x:Name="DataBox" AcceptsReturn="True" AcceptsTab="False" TextWrapping="Wrap" Height="104"
-                                                 VerticalScrollBarVisibility="Auto" TextChanged="OnDataChanged" AutomationProperties.Name="Data" />
-                                        <TextBlock x:Name="DataHint" Text="Type or paste a link, or any text" Foreground="{DynamicResource Dim}"
-                                                   Margin="8,5,0,0" IsHitTestVisible="False" />
-                                    </Grid>
+                                    <Expander x:Name="DataSection" Style="{StaticResource Section}" Header="_Data" IsExpanded="True">
+                                        <StackPanel>
+                                            <Grid>
+                                                <TextBox x:Name="DataBox" AcceptsReturn="True" AcceptsTab="False" TextWrapping="Wrap" Height="96"
+                                                         VerticalScrollBarVisibility="Auto" TextChanged="OnDataChanged" AutomationProperties.Name="Data" />
+                                                <TextBlock x:Name="DataHint" Text="Type or paste a link, or any text" Foreground="{DynamicResource Dim}"
+                                                           Margin="8,5,0,0" IsHitTestVisible="False" />
+                                            </Grid>
+                                            <StackPanel x:Name="DataChecksPanel" />
+                                        </StackPanel>
+                                    </Expander>
 
-                                    <TextBlock Style="{StaticResource Heading}" Text="Error correction" />
-                                    <StackPanel Orientation="Horizontal">
-                                        <RadioButton x:Name="LevelL" Style="{StaticResource Segment}" Content="L" GroupName="Level" Tag="L" Checked="OnLevel" AutomationProperties.Name="Level L, low" />
-                                        <RadioButton x:Name="LevelM" Style="{StaticResource Segment}" Content="M" GroupName="Level" Tag="M" Checked="OnLevel" AutomationProperties.Name="Level M, medium" />
-                                        <RadioButton x:Name="LevelQ" Style="{StaticResource Segment}" Content="Q" GroupName="Level" Tag="Q" Checked="OnLevel" AutomationProperties.Name="Level Q, quartile" />
-                                        <RadioButton x:Name="LevelH" Style="{StaticResource Segment}" Content="H" GroupName="Level" Tag="H" Checked="OnLevel" AutomationProperties.Name="Level H, high" />
-                                    </StackPanel>
-                                    <TextBlock x:Name="LevelHint" Style="{StaticResource Hint}" />
+                                    <Expander x:Name="StyleSection" Style="{StaticResource Section}" Header="S_tyle" IsExpanded="True">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Button x:Name="RandomizeButton" DockPanel.Dock="Right" Content="Randomize" Click="OnRandomize" Margin="8,0,0,0"
+                                                        ToolTip="Random shapes and colours. The logo, sizes and frame stay." />
+                                                <ComboBox x:Name="PresetBox" SelectionChanged="OnPreset" AutomationProperties.Name="Preset" />
+                                            </DockPanel>
+                                            <TextBlock Style="{StaticResource Label}" Text="Dots" />
+                                            <DockPanel>
+                                                <c:ColorBox x:Name="DotsColorBox" DockPanel.Dock="Right" Margin="8,0,0,0" ColorChanged="OnPartColour" AutomationProperties.Name="Dots colour" />
+                                                <ComboBox x:Name="DotsTypeBox" SelectionChanged="OnPartShape" AutomationProperties.Name="Dots shape" />
+                                            </DockPanel>
+                                            <TextBlock Style="{StaticResource Label}" Text="Corner squares" />
+                                            <DockPanel>
+                                                <c:ColorBox x:Name="SquaresColorBox" DockPanel.Dock="Right" Margin="8,0,0,0" ColorChanged="OnPartColour" AutomationProperties.Name="Corner squares colour" />
+                                                <ComboBox x:Name="SquaresTypeBox" SelectionChanged="OnPartShape" AutomationProperties.Name="Corner squares shape" />
+                                            </DockPanel>
+                                            <TextBlock Style="{StaticResource Label}" Text="Corner dots" />
+                                            <DockPanel>
+                                                <c:ColorBox x:Name="CentresColorBox" DockPanel.Dock="Right" Margin="8,0,0,0" ColorChanged="OnPartColour" AutomationProperties.Name="Corner dots colour" />
+                                                <ComboBox x:Name="CentresTypeBox" SelectionChanged="OnPartShape" AutomationProperties.Name="Corner dots shape" />
+                                            </DockPanel>
+                                            <DockPanel Margin="0,14,0,0">
+                                                <c:ColorBox x:Name="BackgroundColorBox" DockPanel.Dock="Right" Margin="8,0,0,0" ColorChanged="OnPartColour" AutomationProperties.Name="Background colour" />
+                                                <CheckBox x:Name="BackgroundCheck" Content="With _background" VerticalAlignment="Center" Checked="OnBackground" Unchecked="OnBackground" />
+                                            </DockPanel>
+                                            <DockPanel Margin="0,10,0,0">
+                                                <c:NumberBox x:Name="RadiusBox" DockPanel.Dock="Right" Width="90" Minimum="0" Maximum="10000" ValueChanged="OnRadius"
+                                                             AutomationProperties.Name="Rounded corners in pixels" />
+                                                <TextBlock Text="Rounded corners (px)" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                            </DockPanel>
+                                        </StackPanel>
+                                    </Expander>
 
-                                    <TextBlock Style="{StaticResource Heading}" Text="Quiet zone" />
-                                    <StackPanel Orientation="Horizontal">
-                                        <c:NumberBox x:Name="QuietBox" Width="84" Minimum="0" Maximum="20" ValueChanged="OnQuietChanged" AutomationProperties.Name="Quiet zone in modules" />
-                                        <TextBlock Text="modules of white around the code" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" Margin="10,0,0,0" />
-                                    </StackPanel>
-                                    <TextBlock Style="{StaticResource Hint}" Text="4 is the standard: scanners need white space around a code to find it." />
+                                    <Expander x:Name="LogoSection" Style="{StaticResource Section}" Header="_Logo" AllowDrop="True">
+                                        <StackPanel>
+                                            <WrapPanel>
+                                                <Button x:Name="ChooseLogoButton" Content="Ch_oose…" Click="OnChooseLogo" AutomationProperties.Name="Choose a logo" Margin="0,0,8,0" />
+                                                <Button x:Name="PasteLogoButton" Content="_Paste" Click="OnPasteLogo" AutomationProperties.Name="Paste a logo" Margin="0,0,8,0" />
+                                                <Button x:Name="RemoveLogoButton" Content="Remove" Click="OnRemoveLogo" AutomationProperties.Name="Remove the logo" />
+                                            </WrapPanel>
+                                            <TextBlock x:Name="LogoNote" Style="{StaticResource Hint}"
+                                                       Text="Or drop a picture here. It goes in the middle, and the dots behind it are left out." />
+                                            <DockPanel Margin="0,12,0,0">
+                                                <TextBlock x:Name="LogoSizeText" DockPanel.Dock="Right" Width="44" TextAlignment="Right" VerticalAlignment="Center" />
+                                                <TextBlock Text="Size" Width="40" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                                <Slider x:Name="LogoSizeSlider" Minimum="0" Maximum="0.5" SmallChange="0.05" LargeChange="0.05" TickFrequency="0.05"
+                                                        IsSnapToTickEnabled="True" ValueChanged="OnLogoSize" AutomationProperties.Name="Logo size" />
+                                            </DockPanel>
+                                            <DockPanel Margin="0,8,0,0">
+                                                <c:NumberBox x:Name="LogoSpaceBox" DockPanel.Dock="Right" Width="90" Minimum="0" Maximum="40" Step="0.5" Decimals="2"
+                                                             ValueChanged="OnLogoSpace" AutomationProperties.Name="Logo space in modules" />
+                                                <TextBlock Text="Space around it (modules)" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                            </DockPanel>
+                                            <TextBlock x:Name="LogoHint" Style="{StaticResource Hint}" />
+                                        </StackPanel>
+                                    </Expander>
 
-                                    <TextBlock Style="{StaticResource Heading}" Text="Picture size" />
-                                    <StackPanel Orientation="Horizontal">
-                                        <c:NumberBox x:Name="SizeBox" Width="100" Minimum="100" Maximum="4000" Step="100" ValueChanged="OnSizeChanged" AutomationProperties.Name="Picture size in pixels" />
-                                        <TextBlock Text="pixels across" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" Margin="10,0,0,0" />
-                                    </StackPanel>
-                                    <TextBlock x:Name="SizeHint" Style="{StaticResource Hint}" />
+                                    <Expander x:Name="FrameSection" Style="{StaticResource Section}" Header="F_rame">
+                                        <StackPanel>
+                                            <CheckBox x:Name="FrameCheck" Content="Add a frame _with a caption" Checked="OnFrameOn" Unchecked="OnFrameOn" />
+                                            <StackPanel x:Name="FramePanel" Visibility="Collapsed" Margin="0,10,0,0">
+                                                <ComboBox x:Name="FramePresetBox" SelectionChanged="OnFramePreset" AutomationProperties.Name="Frame preset" />
+                                                <TextBlock Style="{StaticResource Label}" Text="Caption" />
+                                                <TextBox x:Name="CaptionBox" AcceptsReturn="True" TextWrapping="Wrap" Height="52" VerticalScrollBarVisibility="Auto"
+                                                         TextChanged="OnCaption" AutomationProperties.Name="Caption" />
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                    <RadioButton x:Name="FrameTop" Style="{StaticResource Segment}" Content="top" GroupName="FramePlace" Tag="top" AutomationProperties.Name="Caption on top" Checked="OnFramePlace" />
+                                                    <RadioButton x:Name="FrameBottom" Style="{StaticResource Segment}" Content="bottom" GroupName="FramePlace" Tag="bottom" AutomationProperties.Name="Caption at the bottom" Checked="OnFramePlace" />
+                                                    <RadioButton x:Name="FrameRight" Style="{StaticResource Segment}" Content="right" GroupName="FramePlace" Tag="right" AutomationProperties.Name="Caption on the right" Checked="OnFramePlace" />
+                                                    <RadioButton x:Name="FrameLeft" Style="{StaticResource Segment}" Content="left" GroupName="FramePlace" Tag="left" AutomationProperties.Name="Caption on the left" Checked="OnFramePlace" />
+                                                </StackPanel>
+                                                <DockPanel x:Name="FrameWidthRow" Margin="0,8,0,0" Visibility="Collapsed">
+                                                    <c:NumberBox x:Name="FrameWidthBox" DockPanel.Dock="Right" Width="90" Minimum="250" Maximum="800" Step="10"
+                                                                 ValueChanged="OnFrameWidth" AutomationProperties.Name="Frame width in pixels" />
+                                                    <TextBlock Text="Frame width (px)" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                                </DockPanel>
+                                                <TextBlock Style="{StaticResource Label}" Text="Text, background and border colours" />
+                                                <WrapPanel>
+                                                    <c:ColorBox x:Name="FrameTextColorBox" Margin="0,0,8,6" ColorChanged="OnFrameColour" AutomationProperties.Name="Caption colour" />
+                                                    <c:ColorBox x:Name="FrameBackColorBox" Margin="0,0,8,6" ColorChanged="OnFrameColour" AutomationProperties.Name="Frame background colour" />
+                                                    <c:ColorBox x:Name="FrameBorderColorBox" Margin="0,0,8,6" ColorChanged="OnFrameColour" AutomationProperties.Name="Frame border colour" />
+                                                </WrapPanel>
+                                                <WrapPanel>
+                                                    <Button x:Name="FramePictureButton" Content="Background picture…" Click="OnFramePicture" Margin="0,0,8,0" />
+                                                    <Button x:Name="FrameNoPictureButton" Content="No picture" Click="OnFrameNoPicture" />
+                                                </WrapPanel>
+                                                <Grid Margin="0,10,0,0">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="8" />
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="8" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <StackPanel>
+                                                        <TextBlock Text="Border" Foreground="{DynamicResource Dim}" FontSize="12" Margin="0,0,0,3" />
+                                                        <TextBox x:Name="FrameBorderBox" LostKeyboardFocus="OnFrameLength" KeyDown="OnFrameLengthKey" AutomationProperties.Name="Frame border width" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="2">
+                                                        <TextBlock Text="Corners" Foreground="{DynamicResource Dim}" FontSize="12" Margin="0,0,0,3" />
+                                                        <TextBox x:Name="FrameRadiusBox" LostKeyboardFocus="OnFrameLength" KeyDown="OnFrameLengthKey" AutomationProperties.Name="Frame corner radius" />
+                                                    </StackPanel>
+                                                    <StackPanel Grid.Column="4">
+                                                        <TextBlock Text="Padding" Foreground="{DynamicResource Dim}" FontSize="12" Margin="0,0,0,3" />
+                                                        <TextBox x:Name="FramePaddingBox" LostKeyboardFocus="OnFrameLength" KeyDown="OnFrameLengthKey" AutomationProperties.Name="Frame padding" />
+                                                    </StackPanel>
+                                                </Grid>
+                                                <TextBlock Style="{StaticResource Label}" Text="Caption font" />
+                                                <ComboBox x:Name="FontBox" SelectionChanged="OnFont" AutomationProperties.Name="Caption font" />
+                                                <TextBlock x:Name="FrameNote" Style="{StaticResource Hint}" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Expander>
+
+                                    <Expander x:Name="SizeSection" Style="{StaticResource Section}" Header="Si_ze and print" IsExpanded="True">
+                                        <StackPanel>
+                                            <TextBlock Style="{StaticResource Label}" Margin="0,0,0,4" Text="Error correction" />
+                                            <StackPanel Orientation="Horizontal">
+                                                <RadioButton x:Name="LevelL" Style="{StaticResource Segment}" Content="L" GroupName="Level" Tag="L" Checked="OnLevel" AutomationProperties.Name="Level L, low" />
+                                                <RadioButton x:Name="LevelM" Style="{StaticResource Segment}" Content="M" GroupName="Level" Tag="M" Checked="OnLevel" AutomationProperties.Name="Level M, medium" />
+                                                <RadioButton x:Name="LevelQ" Style="{StaticResource Segment}" Content="Q" GroupName="Level" Tag="Q" Checked="OnLevel" AutomationProperties.Name="Level Q, high" />
+                                                <RadioButton x:Name="LevelH" Style="{StaticResource Segment}" Content="H" GroupName="Level" Tag="H" Checked="OnLevel" AutomationProperties.Name="Level H, highest" />
+                                            </StackPanel>
+                                            <TextBlock x:Name="LevelHint" Style="{StaticResource Hint}" />
+                                            <TextBlock Style="{StaticResource Label}" Text="Size of the code (QR version)" />
+                                            <ComboBox x:Name="VersionBox" SelectionChanged="OnVersion" AutomationProperties.Name="QR version" />
+                                            <TextBlock x:Name="VersionHint" Style="{StaticResource Hint}" />
+                                            <CheckBox x:Name="MarkerCheck" Content="Mark the text as _UTF-8 (ECI 26)" Margin="0,12,0,0" Checked="OnMarker" Unchecked="OnMarker" />
+                                            <TextBlock Style="{StaticResource Hint}"
+                                                       Text="Tells scanners how to read accents, other alphabets and emoji, as the QR standard asks. Phones read them fine without it, and a few older scanners show the mark as extra characters, so test it before printing many." />
+                                            <TextBlock x:Name="MarkerNote" Style="{StaticResource Hint}" Foreground="{DynamicResource Warn}" Visibility="Collapsed"
+                                                       Text="Couldn't add the UTF-8 marker, so this code is made without it." />
+                                            <DockPanel Margin="0,12,0,0">
+                                                <c:NumberBox x:Name="QuietBox" DockPanel.Dock="Right" Width="90" Minimum="0" Maximum="20" Decimals="1" ValueChanged="OnQuietChanged"
+                                                             AutomationProperties.Name="Quiet zone in modules" />
+                                                <TextBlock Text="Quiet zone (modules)" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                            </DockPanel>
+                                            <TextBlock Style="{StaticResource Hint}" Text="4 is the standard (ISO/IEC 18004): scanners need blank space around a code to find it." />
+                                            <DockPanel Margin="0,12,0,0">
+                                                <c:NumberBox x:Name="SizeBox" DockPanel.Dock="Right" Width="100" Minimum="50" Maximum="4000" Step="50" ValueChanged="OnSizeChanged"
+                                                             AutomationProperties.Name="Picture size in pixels" />
+                                                <TextBlock Text="Picture size (px)" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                            </DockPanel>
+                                            <CheckBox x:Name="WholePixelsCheck" Content="Whole pi_xels per module" Margin="0,8,0,0" Checked="OnWholePixels" Unchecked="OnWholePixels" />
+                                            <TextBlock x:Name="SizeHint" Style="{StaticResource Hint}" />
+                                            <CheckBox x:Name="PrintCheck" Content="Size for pr_int" Margin="0,12,0,0" Checked="OnPrint" Unchecked="OnPrint" />
+                                            <StackPanel x:Name="PrintPanel" Visibility="Collapsed">
+                                                <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                    <c:NumberBox x:Name="PrintWidthBox" Width="90" Minimum="0.01" Maximum="1000" Decimals="2" ValueChanged="OnPrintChanged"
+                                                                 AutomationProperties.Name="Print width" />
+                                                    <ComboBox x:Name="PrintUnitBox" Width="64" Margin="6,0,0,0" SelectionChanged="OnPrintUnit" AutomationProperties.Name="Unit" />
+                                                    <ComboBox x:Name="PrintDpiBox" Width="104" Margin="6,0,0,0" SelectionChanged="OnPrintChanged" AutomationProperties.Name="Resolution" />
+                                                </StackPanel>
+                                                <TextBlock x:Name="PrintHint" Style="{StaticResource Hint}" />
+                                                <TextBlock x:Name="PrintWarn" Style="{StaticResource Hint}" Foreground="{DynamicResource Warn}" Visibility="Collapsed" />
+                                            </StackPanel>
+                                        </StackPanel>
+                                    </Expander>
                                 </StackPanel>
                             </ScrollViewer>
                         </Border>
@@ -182,8 +338,7 @@
 
                             <Border x:Name="Stage" Background="{DynamicResource Stage}" CornerRadius="8" SizeChanged="OnStageSize">
                                 <Grid>
-                                    <Image x:Name="Preview" Stretch="Fill" RenderOptions.BitmapScalingMode="NearestNeighbor"
-                                           HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
+                                    <Image x:Name="Preview" Stretch="Fill" HorizontalAlignment="Center" VerticalAlignment="Center" Cursor="Hand"
                                            ToolTip="Drag the code into another program, or into a folder as a PNG file"
                                            MouseLeftButtonDown="OnPreviewDown" MouseMove="OnPreviewMove" AutomationProperties.Name="The QR code" />
                                     <TextBlock x:Name="StageNote" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center"
@@ -192,12 +347,25 @@
                             </Border>
 
                             <StackPanel Grid.Row="1" Margin="2,12,2,0">
-                                <TextBlock x:Name="CheckLine" FontWeight="SemiBold" TextWrapping="Wrap" />
+                                <TextBlock x:Name="CheckLine" FontWeight="SemiBold" TextWrapping="Wrap" AutomationProperties.LiveSetting="Polite" />
                                 <TextBlock x:Name="WarnLine" Foreground="{DynamicResource Warn}" TextWrapping="Wrap" Margin="0,4,0,0" Visibility="Collapsed" />
                                 <TextBlock x:Name="InfoLine" Foreground="{DynamicResource Dim}" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                <Expander x:Name="InCodeSection" Style="{StaticResource Section}" Header="What's in this code" Margin="0,0,0,0">
+                                    <StackPanel>
+                                        <Grid x:Name="InCodeRows">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="Auto" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                        </Grid>
+                                        <TextBox x:Name="InCodeText" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="80" Margin="0,8,0,0" FontFamily="Consolas"
+                                                 VerticalScrollBarVisibility="Auto" AutomationProperties.Name="The text in the code" />
+                                        <TextBlock x:Name="InCodeFooter" Style="{StaticResource Hint}" />
+                                    </StackPanel>
+                                </Expander>
                             </StackPanel>
 
-                            <WrapPanel Grid.Row="2" Margin="0,12,0,0">
+                            <WrapPanel Grid.Row="2" Margin="0,10,0,0">
                                 <Button x:Name="SavePngButton" Content="_Save PNG…" Command="{x:Static local:Commands.SavePng}" Margin="0,0,8,0" />
                                 <Button x:Name="SaveSvgButton" Content="Save SV_G…" Command="{x:Static local:Commands.SaveSvg}" Margin="0,0,8,0" />
                                 <Button x:Name="CopyButton" Content="_Copy picture" Command="{x:Static local:Commands.CopyPicture}" Margin="0,0,12,0" />

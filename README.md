@@ -1,30 +1,55 @@
 # b0r3d QR for Windows
 
-**b0r3d QR** makes static QR codes on your PC, and reads codes off pictures and the screen.
+**b0r3d QR** makes static QR codes on your PC, designed the way
+[qr.b0r3d.org](https://qr.b0r3d.org) designs them, and reads codes off pictures and the screen.
 Whatever you type goes straight into the pattern, so a code never expires, there's no
 account, and nothing you type or scan is sent anywhere. It's the Windows program of
-[qr.b0r3d.org](https://qr.b0r3d.org), made by [b0r3d.org](https://b0r3d.org).
+qr.b0r3d.org, made by [b0r3d.org](https://b0r3d.org).
 
 It's one small exe that runs on Windows 10 and 11 with nothing to install, and it never
 goes online.
 
-**Being built.** This is version 0.2, the second of seven stages: a plain QR code made as you
-type, with a check that it reads back, PNG and SVG files, the clipboard and drag and drop;
-and reading codes from pictures, folders and the screen. The full designer, data
-templates, other barcodes, batch export and printing come next.
+**Being built.** This is version 0.3, the third of seven stages: the full QR designer, with
+the website's shapes, colours, logos, frames, presets, checks, every export and its design
+files; and reading codes from pictures, folders and the screen. Data templates, recent
+codes, other barcodes, batch export and printing come next.
 
-## Use it
+## Make a code
 
 Put `b0r3dQR.exe` in a folder of its own and double-click it. Type or paste a link or any
-text, and the code appears on the right with a line saying whether it reads back. Then:
+text, and the code appears on the right with a line saying whether it scans. The settings
+on the left fold out like the website's:
 
-- **Save PNG…** or **Save SVG…** (File menu, Ctrl+S or Ctrl+Shift+S),
-- **Copy picture** (Edit menu, Ctrl+Shift+C), or
-- drag the code into another program, or into a folder as a PNG file.
+- **Data:** what goes in the code. Under it, the website's checks with a one-click fix each:
+  spaces at the ends, a web address without https://, tracking parts in a link.
+- **Style:** the presets (Plain, Rounded, Dots, b0r3d Cup, Rukus) and Randomize; the
+  shapes and colours of the dots, the corner squares and the corner dots; the background,
+  or none; rounded corners.
+- **Logo:** choose, paste or drop a picture onto this section; its size and the space around
+  it. The dots behind it are left out, and L or M error correction goes up to Q for it, as on
+  the website.
+- **Frame:** a caption on any side, the website's frame presets, colours, a background
+  picture, border, corners, padding, and any font on this PC.
+- **Size and print:** error correction (with the website's suggestion for how much text there
+  is), a fixed size (QR version), the UTF-8 marker, the quiet zone, the picture size, whole
+  pixels per module if you want the sharpest squares, and a print size in mm or inches at
+  150, 300 or 600 DPI, with how big each module comes out and from how far it scans.
 
-**Error correction** sets how much of the code can be damaged and still read; **Quiet zone**
-is the white space around it (4 modules is the standard); **Picture size** is how big saved
-pictures come out, at whole pixels per module so every module is sharp.
+Under the code: the scan check, warnings (low contrast, light on dark, see-through, too
+little quiet zone) and **What's in this code**: what's stored, the size, the level and how
+the text is encoded.
+
+Then **File** saves it as **PNG**, **JPG**, **SVG**, **PDF** or **text** (Unicode half or full
+blocks or ASCII, each as plain text or Markdown), at the website's sizes or the print size;
+**Edit** copies it as a picture, as SVG or as text; or drag the code into another program, or
+into a folder as a PNG file.
+
+**File → Save design…** writes the website's own design file (`qr-code-config.json`), and
+**Open design…** (or dropping one on the window) opens one saved here or on the website. The
+same text and design make the same code, module for module, on both. A logo the website
+fetched from a web address isn't drawn here, since b0r3d QR never goes online: save the
+picture and choose it under Logo. An SVG logo keeps its room and goes into SVG files, but
+isn't drawn into pictures yet; for those, use a PNG of it.
 
 **View → Look** follows Windows' light or dark setting, or stays light or dark.
 
@@ -56,21 +81,23 @@ with the same error correction.
 
 ## Settings
 
-b0r3d QR keeps its settings in `b0r3dQR.ini`, in a `b0r3dQR data` folder next to the exe.
-It writes nothing anywhere else itself: not in AppData, not in the registry. To keep them
-somewhere else, start it with:
+b0r3d QR keeps its settings in `b0r3dQR.ini`, and the design you last had in
+`b0r3dQR design.json` (the website's format, without the code's text), in a `b0r3dQR data`
+folder next to the exe. It writes nothing anywhere else itself: not in AppData, not in the
+registry. To keep them somewhere else, start it with:
 
 ```
 b0r3dQR.exe --data "D:\Somewhere\b0r3dQR settings"
 ```
 
-That folder can hold other things too: b0r3d QR only ever touches its own `b0r3dQR.ini` and
-`b0r3dQR drag` folder there.
+That folder can hold other things too: b0r3d QR only ever touches its own `b0r3dQR.ini`,
+`b0r3dQR design.json` and `b0r3dQR drag` folder there.
 
-What you type isn't kept, and neither is anything you scan: pictures of the screen and the
-codes found only ever live in memory. If the exe's folder can't be written to, it says so
-as soon as it starts and keeps working without saving settings. Run straight out of a zip,
-an email attachment or a download folder inside AppData, it keeps nothing there either.
+The text of the code isn't kept, and neither is anything you scan: pictures of the screen
+and the codes found only ever live in memory. If the exe's folder can't be written to, it
+says so as soon as it starts and keeps working without saving settings. Run straight out of
+a zip, an email attachment or a download folder inside AppData, it keeps nothing there
+either.
 
 Windows keeps a few records of its own about any program you run: the Open and Save
 dialogs remember the last folder you used, and Explorer notes which programs you've

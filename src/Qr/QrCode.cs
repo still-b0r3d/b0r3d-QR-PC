@@ -2,9 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Text;
-using ZXing;
 using ZXing.QrCode.Internal;
-using Encoder = ZXing.QrCode.Internal.Encoder;
 
 namespace B0r3dQR.Qr
 {
@@ -17,35 +15,57 @@ namespace B0r3dQR.Qr
         public QrException(string message) : base(message) { }
     }
 
-    // A QR code's grid of modules (true = dark) for some text, made by ZXing.Net. Plain ASCII text is
-    // split into number, capital-letter and byte parts, whichever is shortest (ZXing's compact mode),
-    // so numbers and capitals take fewer modules. Text with any other character is one UTF-8 byte
-    // part with no ECI marker, which phone cameras read as UTF-8; split into parts, a reader could
-    // guess a different alphabet for each short part. (qr.b0r3d.org makes its codes the same way.)
+    // A QR code's grid of modules (true = dark) for some text, made the way qr.b0r3d.org makes it
+    // (QrEncoder), so the same text, level and size give the same code on both.
     sealed class QrCode
     {
         public readonly string Text;
-        public readonly QrLevel Level;
-        public readonly int Version;   // 1-40
-        public readonly int Size;      // modules across: 17 + 4 * Version
-        readonly bool[] dark;          // row by row
+        public readonly QrLevel Level;          // the level it was made at
+        public readonly int Version;            // 1-40
+        public readonly int Size;               // modules across: 17 + 4 * Version
+        public readonly int AskedVersion;       // the smallest version asked for, or 0 for "as small as it goes"
+        public readonly bool Utf8Marker;        // starts with ECI 26: "this text is UTF-8"
+        public bool MarkerLeftOut { get; private set; }   // asked for, but there was no room for it
+        public readonly IReadOnlyList<QrSegment> Segments;
+        public readonly int Mask;
+        readonly bool[] dark;                   // row by row
 
-        QrCode(string text, QrLevel level, int version, int size, bool[] dark)
+        QrCode(string text, QrLevel level, int askedVersion, bool marker, QrEncoder.Result made)
         {
             Text = text;
             Level = level;
-            Version = version;
-            Size = size;
-            this.dark = dark;
+            AskedVersion = askedVersion;
+            Utf8Marker = marker;
+            Version = made.Version;
+            Size = made.Size;
+            Segments = made.Segments;
+            Mask = made.Mask;
+            dark = made.Dark;
         }
 
         public bool this[int row, int column] => dark[row * Size + column];
 
         public int ByteCount => Encoding.UTF8.GetByteCount(Text);
 
-        public int CharacterCount => new StringInfo(Text).LengthInTextElements;
+        // characters as the website counts them: Unicode code points (an emoji is one)
+        public int CharacterCount
+        {
+            get
+            {
+                int count = 0;
+                for (int i = 0; i < Text.Length; i++)
+                {
+                    if (char.IsHighSurrogate(Text[i]) && i + 1 < Text.Length && char.IsLowSurrogate(Text[i + 1])) i++;
+                    count++;
+                }
+                return count;
+            }
+        }
 
         public bool IsPlainAscii => PlainAscii(Text);
+
+        // the size asked for was too small for the text, so a bigger one is used
+        public bool Grown => AskedVersion > 0 && Version != AskedVersion;
 
         // The most bytes of text one code holds at each level (version 40, all in byte mode).
         public static int MaxBytes(QrLevel level)
@@ -72,28 +92,26 @@ namespace B0r3dQR.Qr
             }
         }
 
-        public static QrCode Make(string text, QrLevel level)
+        // `version` 1-40 asks for that size at least (a bigger one when the text doesn't fit), 0
+        // for the smallest that fits; `utf8Marker` starts the code with ECI 26
+        public static QrCode Make(string text, QrLevel level, int version = 0, bool utf8Marker = false)
         {
             if (string.IsNullOrEmpty(text)) throw new QrException("Type something to make a code.");
             bool ascii = PlainAscii(text);
-            // a huge paste is refused at once: ZXing would take a second working that out
+            // a huge paste is refused at once, before any work on it
             if (ascii ? text.Length > MaxDigits(level) : Encoding.UTF8.GetByteCount(text) > MaxBytes(level))
                 throw new QrException(TooMuch(text, level));
-            var hints = new Dictionary<EncodeHintType, object> { [EncodeHintType.DISABLE_ECI] = true };
-            if (ascii) hints[EncodeHintType.QR_COMPACT] = true;
-            else hints[EncodeHintType.CHARACTER_SET] = "UTF-8";
-
-            ZXing.QrCode.Internal.QRCode qr;
-            try { qr = Encoder.encode(text, Zxing(level), hints); }
-            catch (WriterException) { throw new QrException(TooMuch(text, level)); }
-
-            var grid = qr.Matrix;
-            int size = grid.Width;
-            var dark = new bool[size * size];
-            for (int y = 0; y < size; y++)
-                for (int x = 0; x < size; x++)
-                    dark[y * size + x] = grid[x, y] == 1;
-            return new QrCode(text, level, qr.Version.VersionNumber, size, dark);
+            int asked = Math.Max(0, Math.Min(40, version));
+            QrEncoder.Result made = QrEncoder.Encode(text, Zxing(level), asked, utf8Marker);
+            bool leftOut = false;
+            if (made == null && utf8Marker)
+            {
+                // the text fits, but not with the marker: the website then makes it without one, and says so
+                made = QrEncoder.Encode(text, Zxing(level), asked, false);
+                leftOut = made != null;
+            }
+            if (made == null) throw new QrException(TooMuch(text, level));
+            return new QrCode(text, level, asked, utf8Marker && !leftOut, made) { MarkerLeftOut = leftOut };
         }
 
         static bool PlainAscii(string text)
@@ -112,7 +130,7 @@ namespace B0r3dQR.Qr
                 " a code holds up to " + most + " bytes of text (more if it's only numbers or capitals), " + advice;
         }
 
-        static ErrorCorrectionLevel Zxing(QrLevel level)
+        internal static ErrorCorrectionLevel Zxing(QrLevel level)
         {
             switch (level)
             {

@@ -22,6 +22,8 @@ namespace B0r3dQR
         internal const uint OpenOptions = ForceFileSystem | PathMustExist | FileMustExist | AllowMultiSelect | DontAddToRecent;
         // a folder to scan
         internal const uint FolderOptions = PickFolders | ForceFileSystem | PathMustExist | DontAddToRecent;
+        // one file to open: a design or a logo
+        internal const uint OneFileOptions = ForceFileSystem | PathMustExist | FileMustExist | DontAddToRecent;
         internal const uint NotRecent = DontAddToRecent;
 
         const int Cancelled = unchecked((int)0x800704C7);  // the user clicked Cancel
@@ -30,11 +32,64 @@ namespace B0r3dQR
         internal const string PictureTypes = "*.png;*.jpg;*.jpeg;*.jpe;*.jfif;*.bmp;*.dib;*.gif;*.tif;*.tiff;*.ico;*.webp;*.heic;*.heif;*.avif;*.jxr;*.wdp";
 
         // the chosen file, or null when cancelled
-        public static string Save(Window owner, string title, string typeName, string extension, string fileName)
+        public static string Save(Window owner, string title, string typeName, string extension, string fileName) =>
+            SaveAs(owner, title, new[] { new FileType(typeName, extension) }, 0, fileName, out int ignored);
+
+        // A file type in a dialog's list: "PNG picture" and ".png".
+        public sealed class FileType
         {
-            IFileSaveDialog dialog = PrepareSave(title, typeName, extension, fileName);
+            public readonly string Name, Extension;
+
+            public FileType(string name, string extension)
+            {
+                Name = name;
+                Extension = extension;
+            }
+        }
+
+        // The chosen file and which of the types it is (the list in the dialog, starting with
+        // `chosen`), or null when cancelled. The file always ends in its type's extension.
+        public static string SaveAs(Window owner, string title, IList<FileType> types, int chosen, string fileName, out int typeIndex)
+        {
+            typeIndex = chosen;
+            IFileSaveDialog dialog = PrepareSave(title, types, chosen, fileName);
             try
             {
+                int result = dialog.Show(Handle(owner));
+                if (result == Cancelled) return null;
+                if (result < 0) Marshal.ThrowExceptionForHR(result);
+                dialog.GetFileTypeIndex(out uint picked);  // counted from 1
+                dialog.GetResult(out IShellItem item);
+                string path = PathOf(item);
+                typeIndex = picked >= 1 && picked <= types.Count ? (int)picked - 1 : chosen;
+                // the file's own extension has the last word should the two disagree (several types
+                // can share one, like the text kinds' .txt, so the dialog's choice stands when it fits)
+                string extension = System.IO.Path.GetExtension(path);
+                if (!string.Equals(extension, types[typeIndex].Extension, StringComparison.OrdinalIgnoreCase))
+                    for (int i = 0; i < types.Count; i++)
+                        if (string.Equals(extension, types[i].Extension, StringComparison.OrdinalIgnoreCase))
+                        {
+                            typeIndex = i;
+                            break;
+                        }
+                return path;
+            }
+            finally
+            {
+                Marshal.ReleaseComObject(dialog);
+            }
+        }
+
+        // One file to open (a design, a logo), or null when cancelled.
+        public static string OpenOne(Window owner, string title, string typeName, string pattern)
+        {
+            IFileOpenDialog dialog = (IFileOpenDialog)new FileOpenDialogObject();
+            try
+            {
+                dialog.GetOptions(out uint options);
+                dialog.SetOptions(options | OneFileOptions);
+                dialog.SetTitle(title);
+                dialog.SetFileTypes(2, new[] { new FilterSpec { Name = typeName, Spec = pattern }, new FilterSpec { Name = "All files", Spec = "*.*" } });
                 int result = dialog.Show(Handle(owner));
                 if (result == Cancelled) return null;
                 if (result < 0) Marshal.ThrowExceptionForHR(result);
@@ -98,14 +153,20 @@ namespace B0r3dQR
         }
 
         // the dialogs, set up but not shown (the tests check their options this way)
-        internal static IFileSaveDialog PrepareSave(string title, string typeName, string extension, string fileName)
+        internal static IFileSaveDialog PrepareSave(string title, string typeName, string extension, string fileName) =>
+            PrepareSave(title, new[] { new FileType(typeName, extension) }, 0, fileName);
+
+        internal static IFileSaveDialog PrepareSave(string title, IList<FileType> types, int chosen, string fileName)
         {
             var dialog = (IFileSaveDialog)new FileSaveDialogObject();
             dialog.GetOptions(out uint options);
             dialog.SetOptions(options | SaveOptions);
             dialog.SetTitle(title);
-            dialog.SetFileTypes(1, new[] { new FilterSpec { Name = typeName + " (*" + extension + ")", Spec = "*" + extension } });
-            dialog.SetDefaultExtension(extension.TrimStart('.'));
+            var filters = new FilterSpec[types.Count];
+            for (int i = 0; i < types.Count; i++) filters[i] = new FilterSpec { Name = types[i].Name + " (*" + types[i].Extension + ")", Spec = "*" + types[i].Extension };
+            dialog.SetFileTypes((uint)filters.Length, filters);
+            dialog.SetFileTypeIndex((uint)chosen + 1);
+            dialog.SetDefaultExtension(types[chosen].Extension.TrimStart('.'));
             dialog.SetFileName(fileName);
             return dialog;
         }

@@ -63,6 +63,7 @@ namespace B0r3dQR.Tests
                 Check(found["zxing"] == "b0r3dQR", "ZXing came from " + found["zxing"] + ", not from inside the exe");
                 Check(found.TryGetValue("windows", out string windows) && windows == "ok", "the windows didn't build from inside the exe: " + all);
                 Check(found.TryGetValue("scan", out string scan) && scan == "ok", "the Scan tab's reader didn't work inside the exe: " + all);
+                Check(found.TryGetValue("designer", out string designer) && designer == "ok", "a designed code (a preset's logo, a frame) didn't draw and read back inside the exe: " + all);
                 Check(found["dpi"] == "per-monitor-v2", "the exe follows the screens' scaling as \"" + found["dpi"] + "\", not per-monitor-v2 (is the manifest in?)");
                 Check(found["version"] == Program.FullVersion, "the exe says " + found["version"]);
             }
@@ -84,6 +85,7 @@ namespace B0r3dQR.Tests
             { "dwmapi.dll", new[] { "DwmSetWindowAttribute" } },                                                                   // title bars, fades
             { "gdi32.dll", new[] { "CreateCompatibleDC", "CreateCompatibleBitmap", "SelectObject", "BitBlt", "DeleteObject", "DeleteDC" } },  // screen pictures
             { "shcore.dll", new[] { "GetDpiForMonitor" } },                                                                        // each screen's scaling
+            { "comdlg32.dll", new[] { "ChooseColorW" } },                                                                          // Windows' colour dialog
         };
         static readonly string[] AllowedCom =
         {
@@ -92,9 +94,12 @@ namespace B0r3dQR.Tests
         };
         static readonly string[] AllowedAddresses =
         {
-            "https://b0r3d.org",            // Help → b0r3d.org, opened in the browser
-            "http://www.w3.org/2000/svg",   // SVG's namespace name in saved files, never fetched
+            "https://b0r3d.org",              // Help → b0r3d.org, opened in the browser
+            "http://www.w3.org/2000/svg",     // SVG's namespace name in saved files, never fetched
+            "http://www.w3.org/1999/xlink",   // SVG's link namespace name (for a logo's href), never fetched
         };
+        // an address: a scheme, then a host after the // ("https://" alone, in "Add https://", is none)
+        const string Address = @"[A-Za-z][A-Za-z0-9+.\-]*://[A-Za-z0-9\[][^\s""'<>]*";
         // Calls into .NET that take an address (a Uri). Uri's own members only take one apart;
         // these two only read from inside the exe and refuse anything but a relative address.
         static readonly string[] AllowedUriTakers = { "System.Windows.Application.LoadComponent", "System.Windows.Application.GetResourceStream" };
@@ -164,7 +169,7 @@ namespace B0r3dQR.Tests
                     if (guid == null || !AllowedCom.Contains(guid.ToUpperInvariant())) bad.Add("the COM object " + md.GetString(type.Name) + " {" + guid + "}");
                 }
                 foreach (string text in OwnStrings(pe, md))
-                    foreach (Match address in Regex.Matches(text, @"[A-Za-z][A-Za-z0-9+.\-]*://[^\s""'<>]*"))
+                    foreach (Match address in Regex.Matches(text, Address))
                         if (!AllowedAddresses.Contains(address.Value)) bad.Add("the address " + address.Value);
                 Check(bad.Count == 0, "the exe has " + string.Join(", ", bad.Distinct()));
                 Check(md.TypeReferences.Count > 50, "the scan saw almost nothing; is this the right file?");

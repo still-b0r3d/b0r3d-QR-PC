@@ -9,6 +9,13 @@ namespace B0r3dQR
         public static readonly RoutedUICommand SavePng = Make("Save PNG…", nameof(SavePng), new KeyGesture(Key.S, ModifierKeys.Control));
         public static readonly RoutedUICommand SaveSvg = Make("Save SVG…", nameof(SaveSvg), new KeyGesture(Key.S, ModifierKeys.Control | ModifierKeys.Shift));
         public static readonly RoutedUICommand CopyPicture = Make("Copy picture", nameof(CopyPicture), new KeyGesture(Key.C, ModifierKeys.Control | ModifierKeys.Shift));
+        public static readonly RoutedUICommand SaveJpg = Make("Save JPG…", nameof(SaveJpg), null);
+        public static readonly RoutedUICommand SavePdf = Make("Save PDF…", nameof(SavePdf), null);
+        public static readonly RoutedUICommand SaveText = Make("Save as text…", nameof(SaveText), null);
+        public static readonly RoutedUICommand CopySvg = Make("Copy as SVG", nameof(CopySvg), null);
+        public static readonly RoutedUICommand CopyText = Make("Copy as text", nameof(CopyText), null);
+        public static readonly RoutedUICommand OpenDesign = Make("Open design…", nameof(OpenDesign), null);
+        public static readonly RoutedUICommand SaveDesign = Make("Save design…", nameof(SaveDesign), null);
         public static readonly RoutedUICommand ScanScreen = Make("Scan the screen", nameof(ScanScreen), new KeyGesture(Key.R, ModifierKeys.Control | ModifierKeys.Shift));
         public static readonly RoutedUICommand OpenPicture = Make("Open picture…", nameof(OpenPicture), new KeyGesture(Key.O, ModifierKeys.Control));
         public static readonly RoutedUICommand PastePicture = Make("Paste picture", nameof(PastePicture), new KeyGesture(Key.V, ModifierKeys.Control | ModifierKeys.Shift));
@@ -17,7 +24,9 @@ namespace B0r3dQR
 
         static RoutedUICommand Make(string text, string name, KeyGesture key)
         {
-            return new RoutedUICommand(text, name, typeof(Commands), new InputGestureCollection { key });
+            var keys = new InputGestureCollection();
+            if (key != null) keys.Add(key);
+            return new RoutedUICommand(text, name, typeof(Commands), keys);
         }
     }
 }
