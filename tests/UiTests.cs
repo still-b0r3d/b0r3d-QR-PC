@@ -350,7 +350,8 @@ namespace B0r3dQR.Tests
         {
             var about = new AboutWindow();
             LayOut(about.Root, 640);
-            Check(about.VersionText.Text.Contains(Program.Version) && about.VersionText.Text.Contains(Program.Build), "the version line: " + about.VersionText.Text);
+            Check(about.VersionText.Text == "v" + Program.Version + " · Build: " + Program.Build, "the version line: " + about.VersionText.Text);
+            Check(NewMain().VersionRun.Text == "b0r3d QR v" + Program.Version + " · Build: " + Program.Build, "the window's corner should show the version and the build apart");
             string licences = about.Licences.Text;
             foreach (string part in new[] { "Commons Clause", "MIT License", "Licensor: b0r3d.org", "ZXing.Net", "Apache License" })
                 Check(licences.Contains(part), "the licences don't mention " + part);

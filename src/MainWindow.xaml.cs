@@ -24,7 +24,7 @@ namespace B0r3dQR
         {
             this.settings = settings;
             InitializeComponent();
-            VersionRun.Text = Program.Name + " " + Program.FullVersion;
+            VersionRun.Text = Program.Name + " " + Program.VersionText;
             Width = settings.WindowWidth;
             Height = settings.WindowHeight;
             if (settings.Maximized) WindowState = WindowState.Maximized;

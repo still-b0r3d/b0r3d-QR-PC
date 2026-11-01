@@ -30,6 +30,9 @@ namespace B0r3dQR.Tests
             Check(info.ProductVersion == Program.FullVersion, "the exe says " + info.ProductVersion + ", this build says " + Program.FullVersion);
             Check(Regex.IsMatch(Program.Version, @"^\d+\.\d+(\.\d+)?$"), "the version " + Program.Version + " isn't like 0.1 or 0.1.1");
             Check(Program.Build == "dev" || Regex.IsMatch(Program.Build, "^[0-9a-f]{7}$"), "the build stamp " + Program.Build + " is neither dev nor a short commit");
+            // the version and the build apart, never "0.3+abc1234" (owner, 2026-11-01)
+            Check(info.ProductVersion == Program.Version + " build " + Program.Build && Program.VersionText == "v" + Program.Version + " · Build: " + Program.Build && !Program.FullVersion.Contains("+"),
+                "the version and the build should be shown apart: " + info.ProductVersion + " / " + Program.VersionText);
             string[] parts = Program.Version.Split('.');
             string fileVersion = string.Join(".", parts.Concat(Enumerable.Repeat("0", 4 - parts.Length)));
             Check(info.FileVersion == fileVersion, "the file version " + info.FileVersion + " should be " + fileVersion);

@@ -27,7 +27,7 @@ if exist bin\b0r3dQR.exe (
 )
 
 rem The build stamp: the commit GitHub builds from (its first 7 characters), or "dev" for a
-rem build made anywhere else. The exe shows it as "0.1+abc1234".
+rem build made anywhere else. The exe's Product version says "0.1 build abc1234".
 set "BUILD=dev"
 if defined B0R3DQR_BUILD set "BUILD=%B0R3DQR_BUILD:~0,7%"
 

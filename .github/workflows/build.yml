@@ -59,14 +59,15 @@ jobs:
           name: b0r3dQR
           path: bin
 
-      # the exe says "0.1+abc1234": the version is the part before the "+", the commit after it
+      # the exe says "0.1 build abc1234": the version, then the commit it was built from
       - name: The tag must match the exe's version
         shell: pwsh
         run: |
           $tag = $env:GITHUB_REF_NAME.TrimStart('v')
           $exe = (Get-Item bin\b0r3dQR.exe).VersionInfo.ProductVersion
-          if ($tag -ne $exe.Split('+')[0]) { Write-Error "Tag $env:GITHUB_REF_NAME doesn't match b0r3dQR.exe's version $exe"; exit 1 }
-          if (-not $env:GITHUB_SHA.StartsWith($exe.Split('+')[1])) { Write-Error "b0r3dQR.exe says build $exe, not commit $env:GITHUB_SHA"; exit 1 }
+          $version, $build = $exe -split ' build '
+          if ($tag -ne $version) { Write-Error "Tag $env:GITHUB_REF_NAME doesn't match b0r3dQR.exe's version $exe"; exit 1 }
+          if (-not $build -or -not $env:GITHUB_SHA.StartsWith($build)) { Write-Error "b0r3dQR.exe says $exe, not commit $env:GITHUB_SHA"; exit 1 }
           "tag and exe agree: $exe"
 
       - name: Draft the release

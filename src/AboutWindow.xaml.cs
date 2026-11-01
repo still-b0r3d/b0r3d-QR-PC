@@ -13,7 +13,7 @@ namespace B0r3dQR
         public AboutWindow()
         {
             InitializeComponent();
-            VersionText.Text = "Version " + Program.Version + " · build " + Program.Build;
+            VersionText.Text = Program.VersionText;
             Licences.Text = LicenceText();
             ShowFolder();
             ShowCup();
