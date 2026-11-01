@@ -1,0 +1,34 @@
+<Project>
+  <!-- Shared by the program (src) and the tests. The program runs on .NET Framework 4.8, which
+       comes with Windows 10 and 11; only building it needs the .NET SDK. -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <Deterministic>true</Deterministic>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
+    <NeutralLanguage>en</NeutralLanguage>
+
+    <!-- Packages are pinned by packages.lock.json; GitHub's build refuses to change them. -->
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+    <RestoreLockedMode Condition="'$(CI)' == 'true'">true</RestoreLockedMode>
+
+    <!-- The version: raise it here (and in CHANGELOG.md) for each batch of changes. The build
+         stamp is the commit GitHub builds from, or "dev" (build.cmd passes it in), so the exe
+         says "0.1+abc1234". -->
+    <Version>0.1</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <BuildStamp Condition="'$(BuildStamp)' == ''">dev</BuildStamp>
+    <InformationalVersion>$(Version)+$(BuildStamp)</InformationalVersion>
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+
+    <Product>b0r3d QR</Product>
+    <Company>b0r3d.org</Company>
+    <Authors>b0r3d.org</Authors>
+    <Copyright>Copyright (c) 2026 b0r3d.org</Copyright>
+  </PropertyGroup>
+</Project>

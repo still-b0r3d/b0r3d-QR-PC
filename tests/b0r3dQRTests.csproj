@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>b0r3dQRTests</AssemblyName>
+    <RootNamespace>B0r3dQR.Tests</RootNamespace>
+    <AssemblyTitle>b0r3d QR tests</AssemblyTitle>
+    <StartupObject>B0r3dQR.Tests.TestMain</StartupObject>
+    <!-- bin\tests\, next to the one-file exe in bin\ that some tests check -->
+    <OutputPath>$(MSBuildThisFileDirectory)..\bin\tests\</OutputPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\src\b0r3dQR.csproj" />
+    <!-- reads the exe's own metadata for the "never goes online" test -->
+    <PackageReference Include="System.Reflection.Metadata" Version="10.0.0" />
+  </ItemGroup>
+
+</Project>

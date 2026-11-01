@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>b0r3dQR</AssemblyName>
+    <RootNamespace>B0r3dQR</RootNamespace>
+    <AssemblyTitle>b0r3d QR</AssemblyTitle>
+    <Description>Makes static QR codes and checks they read back. Nothing expires, and nothing is sent anywhere.</Description>
+    <ApplicationIcon>..\assets\b0r3dQR.ico</ApplicationIcon>
+    <ApplicationManifest>..\assets\app.manifest</ApplicationManifest>
+    <StartupObject>B0r3dQR.Program</StartupObject>
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- App.xaml holds the resources; Program.Main starts the app (it reads the command line first) -->
+    <ApplicationDefinition Remove="App.xaml" />
+    <Page Include="App.xaml" />
+    <Resource Include="..\assets\b0r3dQR.ico" Link="assets\b0r3dQR.ico" />
+    <Resource Include="..\art\cup.png" Link="assets\cup.png" />
+    <EmbeddedResource Include="..\LICENSE" Link="LICENSE" LogicalName="B0r3dQR.LICENSE" />
+    <EmbeddedResource Include="..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" LogicalName="B0r3dQR.THIRD-PARTY-NOTICES.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="ZXing.Net" Version="0.16.11" />
+    <PackageReference Include="ILRepack" Version="2.0.48" PrivateAssets="all" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <!-- One file: ZXing.Net is merged into the exe, which goes to bin\ at the top of the repo.
+       ILRepack joins plain .NET code; nothing is packed or unpacked when the program runs. Only a
+       Release build is merged, and every time (it takes a second), so bin\ never keeps an old one. -->
+  <PropertyGroup>
+    <OneExe>$(MSBuildThisFileDirectory)..\bin\b0r3dQR.exe</OneExe>
+  </PropertyGroup>
+  <Target Name="MergeIntoOneExe" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <MakeDir Directories="$(MSBuildThisFileDirectory)..\bin" />
+    <Exec Command="&quot;$(PkgILRepack)\tools\ILRepack.exe&quot; /out:&quot;$(OneExe)&quot; &quot;$(TargetPath)&quot; &quot;$(OutDir)zxing.dll&quot;" StandardOutputImportance="low" />
+    <!-- ILRepack copies the .config too; the exe runs without it -->
+    <Delete Files="$(OneExe).config" />
+    <SetSafetyFlags File="$(OneExe)" />
+  </Target>
+
+  <!-- ILRepack leaves out two of Windows' safety flags that the compiler sets on the exe (high-
+       entropy address randomisation, and large addresses): put them back in its header. -->
+  <UsingTask TaskName="SetSafetyFlags" TaskFactory="RoslynCodeTaskFactory" AssemblyFile="$(MSBuildToolsPath)\Microsoft.Build.Tasks.Core.dll">
+    <ParameterGroup>
+      <File ParameterType="System.String" Required="true" />
+    </ParameterGroup>
+    <Task>
+      <Code Type="Fragment" Language="cs"><![CDATA[
+        byte[] exe = System.IO.File.ReadAllBytes(File);
+        int pe = System.BitConverter.ToInt32(exe, 0x3C);
+        if (System.BitConverter.ToUInt32(exe, pe) != 0x00004550) { Log.LogError(File + " isn't a Windows program"); return false; }
+        int characteristics = pe + 4 + 18;      // in the file header, after the PE signature
+        int dllCharacteristics = pe + 24 + 70;  // in the optional header (the same place in PE32 and PE32+)
+        ushort c = (ushort)(System.BitConverter.ToUInt16(exe, characteristics) | 0x0020);      // large addresses
+        ushort d = (ushort)(System.BitConverter.ToUInt16(exe, dllCharacteristics) | 0x0020);   // high-entropy randomisation
+        exe[characteristics] = (byte)c; exe[characteristics + 1] = (byte)(c >> 8);
+        exe[dllCharacteristics] = (byte)d; exe[dllCharacteristics + 1] = (byte)(d >> 8);
+        System.IO.File.WriteAllBytes(File, exe);
+      ]]></Code>
+    </Task>
+  </UsingTask>
+
+</Project>
