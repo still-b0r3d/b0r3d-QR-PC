@@ -9,7 +9,7 @@ namespace B0r3dQR
     // b0r3dQR.exe --selftest <file>: no window shown. Makes a code, draws it the way a PNG is saved,
     // reads it back (as the scan check and as the Scan tab), checks the SVG, builds the windows
     // (the Scan tab with a card, and a screen's overlay too), draws a designed code (a preset's logo,
-    // a frame), and writes what it found to <file>
+    // a frame), fills a data template and builds the Recent codes window, and writes what it found to <file>
     // as key=value lines; the exit code is 0 when it all worked. The tests run it on the finished
     // one-file exe, on its own in a folder, to prove it works with nothing beside it.
     static class SelfTest
@@ -95,6 +95,22 @@ namespace B0r3dQR
                 bool designerOk = art.Cleared > 0 && art.LogoProblem == null && designed == Text && art.ToSvg().Contains("class=\"qr-logo\"");
                 lines.Add("designer=" + (designerOk ? "ok" : "failed"));
                 ok &= designerOk;
+
+                // the data templates' window (a Wi-Fi text read into its form and written again) and
+                // the Recent codes window, built from inside this exe
+                var forms = new Dictionary<Design.TemplateKind, Dictionary<string, string>>();
+                var template = new TemplateWindow(Design.TemplateKind.Wifi, "WIFI:T:WPA;S:self-test;P:pw;;", forms);
+                template.Root.Measure(new Size(600, 680));
+                template.Root.Arrange(new Rect(0, 0, 600, 680));
+                template.Root.UpdateLayout();
+                bool templatesOk = template.Save() && template.Result == "WIFI:T:WPA;S:self-test;P:pw;;";
+                var recent = new RecentWindow(new Settings(), id => false);
+                recent.Root.Measure(new Size(600, 660));
+                recent.Root.Arrange(new Rect(0, 0, 600, 660));
+                recent.Root.UpdateLayout();
+                recent.Close();
+                lines.Add("templates=" + (templatesOk ? "ok" : "failed"));
+                ok &= templatesOk;
             }
             catch (Exception e)
             {

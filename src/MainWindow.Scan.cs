@@ -307,18 +307,28 @@ namespace B0r3dQR
         // box, a picture dropped on the Logo section is the logo, and a design file opens (MakeDrop)
         void OnPreviewDragOver(object sender, DragEventArgs e)
         {
-            if (MakeDrop(e, false)) return;
-            if (draggingOut || Scanning || !Pictures.CanRead(e.Data)) return;
+            if (Refuse(e) || MakeDrop(e, false)) return;
+            if (Scanning || !Pictures.CanRead(e.Data)) return;
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
         }
 
         void OnPreviewDrop(object sender, DragEventArgs e)
         {
-            if (MakeDrop(e, true)) return;
-            if (draggingOut || Scanning || !Pictures.CanRead(e.Data)) return;
+            if (Refuse(e) || MakeDrop(e, true)) return;
+            if (Scanning || !Pictures.CanRead(e.Data)) return;
             e.Handled = true;
             ReadData(e.Data, "the dropped picture", "Nothing to read in what was dropped.");
+        }
+
+        // The code dragged out of this window and back over it: nothing here takes it (not even
+        // the data box), so letting go of it here doesn't count as the code being used.
+        bool Refuse(DragEventArgs e)
+        {
+            if (!draggingOut) return false;
+            e.Effects = DragDropEffects.None;
+            e.Handled = true;
+            return true;
         }
 
         // what was copied or dropped: files and folders, or a picture

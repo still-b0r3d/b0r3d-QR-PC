@@ -9,10 +9,10 @@ qr.b0r3d.org, made by [b0r3d.org](https://b0r3d.org).
 It's one small exe that runs on Windows 10 and 11 with nothing to install, and it never
 goes online.
 
-**Being built.** This is version 0.3, the third of seven stages: the full QR designer, with
+**Being built.** This is version 0.4, the fourth of seven stages: the full QR designer, with
 the website's shapes, colours, logos, frames, presets, checks, every export and its design
-files; and reading codes from pictures, folders and the screen. Data templates, recent
-codes, other barcodes, batch export and printing come next.
+files; its data templates and recent codes; and reading codes from pictures, folders and the
+screen. Other barcodes, batch export and printing come next.
 
 ## Make a code
 
@@ -20,8 +20,11 @@ Put `b0r3dQR.exe` in a folder of its own and double-click it. Type or paste a li
 text, and the code appears on the right with a line saying whether it scans. The settings
 on the left fold out like the website's:
 
-- **Data:** what goes in the code. Under it, the website's checks with a one-click fix each:
-  spaces at the ends, a web address without https://, tracking parts in a link.
+- **Data:** what goes in the code. Above it, the website's **data templates** (text, URL,
+  Wi-Fi, contact card, email, phone, SMS, location, event, EPC payment and GS1 product link):
+  pick one, or **Edit…**, for a form that writes the text for you, filled from the text
+  already there when it's that kind. Under it, the website's checks with a one-click fix
+  each: spaces at the ends, a web address without https://, tracking parts in a link.
 - **Style:** the presets (Plain, Rounded, Dots, b0r3d Cup, Rukus) and Randomize; the
   shapes and colours of the dots, the corner squares and the corner dots; the background,
   or none; rounded corners.
@@ -50,6 +53,12 @@ same text and design make the same code, module for module, on both. A logo the 
 fetched from a web address isn't drawn here, since b0r3d QR never goes online: save the
 picture and choose it under Logo. An SVG logo keeps its room and goes into SVG files, but
 isn't drawn into pictures yet; for those, use a PNG of it.
+
+**Recent codes…** (under the code, or **File → Recent codes…**) lists the last 20 codes you
+saved, copied or dragged out, newest first, to open again (design and text) or delete; Clear
+all deletes the lot. Making the same text again replaces its old entry, and a Wi-Fi network
+with its password is listed without a picture. To stop codes being added, untick **Add codes I
+save, copy or drag out** there.
 
 **View → Look** follows Windows' light or dark setting, or stays light or dark.
 
@@ -81,23 +90,25 @@ with the same error correction.
 
 ## Settings
 
-b0r3d QR keeps its settings in `b0r3dQR.ini`, and the design you last had in
-`b0r3dQR design.json` (the website's format, without the code's text), in a `b0r3dQR data`
-folder next to the exe. It writes nothing anywhere else itself: not in AppData, not in the
-registry. To keep them somewhere else, start it with:
+b0r3d QR keeps its settings in `b0r3dQR.ini`, the design you last had in
+`b0r3dQR design.json` (the website's format, without the code's text), and Recent codes in
+`b0r3dQR recent.json`, in a `b0r3dQR data` folder next to the exe. It writes nothing anywhere
+else itself: not in AppData, not in the registry. To keep them somewhere else, start it with:
 
 ```
 b0r3dQR.exe --data "D:\Somewhere\b0r3dQR settings"
 ```
 
 That folder can hold other things too: b0r3d QR only ever touches its own `b0r3dQR.ini`,
-`b0r3dQR design.json` and `b0r3dQR drag` folder there.
+`b0r3dQR design.json`, `b0r3dQR recent.json` and `b0r3dQR drag` folder there.
 
-The text of the code isn't kept, and neither is anything you scan: pictures of the screen
-and the codes found only ever live in memory. If the exe's folder can't be written to, it
-says so as soon as it starts and keeps working without saving settings. Run straight out of
-a zip, an email attachment or a download folder inside AppData, it keeps nothing there
-either.
+The text you type is only kept in Recent codes: the codes you saved, copied or dragged out,
+while it's on. That file is plain text (Wi-Fi passwords included), so anyone who can open the
+data folder can read it; turn Recent codes off and Clear all if that matters. Nothing you scan
+is kept: pictures of the screen and the codes found only ever live in memory. If the exe's
+folder can't be written to, it says so as soon as it starts and keeps working without saving
+settings. Run straight out of a zip, an email attachment or a download folder inside AppData,
+it keeps nothing there either.
 
 Windows keeps a few records of its own about any program you run: the Open and Save
 dialogs remember the last folder you used, and Explorer notes which programs you've

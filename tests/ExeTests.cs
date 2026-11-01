@@ -67,6 +67,7 @@ namespace B0r3dQR.Tests
                 Check(found.TryGetValue("windows", out string windows) && windows == "ok", "the windows didn't build from inside the exe: " + all);
                 Check(found.TryGetValue("scan", out string scan) && scan == "ok", "the Scan tab's reader didn't work inside the exe: " + all);
                 Check(found.TryGetValue("designer", out string designer) && designer == "ok", "a designed code (a preset's logo, a frame) didn't draw and read back inside the exe: " + all);
+                Check(found.TryGetValue("templates", out string templates) && templates == "ok", "the data templates' and Recent codes windows didn't work inside the exe: " + all);
                 Check(found["dpi"] == "per-monitor-v2", "the exe follows the screens' scaling as \"" + found["dpi"] + "\", not per-monitor-v2 (is the manifest in?)");
                 Check(found["version"] == Program.FullVersion, "the exe says " + found["version"]);
             }
@@ -100,6 +101,8 @@ namespace B0r3dQR.Tests
             "https://b0r3d.org",              // Help → b0r3d.org, opened in the browser
             "http://www.w3.org/2000/svg",     // SVG's namespace name in saved files, never fetched
             "http://www.w3.org/1999/xlink",   // SVG's link namespace name (for a logo's href), never fetched
+            "https://id.gs1.org",             // GS1's resolver, written into GS1 Digital Link codes as the website does, never opened
+            "https://example.com",            // the website's placeholder and example in the data templates' forms, never opened
         };
         // an address: a scheme, then a host after the // ("https://" alone, in "Add https://", is none)
         const string Address = @"[A-Za-z][A-Za-z0-9+.\-]*://[A-Za-z0-9\[][^\s""'<>]*";

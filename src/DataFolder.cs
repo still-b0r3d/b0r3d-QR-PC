@@ -8,8 +8,9 @@ namespace B0r3dQR
 {
     // Where b0r3d QR keeps its settings: one folder, "b0r3dQR data" next to the exe, or the folder
     // given with --data. b0r3d QR writes nothing anywhere else: no AppData, no registry, no Temp.
-    // In the folder it only ever touches names of its own (b0r3dQR.ini, "b0r3dQR design.json", the
-    // "b0r3dQR drag" folder), so --data can point at a folder that holds other things.
+    // In the folder it only ever touches names of its own (b0r3dQR.ini, "b0r3dQR design.json",
+    // "b0r3dQR recent.json", the "b0r3dQR drag" folder), so --data can point at a folder that holds
+    // other things.
     static class DataFolder
     {
         public const string DefaultName = "b0r3dQR data";

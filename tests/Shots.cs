@@ -58,6 +58,49 @@ namespace B0r3dQR.Tests
                 LayOut(designer.Root, MainWidth, MainHeight);
                 Shoot(designer.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "size-" + name + ".png"));
 
+                // the data templates: the Wi-Fi form filled from a code's text, an EPC payment's form
+                // after Save with a message, and a contact's example, two fields to a row
+                MainWindow templated = NewMain();
+                Type(templated, "WIFI:T:WPA;S:Rukus's nap spot;P:hunter2;;");
+                LayOut(templated.Root, MainWidth, MainHeight);
+                Shoot(templated.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "templates-" + name + ".png"));
+                TemplateWindow wifiForm = templated.TemplateFor(Design.TemplateKind.Wifi);
+                LayOut(wifiForm.Root, 600, 680);
+                Shoot(wifiForm.Root, 600, 680, 1, Path.Combine(folder, "template-wifi-" + name + ".png"));
+                TemplateWindow payment = templated.TemplateFor(Design.TemplateKind.Epc);
+                ((System.Windows.Controls.TextBox)payment.Input("name")).Text = "Rukus Cat";
+                ((System.Windows.Controls.TextBox)payment.Input("iban")).Text = "DE89 3704 0044 0532 0130 01";
+                payment.Save();
+                LayOut(payment.Root, 600, 680);
+                Shoot(payment.Root, 600, 680, 1, Path.Combine(folder, "template-epc-" + name + ".png"));
+                TemplateWindow card = templated.TemplateFor(Design.TemplateKind.VCard);
+                card.ExampleButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                LayOut(card.Root, 600, 680);
+                Shoot(card.Root, 600, 680, 1, Path.Combine(folder, "template-vcard-" + name + ".png"));
+
+                // Recent codes with three codes in it, one of them a Wi-Fi network with its password
+                string kept = DataFolder.Path;
+                DataFolder.Reset(Path.Combine(Work, "shots-recent-" + name));
+                try
+                {
+                    Design.RecentCodes.Clear();
+                    var settings = new Settings { RecentNoteShown = true };
+                    var maker = new MainWindow(settings);
+                    LayOut(maker.Root, MainWidth, MainHeight);
+                    foreach (string data in new[] { "https://b0r3d.org", "WIFI:T:WPA;S:home;P:hunter2;;", "BEGIN:VCARD\nVERSION:3.0\nN:Cat;Rukus;;;\nFN:Rukus Cat\nEND:VCARD" })
+                    {
+                        Type(maker, data);
+                        maker.Remember(maker.CurrentDesign);
+                    }
+                    var recent = new RecentWindow(settings, id => true);
+                    LayOut(recent.Root, 600, 660);
+                    Shoot(recent.Root, 600, 660, 1, Path.Combine(folder, "recent-" + name + ".png"));
+                }
+                finally
+                {
+                    DataFolder.Reset(kept);
+                }
+
                 // the Scan tab after reading a picture with three codes
                 MainWindow scanner = NewMain();
                 scanner.Tabs.SelectedItem = scanner.ScanTab;

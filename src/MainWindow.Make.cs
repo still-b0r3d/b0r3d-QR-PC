@@ -39,6 +39,10 @@ namespace B0r3dQR
         Point dragStart;
         bool dragArmed;
         readonly Random random = new Random();
+        // what's typed in each data template's form, kept while b0r3d QR runs (as the website keeps it)
+        readonly Dictionary<TemplateKind, Dictionary<string, string>> templateForms = new Dictionary<TemplateKind, Dictionary<string, string>>();
+        int templateAtOpen = -1;   // the template the list was on when it opened
+        int noteCode;              // the code the note about Recent codes is about
 
         // for the tests
         internal string CheckResult { get; private set; } = "";
@@ -76,6 +80,7 @@ namespace B0r3dQR
             SquaresTypeBox.ItemsSource = Presets.CornerSquareTypes;
             CentresTypeBox.ItemsSource = Presets.CornerDotTypes;
             FramePresetBox.ItemsSource = Presets.FrameNames;
+            TemplateBox.ItemsSource = TemplateForms.Menu.Select(TemplateForms.Label).ToList();
             var versions = new List<string> { "Auto (smallest that fits)" };
             for (int v = 1; v <= 40; v++) versions.Add(v + " (" + (17 + 4 * v) + " × " + (17 + 4 * v) + ")");
             VersionBox.ItemsSource = versions;
@@ -514,6 +519,7 @@ namespace B0r3dQR
             design.Data = DataText;
             DataHint.Visibility = DataBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
             ShowDataChecks();
+            ShowTemplateChoice();
             art = null;
             if (design.Data.Length == 0)
             {
@@ -826,11 +832,12 @@ namespace B0r3dQR
             QrArt these = art;
             string path = AskWhere(title, typeName, extension);
             if (path == null) return;
-            Save(path, () =>
+            bool saved = Save(path, () =>
             {
                 BitmapSource picture = QrExport.Picture(these, print, wholePixels, jpg);
                 return jpg ? QrExport.Jpg(picture) : QrExport.Png(picture);
             });
+            if (saved) Remember(these.Design);
         }
 
         void OnSaveSvg(object sender, ExecutedRoutedEventArgs e)
@@ -839,7 +846,7 @@ namespace B0r3dQR
             if (art == null) return;
             QrArt these = art;
             string path = AskWhere("Save the code as an SVG drawing", "SVG drawing", ".svg");
-            if (path != null) Save(path, () => new UTF8Encoding(false).GetBytes(QrExport.Svg(these, print)));
+            if (path != null && Save(path, () => new UTF8Encoding(false).GetBytes(QrExport.Svg(these, print)))) Remember(these.Design);
         }
 
         void OnSavePdf(object sender, ExecutedRoutedEventArgs e)
@@ -848,7 +855,7 @@ namespace B0r3dQR
             if (art == null) return;
             QrArt these = art;
             string path = AskWhere("Save the code as a PDF", "PDF document", ".pdf");
-            if (path != null) Save(path, () => QrExport.Pdf(these, print, wholePixels, Path.GetFileNameWithoutExtension(path)));
+            if (path != null && Save(path, () => QrExport.Pdf(these, print, wholePixels, Path.GetFileNameWithoutExtension(path)))) Remember(these.Design);
         }
 
         // the website's three kinds of text, each as plain text or Markdown
@@ -899,12 +906,14 @@ namespace B0r3dQR
             }
         }
 
-        void Save(string path, Func<byte[]> bytes)
+        // true when the file was written
+        bool Save(string path, Func<byte[]> bytes)
         {
             try
             {
                 Exports.Write(path, bytes());
                 Flash("Saved " + Path.GetFileName(path), "Good");
+                return true;
             }
             catch (Exception x) when (x is IOException || x is UnauthorizedAccessException || x is NotSupportedException || x is System.Security.SecurityException || x is QrException)
             {
@@ -915,6 +924,7 @@ namespace B0r3dQR
                 MessageBox.Show(this, "Couldn't save " + Path.GetFileName(path) + ":\n\nThere isn't enough memory for a picture that big. Use a smaller picture size or print size.",
                     Program.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
             }
+            return false;
         }
 
         // the picture to copy or drag, or null after saying why there's none (too big to draw)
@@ -940,13 +950,13 @@ namespace B0r3dQR
             CatchUp();
             if (art == null) return;
             BitmapSource picture = PictureToShare();
-            if (picture != null) Copy(Exports.DataFor(picture, QrExport.Png(picture), FileName, false), "Copied the code as a picture");
+            if (picture != null && Copy(Exports.DataFor(picture, QrExport.Png(picture), FileName, false), "Copied the code as a picture")) Remember(art.Design);
         }
 
         void OnCopySvg(object sender, ExecutedRoutedEventArgs e)
         {
             CatchUp();
-            if (art != null) Copy(Exports.TextData(QrExport.Svg(art, print)), "Copied the code as SVG");
+            if (art != null && Copy(Exports.TextData(QrExport.Svg(art, print)), "Copied the code as SVG")) Remember(art.Design);
         }
 
         void OnCopyText(object sender, ExecutedRoutedEventArgs e)
@@ -955,16 +965,19 @@ namespace B0r3dQR
             if (art != null) Copy(Exports.TextData(QrExport.Text(design, QrExport.TextStyle.HalfBlocks)), "Copied the code as text (half blocks)");
         }
 
-        void Copy(DataObject data, string done)
+        // true when it's on the clipboard
+        bool Copy(DataObject data, string done)
         {
             try
             {
                 Clipboard.SetDataObject(data, true);
                 Flash(done, "Good");
+                return true;
             }
             catch (ExternalException)
             {
                 Flash("Couldn't copy: another program is using the clipboard. Try again.", "Bad");
+                return false;
             }
         }
 
@@ -992,10 +1005,12 @@ namespace B0r3dQR
             BitmapSource picture = PictureToShare();
             if (picture == null) return;
             DataObject data = Exports.DataFor(picture, QrExport.Png(picture), FileName, true);
+            QrDesign dragged = art.Design;
             draggingOut = true;  // dropped back on this window, it isn't something to scan
             try
             {
-                DragDrop.DoDragDrop(Preview, data, DragDropEffects.Copy);
+                // a drop somewhere takes the code, the way a copy does
+                if (DragDrop.DoDragDrop(Preview, data, DragDropEffects.Copy) != DragDropEffects.None) Remember(dragged);
             }
             catch (ExternalException)
             {
@@ -1022,7 +1037,9 @@ namespace B0r3dQR
                 MessageBox.Show(this, "Windows' Save dialog didn't open:\n\n" + x.Message, Program.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
-            if (path != null) Save(path, () => new UTF8Encoding(false).GetBytes(DesignFile.Write(design)));
+            QrDesign saved = design.Clone();
+            // a design saved with text in it goes to Recent codes, as on the website
+            if (path != null && Save(path, () => new UTF8Encoding(false).GetBytes(DesignFile.Write(saved))) && Js.Trim(saved.Data ?? "").Length > 0) Remember(saved);
         }
 
         void OnOpenDesign(object sender, ExecutedRoutedEventArgs e)
@@ -1058,6 +1075,13 @@ namespace B0r3dQR
                 MessageBox.Show(this, x.Message, Program.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
+            ShowOpened(opened);
+            Flash("Opened " + Path.GetFileName(path), "Good");
+        }
+
+        // a design opened (from a file or Recent codes) into the window, its text exactly as it was
+        void ShowOpened(QrDesign opened)
+        {
             Tabs.SelectedItem = MakeTab;
             design = opened;
             if (!design.Transparent) lastBackground = design.Background;
@@ -1066,8 +1090,132 @@ namespace B0r3dQR
             DataBox.Text = design.Data;
             typingPause.Stop();
             Refresh();
-            Flash("Opened " + Path.GetFileName(path), "Good");
         }
+
+        // ---------- data templates ----------
+
+        // the list shows the template the text is, or none while there's no text, as on the website
+        void ShowTemplateChoice()
+        {
+            bool was = showing;
+            showing = true;
+            string text = DataText;
+            TemplateBox.SelectedIndex = Js.Trim(text).Length == 0 ? -1 : Array.IndexOf(TemplateForms.Menu, Templates.Detect(text, out _));
+            if (TemplateBox.IsDropDownOpen) templateAtOpen = TemplateBox.SelectedIndex;   // the text's template, not one chosen
+            showing = was;
+            TemplateHint.Visibility = TemplateBox.SelectedIndex < 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        void OnTemplate(object sender, SelectionChangedEventArgs e) =>
+            TemplateHint.Visibility = TemplateBox.SelectedIndex < 0 ? Visibility.Visible : Visibility.Collapsed;
+
+        void OnTemplateOpened(object sender, EventArgs e) => templateAtOpen = TemplateBox.SelectedIndex;
+
+        // A template chosen in the open list opens its form. On the closed list the arrow keys only
+        // move through the templates (Edit… opens the one showing), so the list can be looked
+        // through from the keyboard without a form opening at every step.
+        void OnTemplateClosed(object sender, EventArgs e) =>
+            Dispatcher.BeginInvoke(new Action(() =>   // Enter in the open list chooses only once it has closed
+            {
+                if (Quiet || TemplateBox.SelectedIndex < 0 || TemplateBox.SelectedIndex == templateAtOpen) return;
+                OpenTemplate(TemplateForms.Menu[TemplateBox.SelectedIndex]);
+            }), System.Windows.Threading.DispatcherPriority.Input);
+
+        void OnEditTemplate(object sender, RoutedEventArgs e) =>
+            OpenTemplate(TemplateBox.SelectedIndex >= 0 ? TemplateForms.Menu[TemplateBox.SelectedIndex] : TemplateKind.Text);
+
+        // The "Data to encode" window for a template; what it writes becomes the code's text.
+        void OpenTemplate(TemplateKind kind)
+        {
+            CatchUp();
+            UseTemplateText(AskTemplate != null ? AskTemplate(kind) : TemplateWindow.Ask(this, kind, DataText, templateForms));
+        }
+
+        // for the tests: stands in for the window a template opens
+        internal Func<TemplateKind, string> AskTemplate;
+
+        internal void UseTemplateText(string written)
+        {
+            // cancelled, or nothing written: the text stays (an empty one never goes over it)
+            if (string.IsNullOrEmpty(written))
+            {
+                ShowTemplateChoice();
+                return;
+            }
+            DataBox.Text = written;
+            typingPause.Stop();
+            Refresh();
+        }
+
+        // for the tests: the window a template would open, as OpenTemplate opens it
+        internal TemplateWindow TemplateFor(TemplateKind kind) => new TemplateWindow(kind, DataText, templateForms);
+
+        // ---------- Recent codes ----------
+
+        // Adds the code just saved, copied or dragged out to Recent codes while that's on; the first
+        // time, a note says where it went and offers to stop.
+        internal void Remember(QrDesign snapshot)
+        {
+            if (!settings.RecentCodes || !DataFolder.CanKeep || Js.Trim(snapshot?.Data ?? "").Length == 0) return;
+            int id = RecentCodes.Add(RecentCodes.New(snapshot, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()), out RecentTrouble trouble);
+            RecentWindow.LastFailed = trouble == RecentTrouble.Unwritable;
+            if (id == 0)
+            {
+                string why = trouble == RecentTrouble.Busy ? "its file in the data folder is in use. Try again in a moment."
+                    : trouble == RecentTrouble.Damaged ? "its file in the data folder can't be read (Recent codes says more)."
+                    : trouble == RecentTrouble.Newer ? "its file in the data folder is from a newer b0r3d QR."
+                    : "its file in the data folder couldn't be written.";
+                // after what the save or copy said, so that isn't lost
+                Flash((noteTimer.IsEnabled && Note.Text.Length > 0 ? Note.Text.TrimEnd('.') + ". " : "") + "Not added to Recent codes: " + why, "Warn");
+                return;
+            }
+            if (settings.RecentNoteShown) return;
+            settings.RecentNoteShown = true;
+            settings.Save();
+            noteCode = id;
+            RecentNoteProblem.Visibility = Visibility.Collapsed;
+            RecentNote.Visibility = Visibility.Visible;
+            Say(RecentNoteText);
+        }
+
+        void OnRecent(object sender, RoutedEventArgs e) => new RecentWindow(settings, OpenRecent) { Owner = this }.ShowDialog();
+
+        // a code from Recent codes, opened like a design file with its text; false when it's gone
+        internal bool OpenRecent(int id)
+        {
+            QrDesign opened = RecentCodes.Open(id, design);
+            if (opened == null) return false;
+            ShowOpened(opened);
+            Flash("Opened from Recent codes", "Good");
+            return true;
+        }
+
+        // "Don't keep codes": no more are added (for this run at least, if the setting can't be
+        // saved), and the one the note is about goes
+        void OnNoteStop(object sender, RoutedEventArgs e)
+        {
+            settings.RecentCodes = false;
+            bool stopped = settings.Save();
+            bool deleted = noteCode == 0 || RecentCodes.Delete(noteCode);
+            if (deleted) noteCode = 0;
+            if (stopped && deleted)
+            {
+                RecentNote.Visibility = Visibility.Collapsed;
+                return;
+            }
+            RecentNoteProblem.Text = stopped ? "No more codes will be added, but this one couldn't be deleted. Open Recent codes to delete it."
+                : deleted ? "No more codes will be added while b0r3d QR is open, but the setting couldn't be saved for next time."
+                : "No more codes will be added while b0r3d QR is open, but the setting couldn't be saved for next time, and this code couldn't be deleted. Open Recent codes to delete it.";
+            RecentNoteProblem.Visibility = Visibility.Visible;
+        }
+
+        void OnNoteView(object sender, RoutedEventArgs e)
+        {
+            RecentNote.Visibility = Visibility.Collapsed;
+            OnRecent(sender, e);
+        }
+
+        void OnNoteOk(object sender, RoutedEventArgs e) => RecentNote.Visibility = Visibility.Collapsed;
 
         // ---------- pictures for the design ----------
 
@@ -1200,7 +1348,7 @@ namespace B0r3dQR
         internal static string DesignPicture(byte[] bytes, int largest, out string problem)
         {
             problem = null;
-            string start = Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 512)).TrimStart('﻿', ' ', '\t', '\r', '\n');
+            string start = Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 512)).TrimStart((char)0xFEFF, ' ', '\t', '\r', '\n');
             if (start.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) || start.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase) && start.Contains("<svg"))
                 return "data:image/svg+xml;base64," + Convert.ToBase64String(bytes);
             BitmapDecoder decoder;

@@ -10,8 +10,9 @@ namespace B0r3dQR
     enum Look { Windows, Light, Dark }
 
     // The settings, kept as key=value lines in b0r3dQR.ini in the data folder (a name of its own,
-    // so a --data folder's other files are never touched). What you type isn't kept, just how the
-    // program looks and the code's options (the website doesn't keep the text either).
+    // so a --data folder's other files are never touched). What you type isn't kept here, just how
+    // the program looks and the code's options; the codes you save or copy go to Recent codes, in
+    // a file of their own, while it's on (as on the website).
     sealed class Settings
     {
         public const string FileName = "b0r3dQR.ini";
@@ -27,6 +28,8 @@ namespace B0r3dQR
         public PrintSize Print = new PrintSize();   // "Size for print", kept apart from designs as the website keeps it
         public bool WholePixels;            // saved pictures at whole pixels per module
         public bool FromOlder;              // the ini is from b0r3d QR 0.1 or 0.2 (no whole_pixels line): its level, quiet zone and picture size are the design's
+        public bool RecentCodes = true;     // add codes saved, copied or dragged out to Recent codes (on, as on the website)
+        public bool RecentNoteShown;        // the note about Recent codes has been shown once
 
         public static Settings Load() => Load(System.IO.Path.Combine(DataFolder.Path, FileName));
 
@@ -85,6 +88,13 @@ namespace B0r3dQR
                         s.WholePixels = value.Equals("on", StringComparison.OrdinalIgnoreCase);
                         wholePixelsLine = true;
                         break;
+                    case "recent_codes":
+                        // whatever reads as off is off, since what it keeps is the text typed
+                        s.RecentCodes = !Array.Exists(new[] { "off", "false", "no", "0" }, word => value.Equals(word, StringComparison.OrdinalIgnoreCase));
+                        break;
+                    case "recent_note":
+                        s.RecentNoteShown = value.Equals("shown", StringComparison.OrdinalIgnoreCase);
+                        break;
                 }
             }
             if (!wholePixelsLine && lines.Length > 0)
@@ -125,6 +135,8 @@ namespace B0r3dQR
             text.Append("print_unit=").Append(Print.Unit).Append("\r\n");
             text.Append("print_dpi=").Append(Print.Dpi.ToString(CultureInfo.InvariantCulture)).Append("\r\n");
             text.Append("whole_pixels=").Append(WholePixels ? "on" : "off").Append("\r\n");
+            text.Append("recent_codes=").Append(RecentCodes ? "on" : "off").Append("\r\n");
+            if (RecentNoteShown) text.Append("recent_note=shown\r\n");
             return text.ToString();
         }
 

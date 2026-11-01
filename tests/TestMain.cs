@@ -80,6 +80,11 @@ namespace B0r3dQR.Tests
                 Run("codes: the same modules as the website's own encoder, for 42 of its codes and all 8 masks", SameModulesAsTheWebsite);
                 Run("codes: with the UTF-8 marker, the same modules as zint made for the website, for 58 codes", SameMarkedModulesAsTheWebsite);
                 Run("codes: text split into digit, capital and byte parts by the website's rules", SplitsLikeTheWebsite);
+                Run("templates: every template writes the website's text, byte for byte (68 of its own)", TemplatesWriteLikeTheWebsite);
+                Run("templates: texts read back into the website's template and fields (48 of its own)", TemplatesReadLikeTheWebsite);
+                Run("templates: encodeURIComponent, URLSearchParams, parseFloat, toFixed and trim as in a browser", JavaScriptPiecesLikeABrowser);
+                Run("templates: the forms' fields, messages, examples and number fields as on the website", TemplateFormsLikeTheWebsite);
+                Run("recent codes: what the list says, 20 kept, the same text replaced, big pictures left out, a damaged file left alone", RecentCodesLikeTheWebsite);
                 Run("design: all 72 dot, ring and centre shape combinations read back", EveryShapeReadsBack);
                 Run("design: the website's shapes (circles, its radii, its fallbacks for unknown types)", ShapesLikeTheWebsite);
                 Run("design: the logo's room by the website's sums; L raised to Q; a web logo left out with a note", LogoRoomLikeTheWebsite);
@@ -95,6 +100,8 @@ namespace B0r3dQR.Tests
                 Run("designer: the data checks' fixes, one after another", DataChecksInTheWindow);
                 Run("designer: print size in the window, and inches kept as the same length", PrintSizeInTheWindow);
                 Run("designer: a number typed with a point means the same in any language", NumbersInAnyLanguage);
+                Run("designer: data templates in the window, filled from the text, with their messages, Save and examples", TemplatesInTheWindow);
+                Run("designer: Recent codes: kept on save or copy, the note once, open, delete, Clear all asks, off", RecentCodesInTheWindow);
                 Run("shapes: exactly the dark modules, with the quiet zone around them", ShapesMatchTheCode);
                 Run("picture size: whole pixels per module, as near the size asked for as can be", PictureSizes);
 

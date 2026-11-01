@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.4 (not released yet)
+
+The fourth stage: data templates and recent codes, as qr.b0r3d.org has them.
+
+- Data templates: text, URL, Wi-Fi, contact card (vCard 2.1, 3.0 or 4.0), email, phone, SMS,
+  location, event, EPC payment (SEPA, GiroCode) and product (GS1 Digital Link), each a form
+  that writes the code's text the website's way, byte for byte (checked against 116 cases run
+  through the website's own code). The list under Data shows which template the text is;
+  choosing one, or Edit…, opens its form filled from the text already there, so a code made
+  elsewhere opens without losing anything the form shows. The website's messages for missing
+  fields, live checks of IBANs and product numbers, and its examples (Use example). What's
+  typed in each form is kept while the program runs. Where the website's Save could write a
+  wrong code or none over the text (an amount like 1.234,56, a coordinate that isn't a number,
+  a name or BIC of spaces alone), the form asks instead.
+- Recent codes: the last 20 codes saved, copied or dragged out (the same text again replaces
+  its old entry), with a picture of each drawn from its design, none for a Wi-Fi network with
+  its password. Open brings a code back, design and text; Delete takes one out; Clear all asks
+  again first. A switch turns it off (it's on, as on the website), and a note says where the
+  first code went, with Don't keep codes. They're kept in `b0r3dQR recent.json` in the data
+  folder, nowhere else; a file from a newer b0r3d QR, or one another program has open, is left
+  alone.
+
 ## 0.3 (not released yet)
 
 The third stage: the full QR designer, as qr.b0r3d.org has it.
@@ -32,6 +54,7 @@ The third stage: the full QR designer, as qr.b0r3d.org has it.
   its text; the first run after 0.2 starts from 0.2's level, quiet zone and picture size.
 - Numbers typed with a point mean the same in any language. Access keys for the main
   switches, and screen readers hear the scan check and the checks on the text.
+- The version and the build are shown apart: v0.3 · Build: abc1234.
 
 ## 0.2 (not released yet)
 
