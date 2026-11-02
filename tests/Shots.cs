@@ -75,6 +75,28 @@ namespace B0r3dQR.Tests
                 LayOut(barcodes.Root, MainWidth, MainHeight);
                 Shoot(barcodes.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "barcode-datamatrix-" + name + ".png"));
 
+                // batch export: a CSV with captions and a row too long, its second row showing; and the print window
+                // with a sheet of copies
+                MainWindow batchMain = NewMain();
+                Type(batchMain, "https://b0r3d.org");
+                BatchWindow batchShot = NewBatch(batchMain, "url,frameText,fileName\nhttps://b0r3d.org,Visit b0r3d.org,b0r3d_home\nhttps://qr.b0r3d.org,Make your own,qr_maker\n" +
+                                                        new string('x', 3000) + ",Too long,too_long\nPlain text works too,,plain_text\n");
+                batchShot.ShowRow(1);
+                LayOut(batchShot.Root, 660, 760);
+                Pump(() => false, 50);
+                LayOut(batchShot.Root, 660, 760);
+                Shoot(batchShot.Root, 660, 760, 1, Path.Combine(folder, "batch-export-" + name + ".png"));
+                batchShot.Close();
+                PrintWindow printShot = batchMain.PrintWindowFor();
+                printShot.PaperOverride = Printing.PrintSheet.A4;
+                LayOut(printShot.Root, 760, 720);
+                printShot.SheetChoice.IsChecked = true;
+                LayOut(printShot.Root, 760, 720);
+                Pump(() => false, 50);
+                LayOut(printShot.Root, 760, 720);
+                Shoot(printShot.Root, 760, 720, 1, Path.Combine(folder, "print-" + name + ".png"));
+                printShot.Close();
+
                 // the data templates: the Wi-Fi form filled from a code's text, an EPC payment's form
                 // after Save with a message, and a contact's example, two fields to a row
                 MainWindow templated = NewMain();

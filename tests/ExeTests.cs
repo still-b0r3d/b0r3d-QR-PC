@@ -68,6 +68,8 @@ namespace B0r3dQR.Tests
                 Check(found.TryGetValue("scan", out string scan) && scan == "ok", "the Scan tab's reader didn't work inside the exe: " + all);
                 Check(found.TryGetValue("designer", out string designer) && designer == "ok", "a designed code (a preset's logo, a frame) didn't draw and read back inside the exe: " + all);
                 Check(found.TryGetValue("barcodes", out string barcodes) && barcodes == "ok", "the barcodes (bars, Data Matrix, Aztec, PDF417) didn't make and read back inside the exe: " + all);
+                Check(found.TryGetValue("batch", out string batchMade) && batchMade == "ok", "a batch (a CSV into a zip, read back) or the Batch export window didn't work inside the exe: " + all);
+                Check(found.TryGetValue("print", out string printed) && printed == "ok", "a printed page didn't lay out and read back, or the Print window didn't build, inside the exe: " + all);
                 Check(found.TryGetValue("templates", out string templates) && templates == "ok", "the data templates' and Recent codes windows didn't work inside the exe: " + all);
                 Check(found["dpi"] == "per-monitor-v2", "the exe follows the screens' scaling as \"" + found["dpi"] + "\", not per-monitor-v2 (is the manifest in?)");
                 Check(found["version"] == Program.FullVersion, "the exe says " + found["version"]);

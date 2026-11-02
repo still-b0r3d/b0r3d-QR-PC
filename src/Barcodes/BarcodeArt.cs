@@ -60,28 +60,7 @@ namespace B0r3dQR.Barcodes
             int width = Math.Max(1, (int)Math.Round(W * scale)), height = Math.Max(1, (int)Math.Round(H * scale));
             var visual = new DrawingVisual();
             RenderOptions.SetEdgeMode(visual, EdgeMode.Aliased);
-            using (DrawingContext dc = visual.RenderOpen())
-            {
-                var whole = new Rect(0, 0, width, height);
-                if (under.HasValue) dc.DrawRectangle(new SolidColorBrush(under.Value), null, whole);
-                if (paper.HasValue) dc.DrawRectangle(new SolidColorBrush(paper.Value), null, whole);
-                var brush = new SolidColorBrush(ink);
-                brush.Freeze();
-                foreach (Rect bar in bars)
-                {
-                    double x0 = Math.Round(bar.X * scale), y0 = Math.Round(bar.Y * scale);
-                    double x1 = Math.Round((bar.X + bar.Width) * scale), y1 = Math.Round((bar.Y + bar.Height) * scale);
-                    if (x1 > x0 && y1 > y0) dc.DrawRectangle(brush, null, new Rect(x0, y0, x1 - x0, y1 - y0));
-                }
-                foreach (Words w in words)
-                {
-                    var text = new FormattedText(w.Text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(Font(w.Family), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
-                                                 w.Size * scale, brush, 1.0);
-                    double across = text.WidthIncludingTrailingWhitespace;
-                    double x = w.X * scale - (w.Anchor == "middle" ? across / 2 : w.Anchor == "end" ? across : 0);
-                    dc.DrawText(text, new Point(x, w.Y * scale - text.Baseline));
-                }
-            }
+            using (DrawingContext dc = visual.RenderOpen()) Draw(dc, scale, new Rect(0, 0, width, height), ink, paper, under, true);
             var picture = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
             picture.Render(visual);
             picture.Freeze();
@@ -92,6 +71,38 @@ namespace B0r3dQR.Barcodes
             BitmapSource marked = BitmapSource.Create(width, height, dpi, dpi, PixelFormats.Pbgra32, null, pixels, width * 4);
             marked.Freeze();
             return marked;
+        }
+
+        // the barcode as shapes, a unit a module (for printing at any size, as sharp as the printer prints)
+        public Drawing ToDrawing(Color ink, Color? paper)
+        {
+            var group = new DrawingGroup();
+            using (DrawingContext dc = group.Open()) Draw(dc, 1, new Rect(0, 0, W, H), ink, paper, null, false);
+            group.Freeze();
+            return group;
+        }
+
+        // the bars and the text at `scale`, over `whole`; `pixels` puts every edge on a whole pixel
+        void Draw(DrawingContext dc, double scale, Rect whole, Color ink, Color? paper, Color? under, bool pixels)
+        {
+            double At(double v) => pixels ? Math.Round(v * scale) : v * scale;
+            if (under.HasValue) dc.DrawRectangle(new SolidColorBrush(under.Value), null, whole);
+            if (paper.HasValue) dc.DrawRectangle(new SolidColorBrush(paper.Value), null, whole);
+            var brush = new SolidColorBrush(ink);
+            brush.Freeze();
+            foreach (Rect bar in bars)
+            {
+                double x0 = At(bar.X), y0 = At(bar.Y), x1 = At(bar.X + bar.Width), y1 = At(bar.Y + bar.Height);
+                if (x1 > x0 && y1 > y0) dc.DrawRectangle(brush, null, new Rect(x0, y0, x1 - x0, y1 - y0));
+            }
+            foreach (Words w in words)
+            {
+                var text = new FormattedText(w.Text, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, new Typeface(Font(w.Family), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal),
+                                             w.Size * scale, brush, 1.0);
+                double across = text.WidthIncludingTrailingWhitespace;
+                double x = w.X * scale - (w.Anchor == "middle" ? across / 2 : w.Anchor == "end" ? across : 0);
+                dc.DrawText(text, new Point(x, w.Y * scale - text.Baseline));
+            }
         }
     }
 }

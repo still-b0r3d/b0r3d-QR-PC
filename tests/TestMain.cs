@@ -87,6 +87,7 @@ namespace B0r3dQR.Tests
                 Run("barcodes: Data Matrix, Aztec and PDF417 modules as zint made them for the website, for 252 codes", BarcodeMatricesLikeTheWebsite);
                 Run("barcodes: every type scans back as itself and is made again into the same barcode", BarcodesScanAndMakeAgain);
                 Run("barcodes: PNG, SVG and PDF in the website's colours and sizes, read back", BarcodeFilesLikeTheWebsite);
+                Run("batch: the website's CSV rules, rows and file names, for 35 of its files", BatchFilesLikeTheWebsite);
                 Run("templates: every template writes the website's text, byte for byte (68 of its own)", TemplatesWriteLikeTheWebsite);
                 Run("templates: texts read back into the website's template and fields (48 of its own)", TemplatesReadLikeTheWebsite);
                 Run("templates: encodeURIComponent, URLSearchParams, parseFloat, toFixed and trim as in a browser", JavaScriptPiecesLikeABrowser);
@@ -110,6 +111,11 @@ namespace B0r3dQR.Tests
                 Run("designer: data templates in the window, filled from the text, with their messages, Save and examples", TemplatesInTheWindow);
                 Run("designer: Recent codes: kept on save or copy, the note once, open, delete, Clear all asks, off", RecentCodesInTheWindow);
                 Run("designer: barcodes: every type from the list, checked, its own options, the website's messages, QR code again", BarcodesInTheWindow);
+                Run("batch export: into a folder, each file read back; files already there numbered, skipped or replaced; a row too long left out", BatchIntoAFolder);
+                Run("batch export: every kind of file into a zip, read back out of it; barcodes with a refused row", BatchIntoAZip);
+                Run("batch export: names alike but for capitals, see-through PNGs, text read from its characters, a CSV open elsewhere, names after a refused row", BatchCornerCases);
+                Run("printing: one code at its exact print size in the middle of the page; sheets of copies with captions and cut marks; too big shrunk and said", PrintingLaysOutPages);
+                Run("printing: a barcode at its files' size; a batch on sheets with file names, or one a page, each page scanned", PrintingBarcodesAndBatches);
                 Run("designer: barcode settings kept for next time; a recent barcode opens with its type, text and look", BarcodeSettingsKept);
                 Run("shapes: exactly the dark modules, with the quiet zone around them", ShapesMatchTheCode);
                 Run("picture size: whole pixels per module, as near the size asked for as can be", PictureSizes);

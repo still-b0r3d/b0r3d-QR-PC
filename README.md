@@ -9,10 +9,11 @@ qr.b0r3d.org, made by [b0r3d.org](https://b0r3d.org).
 It's one small exe that runs on Windows 10 and 11 with nothing to install, and it never
 goes online.
 
-**Being built.** This is version 0.5, the fifth of seven stages: the full QR designer, with
+**Being built.** This is version 0.6, the sixth of seven stages: the full QR designer, with
 the website's shapes, colours, logos, frames, presets, checks, every export and its design
-files; its data templates and recent codes; its 13 other barcodes; and reading codes from
-pictures, folders and the screen. Batch export and printing come next.
+files; its data templates and recent codes; its 13 other barcodes; batch export from a CSV and
+printing; and reading codes from pictures, folders and the screen. Getting it ready for its
+first release comes next.
 
 ## Make a code
 
@@ -79,6 +80,31 @@ follows zint's rules: a barcode comes out the same here as there, down to the SV
 The scan check, warnings, What's in this code, the files (PNG, JPG, SVG and PDF), copying,
 dragging and Recent codes work for barcodes as for QR codes. Each type keeps its own text
 while b0r3d QR is open, and the barcode settings are kept for next time.
+
+## Many codes at once
+
+**File → Batch export…** (Ctrl+B), or dropping a CSV file on the Make tab, makes a file for
+every row of a CSV: QR codes in the Make tab's design, or the barcode type showing in its
+settings. The CSV is the website's: for QR codes, a first row naming the columns, then each
+code's text, a frame caption and a file name (a frameFontFamily column sets the caption's
+font), or a file of contacts with firstName and lastName columns, each row made into a contact
+card; for barcodes, the code and a file name, with or without a first row naming them.
+**Save an example…** writes one to start from. The window lists the rows that can't be made
+and why before anything is written, and shows each row's code in turn. Choose PNG, JPG, SVG,
+PDF or text, and a folder or a zip file; files already in the folder are asked about once
+(number the new ones, replace them or skip them). Every file is read back once it's written and
+scanned. The files are named as the website names them: the CSV's file name, else the caption,
+else something from the code's text.
+
+## Print
+
+**File → Print…** (Ctrl+P) prints the code at its exact size, the print size set on the Make
+tab (its picture's size without one): alone in the middle of the page, or a sheet of copies
+with a caption under each code and cut marks at the corners. **Print them…** in Batch export
+prints a batch's codes on sheets, each with its file name, or one a page. The window shows each
+page before Windows' Print dialog, where you choose the printer and its paper. The codes are
+printed as shapes, as sharp as the printer prints; one bigger than the paper is printed smaller,
+and the window says so.
 
 **View → Look** follows Windows' light or dark setting, or stays light or dark.
 

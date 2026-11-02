@@ -16,6 +16,8 @@ namespace B0r3dQR
         public static readonly RoutedUICommand CopyText = Make("Copy as text", nameof(CopyText), null);
         public static readonly RoutedUICommand OpenDesign = Make("Open design…", nameof(OpenDesign), null);
         public static readonly RoutedUICommand SaveDesign = Make("Save design…", nameof(SaveDesign), null);
+        public static readonly RoutedUICommand Batch = Make("Batch export…", nameof(Batch), new KeyGesture(Key.B, ModifierKeys.Control));
+        public static readonly RoutedUICommand Print = Make("Print…", nameof(Print), new KeyGesture(Key.P, ModifierKeys.Control));
         public static readonly RoutedUICommand ScanScreen = Make("Scan the screen", nameof(ScanScreen), new KeyGesture(Key.R, ModifierKeys.Control | ModifierKeys.Shift));
         public static readonly RoutedUICommand OpenPicture = Make("Open picture…", nameof(OpenPicture), new KeyGesture(Key.O, ModifierKeys.Control));
         public static readonly RoutedUICommand PastePicture = Make("Paste picture", nameof(PastePicture), new KeyGesture(Key.V, ModifierKeys.Control | ModifierKeys.Shift));

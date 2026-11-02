@@ -101,6 +101,40 @@ namespace B0r3dQR.Qr
         }
 
         // Flate as PDF wants it: zlib's two-byte header, the deflated bytes, then the Adler-32 sum
+        // The picture in a PDF made by Make, on white where it's see-through (for reading a file back); null when it
+        // isn't one of ours
+        public static BitmapSource ReadPicture(byte[] pdf)
+        {
+            string text = Encoding.GetEncoding(28591).GetString(pdf);   // one character a byte
+            byte[] Stream(string colourSpace, out int width, out int height)
+            {
+                width = height = 0;
+                var image = System.Text.RegularExpressions.Regex.Match(text, "/Subtype /Image /Width ([0-9]+) /Height ([0-9]+) /ColorSpace /" + colourSpace + " [^>]*/Length ([0-9]+) >>\nstream\n");
+                if (!image.Success) return null;
+                width = int.Parse(image.Groups[1].Value, CultureInfo.InvariantCulture);
+                height = int.Parse(image.Groups[2].Value, CultureInfo.InvariantCulture);
+                int start = image.Index + image.Length, length = int.Parse(image.Groups[3].Value, CultureInfo.InvariantCulture);
+                if (length < 2 || start + length > pdf.Length) return null;
+                using (var input = new MemoryStream(pdf, start + 2, length - 2))   // past zlib's two-byte header
+                using (var inflate = new DeflateStream(input, CompressionMode.Decompress))
+                using (var output = new MemoryStream())
+                {
+                    inflate.CopyTo(output);
+                    return output.ToArray();
+                }
+            }
+            byte[] rgb = Stream("DeviceRGB", out int w, out int h);
+            if (rgb == null || rgb.Length < (long)w * h * 3) return null;
+            byte[] alpha = Stream("DeviceGray", out int aw, out int ah);
+            if (alpha != null && aw == w && ah == h && alpha.Length >= (long)w * h)
+                for (long i = 0; i < (long)w * h; i++)
+                    for (int c = 0; c < 3; c++)
+                        rgb[i * 3 + c] = (byte)((rgb[i * 3 + c] * alpha[i] + 255 * (255 - alpha[i]) + 127) / 255);
+            BitmapSource picture = BitmapSource.Create(w, h, 96, 96, PixelFormats.Rgb24, null, rgb, w * 3);
+            picture.Freeze();
+            return picture;
+        }
+
         static byte[] Zlib(byte[] data)
         {
             var output = new MemoryStream();

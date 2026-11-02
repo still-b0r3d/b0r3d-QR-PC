@@ -24,6 +24,17 @@
     <Resource Include="..\assets\presets\rukus.png" Link="assets\presets\rukus.png" />
     <EmbeddedResource Include="..\LICENSE" Link="LICENSE" LogicalName="B0r3dQR.LICENSE" />
     <EmbeddedResource Include="..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" LogicalName="B0r3dQR.THIRD-PARTY-NOTICES.txt" />
+    <!-- Batch export's examples to start from (b0r3d QR's own, with every column the website reads) -->
+    <EmbeddedResource Include="..\assets\batch\batch-example.csv" Link="assets\batch\batch-example.csv" LogicalName="B0r3dQR.batch-example.csv" />
+    <EmbeddedResource Include="..\assets\batch\batch-example-contacts.csv" Link="assets\batch\batch-example-contacts.csv" LogicalName="B0r3dQR.batch-example-contacts.csv" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- parts of .NET Framework itself (every Windows has them): zip files for batch export, and printing -->
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Reference Include="ReachFramework" />
+    <Reference Include="System.Printing" />
   </ItemGroup>
 
   <ItemGroup>

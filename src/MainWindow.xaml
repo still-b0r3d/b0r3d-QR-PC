@@ -24,6 +24,8 @@
         <CommandBinding Command="{x:Static local:Commands.CopyText}" Executed="OnCopyText" CanExecute="WhenThereIsAQrCode" />
         <CommandBinding Command="{x:Static local:Commands.OpenDesign}" Executed="OnOpenDesign" />
         <CommandBinding Command="{x:Static local:Commands.SaveDesign}" Executed="OnSaveDesign" CanExecute="WhenMakingQr" />
+        <CommandBinding Command="{x:Static local:Commands.Batch}" Executed="OnBatch" />
+        <CommandBinding Command="{x:Static local:Commands.Print}" Executed="OnPrintCode" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.ScanScreen}" Executed="OnScanScreen" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.OpenPicture}" Executed="OnOpenPicture" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.PastePicture}" Executed="OnPastePicture" CanExecute="WhenNotScanning" />
@@ -89,6 +91,9 @@
                 <MenuItem Header="Save _SVG…" Command="{x:Static local:Commands.SaveSvg}" />
                 <MenuItem Header="Save P_DF…" Command="{x:Static local:Commands.SavePdf}" />
                 <MenuItem Header="Save as _text…" Command="{x:Static local:Commands.SaveText}" />
+                <Separator />
+                <MenuItem Header="_Batch export…" Command="{x:Static local:Commands.Batch}" />
+                <MenuItem Header="Pr_int…" Command="{x:Static local:Commands.Print}" />
                 <Separator />
                 <MenuItem Header="_Open design…" Command="{x:Static local:Commands.OpenDesign}" />
                 <MenuItem Header="Save desi_gn…" Command="{x:Static local:Commands.SaveDesign}" />

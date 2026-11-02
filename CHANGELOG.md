@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.6 (not released yet)
+
+The sixth stage: batch export and printing.
+
+- Batch export (File → Batch export…, Ctrl+B, or drop a CSV on the Make tab): a file for every
+  row of a CSV, for QR codes in the Make tab's design or for the barcode type showing in its
+  settings. The CSV is read as the website reads it (its columns, contacts files written as
+  vCards, captions, file names and fonts, commas, semicolons or tabs, UTF-8 or Windows-1252),
+  and the files are named as the website names them (checked against 35 of the website's own
+  CSV readings). Rows that can't be made are listed, with why, before anything is written; each
+  row can be looked at in turn, its code drawn as its file will be. PNG, JPG, SVG, PDF or text
+  (QR codes), straight into a folder or into a zip; files already in the folder are asked
+  about once (number the new ones, replace them or skip them). Every file is read back once
+  it's written and scanned, and a summary says what was made and anything that wasn't. Examples
+  to start from (links, contacts) can be saved from the window. A frame shows each row's
+  caption when the file has captions, as on the website.
+- Printing (File → Print…, Ctrl+P): the code at its exact size, the print size set on the Make
+  tab (or its picture's size without one), alone in the middle of the page or as a sheet of
+  copies, with a caption under each code and cut marks at the corners; a batch prints on sheets
+  with each code's file name under it, or one a page. A preview of each page, then Windows'
+  Print dialog for the printer and its paper. The codes are drawn as shapes, so they print as
+  sharp as the printer can; a code bigger than the paper is printed smaller to fit, and the
+  window says so.
+
 ## 0.5 (not released yet)
 
 The fifth stage: the website's 13 other barcodes, as qr.b0r3d.org makes them.

@@ -10,9 +10,9 @@ namespace B0r3dQR
     // b0r3dQR.exe --selftest <file>: no window shown. Makes a code, draws it the way a PNG is saved,
     // reads it back (as the scan check and as the Scan tab), checks the SVG, builds the windows
     // (the Scan tab with a card, and a screen's overlay too), draws a designed code (a preset's logo,
-    // a frame), makes and reads back a barcode of each kind (the Make tab with one too), fills a data
-    // template and builds the Recent codes window, and writes what it found to <file>
-    // as key=value lines; the exit code is 0 when it all worked. The tests run it on the finished
+    // a frame), makes and reads back a barcode of each kind (the Make tab with one too), a small batch
+    // in a zip and a printed page, fills a data template and builds the Recent codes window, and writes
+    // what it found to <file> as key=value lines; the exit code is 0 when it all worked. The tests run it on the finished
     // one-file exe, on its own in a folder, to prove it works with nothing beside it.
     static class SelfTest
     {
@@ -123,6 +123,67 @@ namespace B0r3dQR
                 barcodesOk &= making.BarcodeShown != null && making.Preview.Source != null;
                 lines.Add("barcodes=" + (barcodesOk ? "ok" : "failed"));
                 ok &= barcodesOk;
+
+                // batch export inside this exe: a two-row CSV made into PNG files in a zip (held in memory), each read
+                // back out of it and scanned
+                List<Batch.BatchRow> rows = Batch.BatchRows.ReadQr("url,frameText\nb0r3d QR self-test row,Scan me\nsecond row,\n", out bool framed);
+                var batch = new Batch.BatchKind { Design = new Design.QrDesign(), Frame = framed, Format = Batch.BatchFormat.Png };
+                List<Batch.BatchItem> items = Batch.BatchExport.Plan(rows, batch);
+                bool batchOk = items.Count == 2 && items.TrueForAll(i => i.Problem == null);
+                using (var memory = new MemoryStream())
+                {
+                    using (var zip = new System.IO.Compression.ZipArchive(memory, System.IO.Compression.ZipArchiveMode.Create, true))
+                        foreach (Batch.BatchItem item in items)
+                        {
+                            byte[] made = Batch.BatchExport.Make(item, batch, out _);
+                            using (Stream entry = zip.CreateEntry(item.Name + ".png").Open()) entry.Write(made, 0, made.Length);
+                        }
+                    memory.Position = 0;
+                    using (var zip = new System.IO.Compression.ZipArchive(memory, System.IO.Compression.ZipArchiveMode.Read))
+                        foreach (Batch.BatchItem item in items)
+                        {
+                            var copy = new MemoryStream();
+                            using (Stream entry = zip.GetEntry(item.Name + ".png").Open()) entry.CopyTo(copy);
+                            byte[] back = ScanCheck.Grays(Batch.BatchExport.Picture(copy.ToArray(), item, batch), out int bw2, out int bh2);
+                            batchOk &= Batch.BatchExport.Read(back, bw2, bh2, batch) == item.Expected;
+                        }
+                }
+                lines.Add("batch=" + (batchOk ? "ok" : "failed"));
+                ok &= batchOk;
+
+                // printing inside this exe: a page with the code on it at its size, drawn as a printer would, read back
+                var printed = new QrArt(new Design.QrDesign { Data = Text });
+                var sheet = Printing.PrintSheet.Pages(new List<Printing.PrintCode> { new Printing.PrintCode { Drawing = printed.ToDrawing(), Canvas = new Rect(0, 0, printed.W, printed.H), Size = Printing.PrintSheet.QrSize(printed, new PrintSize(), false) } },
+                                                      new Printing.PrintOptions(), out _);
+                var page = (System.Windows.Documents.FixedPage)sheet.Pages[0].Child;
+                page.Measure(Printing.PrintSheet.A4);
+                page.Arrange(new Rect(Printing.PrintSheet.A4));
+                page.UpdateLayout();
+                var paper = new System.Windows.Media.Imaging.RenderTargetBitmap((int)Printing.PrintSheet.A4.Width, (int)Printing.PrintSheet.A4.Height, 96, 96, System.Windows.Media.PixelFormats.Pbgra32);
+                paper.Render(page);
+                byte[] pageGrays = ScanCheck.Grays(paper, out int pw, out int ph);
+                bool printOk = ScanCheck.Read(pageGrays, pw, ph)?.Text == Text;
+
+                // the Batch export and Print windows, built from inside this exe (their pages and styles load after
+                // the merge) and laid out
+                var batchWindow = new BatchWindow(batch, "QR codes");
+                batchWindow.LoadCsvText("self-test.csv", "url,frameText\nb0r3d QR self-test row,Scan me\n");
+                batchWindow.Root.Measure(new Size(660, 760));
+                batchWindow.Root.Arrange(new Rect(0, 0, 660, 760));
+                batchWindow.Root.UpdateLayout();
+                batchWindow.Close();
+                var printWindow = new PrintWindow(new Printing.PrintCode { Drawing = printed.ToDrawing(), Canvas = new Rect(0, 0, printed.W, printed.H), Size = new Size(200, 200) }, "self-test", "mm")
+                {
+                    PaperOverride = Printing.PrintSheet.A4,
+                };
+                printWindow.Root.Measure(new Size(760, 720));
+                printWindow.Root.Arrange(new Rect(0, 0, 760, 720));
+                printWindow.Lay();
+                printWindow.Root.UpdateLayout();
+                printOk &= printWindow.Document?.Pages.Count == 1 && printWindow.PagePicture.Source != null;
+                printWindow.Close();
+                lines.Add("print=" + (printOk ? "ok" : "failed"));
+                ok &= printOk;
 
                 // the data templates' window (a Wi-Fi text read into its form and written again) and
                 // the Recent codes window, built from inside this exe

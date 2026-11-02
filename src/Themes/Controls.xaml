@@ -400,6 +400,43 @@
         </Setter>
     </Style>
 
+    <!-- option buttons (one of a few, with words): a round box like the check boxes', with a dot when chosen -->
+    <Style TargetType="RadioButton">
+        <Setter Property="Foreground" Value="{DynamicResource Text}" />
+        <Setter Property="FocusVisualStyle" Value="{StaticResource Focus}" />
+        <Setter Property="SnapsToDevicePixels" Value="True" />
+        <Setter Property="Template">
+            <Setter.Value>
+                <ControlTemplate TargetType="RadioButton">
+                    <Grid Background="Transparent">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border x:Name="Box" Width="18" Height="18" CornerRadius="9" BorderThickness="1" VerticalAlignment="Top" Margin="0,1,0,0"
+                                BorderBrush="{DynamicResource FieldLine}" Background="{DynamicResource Field}">
+                            <Ellipse x:Name="Dot" Width="8" Height="8" Fill="{DynamicResource AccentText}" Visibility="Collapsed" />
+                        </Border>
+                        <ContentPresenter Grid.Column="1" Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True" />
+                    </Grid>
+                    <ControlTemplate.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource FieldLineHover}" />
+                        </Trigger>
+                        <Trigger Property="IsChecked" Value="True">
+                            <Setter TargetName="Box" Property="Background" Value="{DynamicResource Accent}" />
+                            <Setter TargetName="Box" Property="BorderBrush" Value="{DynamicResource Accent}" />
+                            <Setter TargetName="Dot" Property="Visibility" Value="Visible" />
+                        </Trigger>
+                        <Trigger Property="IsEnabled" Value="False">
+                            <Setter Property="Opacity" Value="0.45" />
+                        </Trigger>
+                    </ControlTemplate.Triggers>
+                </ControlTemplate>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
     <!-- drop-down lists: a field with an arrow, and a list below in the menus' colours -->
     <Style TargetType="ComboBox">
         <Setter Property="Foreground" Value="{DynamicResource Text}" />

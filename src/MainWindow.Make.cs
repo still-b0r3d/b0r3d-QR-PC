@@ -60,7 +60,7 @@ namespace B0r3dQR
             public override string ToString() => Label;
         }
 
-        static readonly (string Label, string Value)[] WebsiteFonts =
+        internal static readonly (string Label, string Value)[] WebsiteFonts =
         {
             ("Arial", "Arial, sans-serif"), ("Verdana", "Verdana, sans-serif"), ("Roboto", "'Roboto', sans-serif"), ("Inter", "'Inter', sans-serif"),
             ("Open Sans", "'Open Sans', sans-serif"), ("Lato", "'Lato', sans-serif"), ("Montserrat", "'Montserrat', sans-serif"), ("Poppins", "'Poppins', sans-serif"),
@@ -70,6 +70,16 @@ namespace B0r3dQR
             ("Source Code Pro", "'Source Code Pro', monospace"), ("IBM Plex Mono", "'IBM Plex Mono', monospace"), ("Inconsolata", "'Inconsolata', monospace"),
             ("Pacifico", "'Pacifico', cursive"), ("Bebas Neue", "'Bebas Neue', sans-serif"),
         };
+
+        // a caption font from a batch CSV, as the website reads it: one of its fonts by name or by its CSS, else as written;
+        // "" for its first choice, Default (the frame's own font)
+        internal static string WebsiteFontValue(string font)
+        {
+            if (font == "Default") return "";
+            foreach (var (label, value) in WebsiteFonts)
+                if (value == font || label == font) return value;
+            return font;
+        }
 
         readonly List<FontChoice> fonts = new List<FontChoice>();
 
@@ -1486,6 +1496,15 @@ namespace B0r3dQR
                 e.Effects = DragDropEffects.Copy;
                 e.Handled = true;
                 if (drop) OpenDesignFile(designFile);
+                return true;
+            }
+            string csvFile = CsvFileIn(e.Data);
+            if (csvFile != null && Tabs.SelectedItem == MakeTab)
+            {
+                e.Effects = DragDropEffects.Copy;
+                e.Handled = true;
+                // (after the drop is done: a window shown inside it would hold up Explorer)
+                if (drop) Dispatcher.BeginInvoke(new Action(() => OpenBatch(csvFile)));
                 return true;
             }
             if (Tabs.SelectedItem != MakeTab || !LogoSection.IsVisible || !Pictures.CanRead(e.Data)) return false;
