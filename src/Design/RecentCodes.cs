@@ -5,24 +5,28 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
+using B0r3dQR.Barcodes;
 
 namespace B0r3dQR.Design
 {
-    // One code in Recent codes, as the website keeps one: what the list shows, and the design
-    // with its text, to open again.
+    // One code in Recent codes, as the website keeps one: what the list shows, and what opens it again:
+    // a QR code's design with its text, or a barcode's type, text and settings.
     sealed class RecentCode
     {
         public int Id;
-        public string Key;                            // the same text again replaces it
-        public string Label, Title;                   // "URL", "WiFi"...; the text shortened, never a Wi-Fi password
+        public string Key;                            // the same text again (as the same kind of code) replaces it
+        public string Label, Title;                   // "URL", "WiFi", "EAN-13"...; the text shortened, never a Wi-Fi password
         public bool Sensitive;                        // holds a Wi-Fi password, so the list shows no picture of it
         public List<string> Omitted = new List<string>();   // "logo", "background": too big to keep
         public long SavedAt;                          // milliseconds since 1970, UTC
-        public string Design;                         // the design file's text, the code's text in it
+        public string Design;                         // a QR code: the design file's text, the code's text in it
+        public BarcodeType? Barcode;                  // a barcode: its type, the text as typed, its settings
+        public string BarcodeText;
+        public BarcodeLook BarcodeLook;
 
         public string Name => Title.Length > 0 ? Label + ": " + Title : Label;
 
-        public int Size => Design.Length;
+        public int Size => Design?.Length ?? Json.Write(RecentCodes.BarcodeDetails(this)).Length;
 
         public DateTime SavedLocal => DateTimeOffset.FromUnixTimeMilliseconds(SavedAt).LocalDateTime;   // a time read from the file is checked first
     }
@@ -153,6 +157,59 @@ namespace B0r3dQR.Design
 
         static bool TooBig(string picture) => picture != null && picture.StartsWith("data:", StringComparison.Ordinal) && picture.Length > MostImageLength;
 
+        // A barcode to keep: its type, the text as typed, the settings it was made with (the website's
+        // newRecentBarcode: listed by its type's name and the text)
+        public static RecentCode NewBarcode(BarcodeType type, string text, BarcodeLook look, long savedAt)
+        {
+            BarcodeFormat format = BarcodeFormats.Get(type);
+            return new RecentCode
+            {
+                Key = "barcode:" + format.Id + ":" + text,
+                Label = format.Label,
+                Title = Shorten(text),
+                SavedAt = savedAt,
+                Barcode = type,
+                BarcodeText = text,
+                BarcodeLook = look.Clone(),
+            };
+        }
+
+        // a barcode's entry as the file keeps it: its type, its text and its settings in the website's names
+        internal static Dictionary<string, object> BarcodeDetails(RecentCode code) => new Dictionary<string, object>
+        {
+            ["type"] = BarcodeFormats.Get(code.Barcode.Value).Id,
+            ["data"] = code.BarcodeText,
+            ["settings"] = new Dictionary<string, object>
+            {
+                ["color"] = code.BarcodeLook.Color,
+                ["background"] = code.BarcodeLook.Background,
+                ["transparent"] = code.BarcodeLook.Transparent,
+                ["scale"] = code.BarcodeLook.Scale,
+                ["showText"] = code.BarcodeLook.ShowText,
+                ["allowRectangular"] = code.BarcodeLook.AllowRectangular,
+                ["barHeight"] = code.BarcodeLook.BarHeight,
+                ["quietZones"] = code.BarcodeLook.QuietZones,
+            },
+        };
+
+        // A barcode's settings from the file, as the website takes them back: only known ones of the
+        // right kind, the rest as they are now; sizes kept in range, colours that aren't colours left out
+        static BarcodeLook BarcodeSettings(Dictionary<string, object> saved, BarcodeLook current)
+        {
+            BarcodeLook look = current.Clone();
+            if (saved == null) return look;
+            if (Json.Str(saved, "color") is string color && Css.Colour(color) != null) look.Color = color;
+            if (Json.Str(saved, "background") is string background && Css.Colour(background) != null) look.Background = background;
+            if (Json.Bool(saved, "transparent") is bool transparent) look.Transparent = transparent;
+            if (Json.Num(saved, "scale") is double scale && !double.IsNaN(scale)) look.Scale = Math.Max(BarcodeLook.MinScale, Math.Min(BarcodeLook.MaxScale, (int)Math.Round(scale, MidpointRounding.AwayFromZero)));
+            if (Json.Bool(saved, "showText") is bool showText) look.ShowText = showText;
+            if (Json.Bool(saved, "allowRectangular") is bool rectangular) look.AllowRectangular = rectangular;
+            if (Json.Num(saved, "barHeight") is double bars && !double.IsNaN(bars))
+                look.BarHeight = Math.Max(Barcodes.Barcode.MinBarHeight, Math.Min(Barcodes.Barcode.MaxBarHeight, (int)Math.Round(bars, MidpointRounding.AwayFromZero)));
+            if (Json.Bool(saved, "quietZones") is bool quietZones) look.QuietZones = quietZones;
+            return look;
+        }
+
         public static string SizeText(long bytes) =>
             bytes < 1024 * 1024
                 ? Math.Max(1, (long)Math.Round(bytes / 1024.0, MidpointRounding.AwayFromZero)).ToString(CultureInfo.InvariantCulture) + " KB"
@@ -192,9 +249,7 @@ namespace B0r3dQR.Design
                     // a code that isn't whole is left out (and goes when the file is next written)
                     if (!(item is Dictionary<string, object> c) || !(Json.Num(c, "id") is double id && Whole(id, 1, MostId)) || Json.Str(c, "key") == null ||
                         !(Json.Num(c, "savedAt") is double at && Whole(at, 0, LatestTime))) continue;
-                    Dictionary<string, object> design = Json.Obj(c, "design");
-                    if (design == null) continue;
-                    result.Add(new RecentCode
+                    var code = new RecentCode
                     {
                         Id = (int)id,
                         Key = Json.Str(c, "key"),
@@ -203,8 +258,24 @@ namespace B0r3dQR.Design
                         Sensitive = Json.Bool(c, "sensitive") == true,
                         Omitted = (c.TryGetValue("omitted", out object o) && o is List<object> names ? names.OfType<string>() : Enumerable.Empty<string>()).ToList(),
                         SavedAt = (long)at,
-                        Design = Json.Write(design) + "\n",
-                    });
+                    };
+                    if (Json.Str(c, "kind") == "barcode")
+                    {
+                        // a barcode: a type the website makes, and its text
+                        Dictionary<string, object> barcode = Json.Obj(c, "barcode");
+                        BarcodeFormat format = barcode == null ? null : BarcodeFormats.ById(Json.Str(barcode, "type") ?? "");
+                        if (format == null || Json.Str(barcode, "data") == null) continue;
+                        code.Barcode = format.Type;
+                        code.BarcodeText = Json.Str(barcode, "data");
+                        code.BarcodeLook = BarcodeSettings(Json.Obj(barcode, "settings"), new BarcodeLook());
+                    }
+                    else
+                    {
+                        Dictionary<string, object> design = Json.Obj(c, "design");
+                        if (design == null) continue;
+                        code.Design = Json.Write(design) + "\n";
+                    }
+                    result.Add(code);
                 }
                 int after = result.Count == 0 ? 1 : result.Max(c => c.Id) + 1;
                 next = Json.Num(file, "next") is double n && Whole(n, 1, MostId) ? Math.Max((int)n, after) : after;
@@ -232,17 +303,16 @@ namespace B0r3dQR.Design
             var list = new List<object>();
             foreach (RecentCode c in Newest(codes))
             {
-                list.Add(new Dictionary<string, object>
-                {
-                    ["id"] = c.Id,
-                    ["key"] = c.Key,
-                    ["label"] = c.Label,
-                    ["title"] = c.Title,
-                    ["sensitive"] = c.Sensitive,
-                    ["omitted"] = c.Omitted.Cast<object>().ToList(),
-                    ["savedAt"] = c.SavedAt,
-                    ["design"] = Json.Parse(c.Design),
-                });
+                var entry = new Dictionary<string, object> { ["id"] = c.Id, ["key"] = c.Key };
+                if (c.Barcode != null) entry["kind"] = "barcode";
+                entry["label"] = c.Label;
+                entry["title"] = c.Title;
+                entry["sensitive"] = c.Sensitive;
+                entry["omitted"] = c.Omitted.Cast<object>().ToList();
+                entry["savedAt"] = c.SavedAt;
+                if (c.Barcode != null) entry["barcode"] = BarcodeDetails(c);
+                else entry["design"] = Json.Parse(c.Design);
+                list.Add(entry);
             }
             return DataFolder.TryWrite(FileName, Json.Write(new Dictionary<string, object> { ["v"] = 1, ["next"] = next, ["codes"] = list }) + "\n");
         }
@@ -280,11 +350,14 @@ namespace B0r3dQR.Design
             return Write(new List<RecentCode>(), next);
         }
 
-        // the design to open, checked as a design file is; null when it's gone or can't be used
+        // the code with this id, or null when it's gone
+        public static RecentCode Find(int id) => Load()?.FirstOrDefault(c => c.Id == id);
+
+        // a QR code's design to open, checked as a design file is; null when it's gone, can't be used or is a barcode
         public static QrDesign Open(int id, QrDesign current)
         {
-            RecentCode code = Load()?.FirstOrDefault(c => c.Id == id);
-            if (code == null) return null;
+            RecentCode code = Find(id);
+            if (code?.Design == null) return null;
             try
             {
                 return DesignFile.Read(code.Design, current);

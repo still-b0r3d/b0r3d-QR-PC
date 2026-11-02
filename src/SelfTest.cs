@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Windows;
+using B0r3dQR.Barcodes;
 using B0r3dQR.Qr;
 
 namespace B0r3dQR
@@ -9,7 +10,8 @@ namespace B0r3dQR
     // b0r3dQR.exe --selftest <file>: no window shown. Makes a code, draws it the way a PNG is saved,
     // reads it back (as the scan check and as the Scan tab), checks the SVG, builds the windows
     // (the Scan tab with a card, and a screen's overlay too), draws a designed code (a preset's logo,
-    // a frame), fills a data template and builds the Recent codes window, and writes what it found to <file>
+    // a frame), makes and reads back a barcode of each kind (the Make tab with one too), fills a data
+    // template and builds the Recent codes window, and writes what it found to <file>
     // as key=value lines; the exit code is 0 when it all worked. The tests run it on the finished
     // one-file exe, on its own in a folder, to prove it works with nothing beside it.
     static class SelfTest
@@ -95,6 +97,32 @@ namespace B0r3dQR
                 bool designerOk = art.Cleared > 0 && art.LogoProblem == null && designed == Text && art.ToSvg().Contains("class=\"qr-logo\"");
                 lines.Add("designer=" + (designerOk ? "ok" : "failed"));
                 ok &= designerOk;
+
+                // the other barcodes inside this exe: one made by each kind of encoder (bars, Data Matrix,
+                // Aztec, PDF417), drawn as the scan check draws them and read back with their own reader;
+                // and the Make tab with a barcode in it
+                bool barcodesOk = true;
+                foreach (BarcodeType type in new[] { BarcodeType.Ean13, BarcodeType.DataMatrix, BarcodeType.Aztec, BarcodeType.Pdf417 })
+                {
+                    string data = type == BarcodeType.Ean13 ? "400638133393" : Text;
+                    BarcodeFormat format = BarcodeFormats.Get(type);
+                    BarcodeSvg made = Barcode.Make(data, type, new BarcodeOptions(), out _);
+                    if (made == null)
+                    {
+                        barcodesOk = false;
+                        continue;
+                    }
+                    byte[] bars = ScanCheck.Grays(BarcodeExport.CheckPicture(new BarcodeArt(made), new BarcodeLook()), out int bw, out int bh);
+                    barcodesOk &= BarcodeExport.Read(bars, bw, bh, format) == format.ExpectedText(format.Prepare(data));
+                }
+                var making = new MainWindow(new Settings());
+                making.ChooseCodeType(BarcodeType.Aztec, Text);
+                making.Root.Measure(new Size(1000, 640));
+                making.Root.Arrange(new Rect(0, 0, 1000, 640));
+                making.Root.UpdateLayout();
+                barcodesOk &= making.BarcodeShown != null && making.Preview.Source != null;
+                lines.Add("barcodes=" + (barcodesOk ? "ok" : "failed"));
+                ok &= barcodesOk;
 
                 // the data templates' window (a Wi-Fi text read into its form and written again) and
                 // the Recent codes window, built from inside this exe

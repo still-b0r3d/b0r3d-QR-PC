@@ -99,9 +99,9 @@ namespace B0r3dQR.Tests
             Check(wifi.Kind == "Wi-Fi network" && wifi.Detail == "network home, WPA" && !wifi.IsWebLink, "the Wi-Fi code: " + wifi.Kind + " / " + wifi.Detail);
             Check(!wifi.Summary.Contains("hunter2"), "the Wi-Fi password is in the summary line");
             FoundCode product = found.Single(f => f.Format == "EAN-13");
-            Check(product.Kind == "Product number" && product.Text == "9506000134352" && !product.CanMakeAgain, "the EAN-13: " + product.Kind);
-            Check(found.Any(f => f.Format == "Data Matrix" && f.Text == "b0r3d data matrix"), "no Data Matrix: " + seen);
-            Check(found.Any(f => f.Format == "Code 128" && f.Text == "B0R3D-128"), "no Code 128: " + seen);
+            Check(product.Kind == "Product number" && product.Text == "9506000134352" && product.CanMakeAgain && product.Barcode == Barcodes.BarcodeType.Ean13, "the EAN-13: " + product.Kind + ", made again as " + product.Barcode);
+            Check(found.Any(f => f.Format == "Data Matrix" && f.Text == "b0r3d data matrix" && f.Barcode == Barcodes.BarcodeType.DataMatrix), "no Data Matrix to make again: " + seen);
+            Check(found.Any(f => f.Format == "Code 128" && f.Text == "B0R3D-128" && f.Barcode == Barcodes.BarcodeType.Code128), "no Code 128 to make again: " + seen);
             Check(found.All(f => f.HasThumbnail && f.Thumbnail.PixelWidth <= 192 && f.Thumbnail.PixelHeight <= 192 && f.Source == "the test picture"), "a code without a proper thumbnail or source");
             // reading order: the top row first, left to right
             Check(found.Take(3).Select(f => f.Format).SequenceEqual(new[] { "QR code", "QR code", "Data Matrix" }), "not in reading order: " + seen);
@@ -469,6 +469,23 @@ namespace B0r3dQR.Tests
             PutZxing(canvas, w, BarcodeFormat.QR_CODE, "0109506000134352", 60, 60, 8, hints: new Dictionary<EncodeHintType, object> { { EncodeHintType.GS1_FORMAT, true } });
             List<FoundCode> found = ReadCanvas(canvas, w, h);
             Check(found.Count == 1 && found[0].Format == "GS1 QR code" && !found[0].CanMakeAgain, "a GS1 QR code: " + string.Join(", ", found.Select(f => f.Format + (f.CanMakeAgain ? " (can be made again)" : ""))));
+            Check(found[0].Text == "(01)09506000134352", "GS1 data reads in round brackets, not " + Show(found[0].Text));
+
+            // GS1-128 keeps its fields apart (the reader is told to expect GS1), and is made again as GS1-128;
+            // a GS1 Data Matrix too, without the reader's leading GS
+            const int wide = 900, tall = 320;
+            canvas = Canvas(wide, tall);
+            // (ZXing's Code 128 writer takes ñ for FNC1; its Data Matrix one starts GS1 data with it itself)
+            PutZxing(canvas, wide, BarcodeFormat.CODE_128, "ñ0109506000134352" + "10ABCñ21XYZ", 20, 100, 2, 120);
+            found = ReadCanvas(canvas, wide, tall);
+            Check(found.Count == 1 && found[0].Format == "GS1-128" && found[0].Text == "(01)09506000134352(10)ABC(21)XYZ" && found[0].Barcode == Barcodes.BarcodeType.Gs1_128,
+                "GS1-128: " + string.Join(", ", found.Select(f => f.Format + " " + Show(f.Text) + " as " + f.Barcode)));
+            canvas = Canvas(wide, tall);
+            // (digits only: with letters after them ZXing.Net's writer ends the code in a way its reader takes for more text)
+            PutZxing(canvas, wide, BarcodeFormat.DATA_MATRIX, "0109506000134352" + "1012345", 60, 30, 8, hints: new Dictionary<EncodeHintType, object> { { EncodeHintType.GS1_FORMAT, true }, { EncodeHintType.DATA_MATRIX_COMPACT, true } });
+            found = ReadCanvas(canvas, wide, tall);
+            Check(found.Count == 1 && found[0].Format == "GS1 DataMatrix" && found[0].Text == "(01)09506000134352(10)12345",
+                "GS1 Data Matrix: " + string.Join(", ", found.Select(f => f.Format + " " + Show(f.Text) + " as " + f.Barcode)));
         }
 
         // ---------- what codes are ----------

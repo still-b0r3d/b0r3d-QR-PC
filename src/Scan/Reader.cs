@@ -5,9 +5,11 @@ using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using B0r3dQR.Barcodes;
 using B0r3dQR.Qr;
 using ZXing;
 using ZXing.Common;
+using BarcodeFormat = ZXing.BarcodeFormat;
 
 namespace B0r3dQR.Scan
 {
@@ -194,6 +196,7 @@ namespace B0r3dQR.Scan
             reader.Options.PossibleFormats = Everything;
             reader.Options.TryHarder = true;           // also tries 1D barcodes turned on their side
             reader.Options.TryInverted = tryInverted;  // light codes on dark backgrounds
+            reader.Options.AssumeGS1 = true;           // keeps the field marks in GS1-128 (unread, its fields run together)
             Result[] results = Safely(() => reader.DecodeMultiple(new RGBLuminanceSource(look, width, height, RGBLuminanceSource.BitmapFormat.Gray8)));
             return Add(results, 0, 0, original, width, height, source, found);
         }
@@ -259,17 +262,23 @@ namespace B0r3dQR.Scan
         static FoundCode Make(Result result, ResultPoint[] points, byte[] grays, int width, int height, string source)
         {
             string symbology = Metadata(result, ResultMetadataType.SYMBOLOGY_IDENTIFIER);
-            Kinds.Describe(result.Text, result.BarcodeFormat, out string kind, out string detail);
+            // GS1 data in round brackets, as the website writes it, when it reads as AIs zint knows
+            bool gs1 = symbology == "]C1" || symbology == "]d2" || symbology == "]Q3" || symbology == "]Q4";
+            string text = gs1 ? Gs1.FromScanned(result.Text) ?? Gs1.Unprefixed(result.Text) : result.Text;
+            bool qr = result.BarcodeFormat == BarcodeFormat.QR_CODE;
+            BarcodeType? barcode = qr ? null : MakeableAs(result.BarcodeFormat, text, gs1);
+            Kinds.Describe(text, result.BarcodeFormat, out string kind, out string detail);
             var code = new FoundCode
             {
-                Text = result.Text,
+                Text = text,
                 Kind = kind,
                 Detail = detail,
-                Format = Kinds.FormatName(result.BarcodeFormat, result.Text, symbology),
+                Format = Kinds.FormatName(result.BarcodeFormat, text, symbology),
                 Source = source,
-                IsWebLink = Kinds.WebLink(result.Text, out Uri link),
-                // plain QR codes only: a GS1 one would come out as plain text (other kinds of code: stage 5)
-                CanMakeAgain = result.BarcodeFormat == BarcodeFormat.QR_CODE && (symbology == null || symbology == "]Q1" || symbology == "]Q2"),
+                IsWebLink = Kinds.WebLink(text, out Uri link),
+                // plain QR codes (the Make tab has no GS1 ones), and barcodes of a type it makes that take the text
+                CanMakeAgain = qr ? symbology == null || symbology == "]Q1" || symbology == "]Q2" : barcode != null,
+                Barcode = barcode,
                 Thumbnail = Crop(points, grays, width, height, out double x, out double y, out Int32Rect box),
             };
             code.X = x;
@@ -278,6 +287,14 @@ namespace B0r3dQR.Scan
             if (Enum.TryParse(Metadata(result, ResultMetadataType.ERROR_CORRECTION_LEVEL), true, out QrLevel level) && Enum.IsDefined(typeof(QrLevel), level))
                 code.Level = level;
             return code;
+        }
+
+        // the type the Make tab makes a scanned barcode again as: the first that takes its text as read
+        static BarcodeType? MakeableAs(BarcodeFormat format, string text, bool gs1)
+        {
+            foreach (BarcodeType type in BarcodeFormats.ForScanned(format, text, gs1))
+                if (Barcodes.Barcode.Make(BarcodeFormats.Get(type).NormalizeRead(text), type, new BarcodeOptions(), out _) != null) return type;
+            return null;
         }
 
         static string Metadata(Result result, ResultMetadataType type)

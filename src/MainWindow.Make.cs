@@ -13,6 +13,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using B0r3dQR.Barcodes;
 using B0r3dQR.Design;
 using B0r3dQR.Qr;
 using B0r3dQR.Scan;
@@ -49,7 +50,7 @@ namespace B0r3dQR
         internal QrCode Code => art?.Code;
         internal QrArt Art => art;
         internal QrDesign CurrentDesign => design;
-        internal bool HasCode => art != null;
+        internal bool HasCode => MakingBarcode ? barcodeArt != null : art != null;
         internal int Refreshes => ticket;
         internal PrintSize PrintSettings => print;
 
@@ -495,6 +496,13 @@ namespace B0r3dQR
         // uses the input from before (Ctrl+S straight after typing, a size typed but not entered).
         internal void CatchUp()
         {
+            if (MakingBarcode)
+            {
+                foreach (Controls.NumberBox box in new[] { BarHeightBox, ScaleBox, BarcodePrintWidthBox }) box.Commit();
+                foreach (Controls.ColorBox box in new[] { BarsColorBox, BarcodeBackgroundBox }) box.Commit();
+                if (barcodeTyping.IsEnabled) RefreshBarcode();
+                return;
+            }
             foreach (Controls.NumberBox box in new[] { QuietBox, SizeBox, RadiusBox, LogoSpaceBox, FrameWidthBox, PrintWidthBox }) box.Commit();
             foreach (Controls.ColorBox box in new[] { DotsColorBox, SquaresColorBox, CentresColorBox, BackgroundColorBox, FrameTextColorBox, FrameBackColorBox, FrameBorderColorBox }) box.Commit();
             if (design.Frame != null)
@@ -515,6 +523,11 @@ namespace B0r3dQR
         // draws the design again from the controls, and shows it with everything said about it
         internal void Refresh()
         {
+            if (MakingBarcode)
+            {
+                RefreshBarcode();
+                return;
+            }
             ticket++;
             design.Data = DataText;
             DataHint.Visibility = DataBox.Text.Length == 0 ? Visibility.Visible : Visibility.Collapsed;
@@ -580,6 +593,11 @@ namespace B0r3dQR
         // pixel, so it's sharp at any scaling (the 150 % TV included).
         void RenderPreview()
         {
+            if (MakingBarcode)
+            {
+                RenderBarcodePreview();
+                return;
+            }
             if (art == null) return;
             const double margin = 20;
             double roomW = Stage.ActualWidth - 2 * margin, roomH = Stage.ActualHeight - 2 * margin;
@@ -656,15 +674,25 @@ namespace B0r3dQR
             WarnLine.Text = string.Join("\n", warnings.Select(w => "⚠ " + w));
             WarnLine.Visibility = warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
 
+            ShowInCode(Checks.InTheCode(art), null);
+            InCodeText.Text = code.Text;
+            InCodeText.Visibility = Visibility.Visible;
+            InCodeFooter.Text = Checks.EverythingLine;
+        }
+
+        // "What's in this code", a name and a value to a row (the row named `typed` in a typewriter font)
+        void ShowInCode(IEnumerable<KeyValuePair<string, string>> rows, string typed)
+        {
             InCodeRows.Children.Clear();
             InCodeRows.RowDefinitions.Clear();
             int row = 0;
-            foreach (KeyValuePair<string, string> pair in Checks.InTheCode(art))
+            foreach (KeyValuePair<string, string> pair in rows)
             {
                 InCodeRows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 var name = new TextBlock { Text = pair.Key, Margin = new Thickness(0, 2, 14, 2) };
                 name.SetResourceReference(TextBlock.ForegroundProperty, "Dim");
                 var value = new TextBlock { Text = pair.Value, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 2) };
+                if (pair.Key == typed) value.FontFamily = new FontFamily("Consolas");
                 Grid.SetRow(name, row);
                 Grid.SetRow(value, row);
                 Grid.SetColumn(value, 1);
@@ -672,7 +700,6 @@ namespace B0r3dQR
                 InCodeRows.Children.Add(value);
                 row++;
             }
-            InCodeText.Text = code.Text;
         }
 
         void ShowLevelHint()
@@ -815,11 +842,26 @@ namespace B0r3dQR
         // still being built too, before the typing timer exists
         void WhenThereIsACode(object sender, CanExecuteRoutedEventArgs e)
         {
-            e.CanExecute = art != null || typingPause != null && typingPause.IsEnabled && DataBox.Text.Length > 0;
+            e.CanExecute = MakingBarcode ? barcodeArt != null || barcodeTyping.IsEnabled : WhenThereIsAQrCode();
             e.Handled = true;
         }
 
-        string FileName => Exports.SuggestedName(design.Data);
+        // text exports and design files are for QR codes only, as on the website
+        void WhenThereIsAQrCode(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = !MakingBarcode && WhenThereIsAQrCode();
+            e.Handled = true;
+        }
+
+        bool WhenThereIsAQrCode() => art != null || typingPause != null && typingPause.IsEnabled && DataBox.Text.Length > 0;
+
+        void WhenMakingQr(object sender, CanExecuteRoutedEventArgs e)
+        {
+            e.CanExecute = !MakingBarcode;
+            e.Handled = true;
+        }
+
+        string FileName => MakingBarcode ? BarcodeFileName : Exports.SuggestedName(design.Data);
 
         void OnSavePng(object sender, ExecutedRoutedEventArgs e) => SavePicture("Save the code as a PNG picture", "PNG picture", ".png", false);
 
@@ -828,6 +870,11 @@ namespace B0r3dQR
         void SavePicture(string title, string typeName, string extension, bool jpg)
         {
             CatchUp();
+            if (MakingBarcode)
+            {
+                if (barcodeArt != null) SaveBarcodePicture(title.Replace("the code", "the barcode"), typeName, extension, jpg);
+                return;
+            }
             if (art == null) return;
             QrArt these = art;
             string path = AskWhere(title, typeName, extension);
@@ -843,6 +890,11 @@ namespace B0r3dQR
         void OnSaveSvg(object sender, ExecutedRoutedEventArgs e)
         {
             CatchUp();
+            if (MakingBarcode)
+            {
+                if (barcodeArt != null) SaveBarcodeSvg();
+                return;
+            }
             if (art == null) return;
             QrArt these = art;
             string path = AskWhere("Save the code as an SVG drawing", "SVG drawing", ".svg");
@@ -852,6 +904,11 @@ namespace B0r3dQR
         void OnSavePdf(object sender, ExecutedRoutedEventArgs e)
         {
             CatchUp();
+            if (MakingBarcode)
+            {
+                if (barcodeArt != null) SaveBarcodePdf();
+                return;
+            }
             if (art == null) return;
             QrArt these = art;
             string path = AskWhere("Save the code as a PDF", "PDF document", ".pdf");
@@ -932,7 +989,7 @@ namespace B0r3dQR
         {
             try
             {
-                return QrExport.Picture(art, print, wholePixels);
+                return MakingBarcode ? BarcodeExport.Picture(barcodeArt, look, barcodePrint) : QrExport.Picture(art, print, wholePixels);
             }
             catch (QrException x)
             {
@@ -948,15 +1005,31 @@ namespace B0r3dQR
         void OnCopyPicture(object sender, ExecutedRoutedEventArgs e)
         {
             CatchUp();
-            if (art == null) return;
+            if (!HasCode) return;
+            Action remember = RememberShown();
             BitmapSource picture = PictureToShare();
-            if (picture != null && Copy(Exports.DataFor(picture, QrExport.Png(picture), FileName, false), "Copied the code as a picture")) Remember(art.Design);
+            if (picture != null && Copy(Exports.DataFor(picture, QrExport.Png(picture), FileName, false), "Copied the code as a picture")) remember();
         }
 
         void OnCopySvg(object sender, ExecutedRoutedEventArgs e)
         {
             CatchUp();
-            if (art != null && Copy(Exports.TextData(QrExport.Svg(art, print)), "Copied the code as SVG")) Remember(art.Design);
+            if (!HasCode) return;
+            Action remember = RememberShown();
+            string svg = MakingBarcode ? BarcodeExport.Svg(barcodeArt.Barcode, look, barcodePrint) : QrExport.Svg(art, print);
+            if (Copy(Exports.TextData(svg), "Copied the code as SVG")) remember();
+        }
+
+        // what adds the code on show to Recent codes, taken now (a QR design, or a barcode with its text and settings)
+        internal Action RememberShown()
+        {
+            if (!MakingBarcode)
+            {
+                QrDesign shown = art.Design;
+                return () => Remember(shown);
+            }
+            RecentCode code = RecentCodes.NewBarcode(codeType.Value, BarcodeText, look, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds());
+            return () => RememberCode(code);
         }
 
         void OnCopyText(object sender, ExecutedRoutedEventArgs e)
@@ -983,7 +1056,7 @@ namespace B0r3dQR
 
         void OnPreviewDown(object sender, MouseButtonEventArgs e)
         {
-            if (art == null) return;
+            if (!HasCode) return;
             dragStart = e.GetPosition(this);
             dragArmed = true;
         }
@@ -991,7 +1064,7 @@ namespace B0r3dQR
         void OnPreviewMove(object sender, MouseEventArgs e)
         {
             if (!dragArmed) return;
-            if (e.LeftButton != MouseButtonState.Pressed || art == null)
+            if (e.LeftButton != MouseButtonState.Pressed || !HasCode)
             {
                 dragArmed = false;
                 return;
@@ -1001,16 +1074,16 @@ namespace B0r3dQR
                 Math.Abs(now.Y - dragStart.Y) < SystemParameters.MinimumVerticalDragDistance) return;
             dragArmed = false;
             CatchUp();
-            if (art == null) return;
+            if (!HasCode) return;
             BitmapSource picture = PictureToShare();
             if (picture == null) return;
             DataObject data = Exports.DataFor(picture, QrExport.Png(picture), FileName, true);
-            QrDesign dragged = art.Design;
+            Action remember = RememberShown();
             draggingOut = true;  // dropped back on this window, it isn't something to scan
             try
             {
                 // a drop somewhere takes the code, the way a copy does
-                if (DragDrop.DoDragDrop(Preview, data, DragDropEffects.Copy) != DragDropEffects.None) Remember(dragged);
+                if (DragDrop.DoDragDrop(Preview, data, DragDropEffects.Copy) != DragDropEffects.None) remember();
             }
             catch (ExternalException)
             {
@@ -1083,6 +1156,7 @@ namespace B0r3dQR
         void ShowOpened(QrDesign opened)
         {
             Tabs.SelectedItem = MakeTab;
+            if (MakingBarcode) ChooseCodeType(null);
             design = opened;
             if (!design.Transparent) lastBackground = design.Background;
             madeAgain = design.Data;
@@ -1157,7 +1231,14 @@ namespace B0r3dQR
         internal void Remember(QrDesign snapshot)
         {
             if (!settings.RecentCodes || !DataFolder.CanKeep || Js.Trim(snapshot?.Data ?? "").Length == 0) return;
-            int id = RecentCodes.Add(RecentCodes.New(snapshot, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()), out RecentTrouble trouble);
+            RememberCode(RecentCodes.New(snapshot, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        }
+
+        // the same for any code, a QR code's design or a barcode
+        internal void RememberCode(RecentCode code)
+        {
+            if (!settings.RecentCodes || !DataFolder.CanKeep) return;
+            int id = RecentCodes.Add(code, out RecentTrouble trouble);
             RecentWindow.LastFailed = trouble == RecentTrouble.Unwritable;
             if (id == 0)
             {
@@ -1180,12 +1261,19 @@ namespace B0r3dQR
 
         void OnRecent(object sender, RoutedEventArgs e) => new RecentWindow(settings, OpenRecent) { Owner = this }.ShowDialog();
 
-        // a code from Recent codes, opened like a design file with its text; false when it's gone
+        // a code from Recent codes: a QR code opened like a design file with its text, or a barcode with its
+        // type, text and settings; false when it's gone
         internal bool OpenRecent(int id)
         {
-            QrDesign opened = RecentCodes.Open(id, design);
-            if (opened == null) return false;
-            ShowOpened(opened);
+            RecentCode code = RecentCodes.Find(id);
+            if (code == null) return false;
+            if (code.Barcode != null) OpenRecentBarcode(code);
+            else
+            {
+                QrDesign opened = RecentCodes.Open(id, design);
+                if (opened == null) return false;
+                ShowOpened(opened);
+            }
             Flash("Opened from Recent codes", "Good");
             return true;
         }

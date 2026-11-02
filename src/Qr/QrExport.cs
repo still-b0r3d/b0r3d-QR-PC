@@ -120,9 +120,9 @@ namespace B0r3dQR.Qr
             return Encode(png);
         }
 
-        public static byte[] Jpg(BitmapSource picture)
+        public static byte[] Jpg(BitmapSource picture, int quality = 92)   // 92: what browsers use when the website asks for none
         {
-            var jpg = new JpegBitmapEncoder { QualityLevel = 92 };   // what browsers use when the website asks for none
+            var jpg = new JpegBitmapEncoder { QualityLevel = quality };
             jpg.Frames.Add(BitmapFrame.Create(new FormatConvertedBitmap(picture, PixelFormats.Bgr24, null, 0)));
             return Encode(jpg);
         }

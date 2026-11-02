@@ -179,7 +179,10 @@ namespace B0r3dQR.Design
 
         // (x).toFixed(2) for x from 0 up: the exact value of the number rounded to cents, halves up
         // (1.005 is really 1.00499... so it gives 1.00, as in a browser)
-        public static string ToFixed2(double x)
+        public static string ToFixed2(double x) => ToFixed(x, 2);
+
+        // (x).toFixed(digits) for x from 0 up, the same way
+        public static string ToFixed(double x, int digits)
         {
             if (double.IsInfinity(x)) return x > 0 ? "Infinity" : "-Infinity";
             if (Math.Abs(x) >= 1e21) return x.ToString("R", CultureInfo.InvariantCulture).Replace("E+", "e+");   // a browser writes these as "1e+21"
@@ -189,15 +192,15 @@ namespace B0r3dQR.Design
             if (exponent == 0) exponent = 1;
             else mantissa |= 1L << 52;
             exponent -= 1075;
-            BigInteger hundredths = new BigInteger(mantissa) * 100;
-            if (exponent >= 0) hundredths <<= exponent;
+            BigInteger scaled = new BigInteger(mantissa) * BigInteger.Pow(10, digits);
+            if (exponent >= 0) scaled <<= exponent;
             else
             {
                 BigInteger whole = BigInteger.One << -exponent;
-                hundredths = (2 * hundredths + whole) / (2 * whole);
+                scaled = (2 * scaled + whole) / (2 * whole);
             }
-            string digits = hundredths.ToString(CultureInfo.InvariantCulture).PadLeft(3, '0');
-            return (x < 0 ? "-" : "") + digits.Substring(0, digits.Length - 2) + "." + digits.Substring(digits.Length - 2);
+            string text = scaled.ToString(CultureInfo.InvariantCulture).PadLeft(digits + 1, '0');
+            return (x < 0 ? "-" : "") + (digits == 0 ? text : text.Substring(0, text.Length - digits) + "." + text.Substring(text.Length - digits));
         }
     }
 }

@@ -45,6 +45,7 @@ namespace B0r3dQR
             Exports.ClearDragFolder();
             SetUpScan();
             SetUpMake();
+            SetUpBarcodes();
             ShowLook();
             ShowNote();
             ShowCup();
@@ -137,6 +138,8 @@ namespace B0r3dQR
             settings.Look = Theme.Choice;
             settings.Print = print.Clone();
             settings.WholePixels = wholePixels;
+            settings.BarcodeLook = look.Clone();
+            settings.BarcodePrint = barcodePrint.Clone();
             settings.Maximized = WindowState == WindowState.Maximized || WindowState == WindowState.Minimized && maximized;
             Rect normal = WindowState == WindowState.Normal ? new Rect(Left, Top, ActualWidth, ActualHeight) : RestoreBounds;
             if (!normal.IsEmpty && normal.Width > 0 && normal.Height > 0)

@@ -24,9 +24,11 @@ namespace B0r3dQR.Tests
     // whatever goes wrong ends as a line, and a watchdog stops the run after 90 seconds.
     //   b0r3dQRTests.exe                  run the tests
     //   b0r3dQRTests.exe --shots <folder> draw the windows to PNG files (see Shots.cs)
+    //   b0r3dQRTests.exe --only <words>   run only the tests whose names have all of those words in them
     static partial class TestMain
     {
         static int passed, failed, skipped;
+        static string only;
 
         // this exe is in bin\tests\; the one-file exe is in bin\
         static readonly string TestsFolder = AppDomain.CurrentDomain.BaseDirectory.TrimEnd('\\');
@@ -57,9 +59,10 @@ namespace B0r3dQR.Tests
                     TryDelete(Work);
                     return shot;
                 }
-                if (args.Length > 0)
+                if (args.Length == 2 && args[0] == "--only") only = args[1];
+                else if (args.Length > 0)
                 {
-                    Console.WriteLine("b0r3dQRTests.exe [--shots <folder>]");
+                    Console.WriteLine("b0r3dQRTests.exe [--shots <folder>] [--only <words from the tests' names>]");
                     return 2;
                 }
 
@@ -80,6 +83,10 @@ namespace B0r3dQR.Tests
                 Run("codes: the same modules as the website's own encoder, for 42 of its codes and all 8 masks", SameModulesAsTheWebsite);
                 Run("codes: with the UTF-8 marker, the same modules as zint made for the website, for 58 codes", SameMarkedModulesAsTheWebsite);
                 Run("codes: text split into digit, capital and byte parts by the website's rules", SplitsLikeTheWebsite);
+                Run("barcodes: the website's SVG, character for character, or its message, for 624 barcodes of all 13 types", BarcodesLikeTheWebsite);
+                Run("barcodes: Data Matrix, Aztec and PDF417 modules as zint made them for the website, for 252 codes", BarcodeMatricesLikeTheWebsite);
+                Run("barcodes: every type scans back as itself and is made again into the same barcode", BarcodesScanAndMakeAgain);
+                Run("barcodes: PNG, SVG and PDF in the website's colours and sizes, read back", BarcodeFilesLikeTheWebsite);
                 Run("templates: every template writes the website's text, byte for byte (68 of its own)", TemplatesWriteLikeTheWebsite);
                 Run("templates: texts read back into the website's template and fields (48 of its own)", TemplatesReadLikeTheWebsite);
                 Run("templates: encodeURIComponent, URLSearchParams, parseFloat, toFixed and trim as in a browser", JavaScriptPiecesLikeABrowser);
@@ -102,6 +109,8 @@ namespace B0r3dQR.Tests
                 Run("designer: a number typed with a point means the same in any language", NumbersInAnyLanguage);
                 Run("designer: data templates in the window, filled from the text, with their messages, Save and examples", TemplatesInTheWindow);
                 Run("designer: Recent codes: kept on save or copy, the note once, open, delete, Clear all asks, off", RecentCodesInTheWindow);
+                Run("designer: barcodes: every type from the list, checked, its own options, the website's messages, QR code again", BarcodesInTheWindow);
+                Run("designer: barcode settings kept for next time; a recent barcode opens with its type, text and look", BarcodeSettingsKept);
                 Run("shapes: exactly the dark modules, with the quiet zone around them", ShapesMatchTheCode);
                 Run("picture size: whole pixels per module, as near the size asked for as can be", PictureSizes);
 
@@ -135,7 +144,8 @@ namespace B0r3dQR.Tests
                 Run("kinds: what each code is, never a password or secret, product numbers never phones", KindsInWords);
                 Run("links: only web links open, after a question, and odd ones come with warnings", LinksAskFirst);
                 Run("scan tab: a dropped picture is read and listed, named for screen readers; Make this code again", ScanTabShowsAndMakesAgain);
-                Run("make again: the scanned text exactly, plain QR codes only", MakeAgainKeepsTheText);
+                Run("make again: the scanned text exactly; GS1 data in round brackets; no GS1 QR codes", MakeAgainKeepsTheText);
+                Run("make again: a scanned barcode as its own type with its text exactly, then QR codes again", BarcodeMadeAgain);
 
                 Run("look: the three colour sets match, and every colour used is in them", ThemesMatch);
                 Run("window: builds in light and dark with no binding errors", WindowWithoutBindingErrors);
@@ -154,6 +164,12 @@ namespace B0r3dQR.Tests
                 Run("footprint: nothing written to AppData, Temp or the registry", () => FootprintUnchanged(footprint));
 
                 Console.WriteLine();
+                if (only != null && passed + failed + skipped == 0)
+                {
+                    Console.WriteLine("No test has all of the words \"" + only + "\" in its name.");
+                    TryDelete(Work);
+                    return 2;
+                }
                 Console.WriteLine(passed + " passed, " + failed + " failed, " + skipped + " skipped");
                 TryDelete(Work);
                 return failed == 0 ? 0 : 1;
@@ -162,6 +178,7 @@ namespace B0r3dQR.Tests
 
         static void Run(string name, Action test)
         {
+            if (only != null && !only.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries).All(word => name.IndexOf(word, StringComparison.OrdinalIgnoreCase) >= 0)) return;
             try
             {
                 test();

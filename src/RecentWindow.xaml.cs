@@ -8,6 +8,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Media;
 using System.Windows.Shapes;
+using B0r3dQR.Barcodes;
 using B0r3dQR.Design;
 using B0r3dQR.Qr;
 
@@ -116,9 +117,21 @@ namespace B0r3dQR
             {
                 try
                 {
-                    var art = new QrArt(DesignFile.Read(code.Design, new QrDesign()));
-                    double k = 112 / Math.Max(art.W, art.H);
-                    source = art.Render(k, (int)Math.Ceiling(art.W * k), (int)Math.Ceiling(art.H * k));
+                    if (code.Barcode != null)
+                    {
+                        // a barcode in its own colours, whole pixels per module
+                        BarcodeLook look = code.BarcodeLook;
+                        BarcodeSvg made = Barcodes.Barcode.Make(code.BarcodeText, code.Barcode.Value, look.Options, out _);
+                        BarcodeArt barcode = made == null ? null : new BarcodeArt(made);
+                        source = barcode?.Render(Math.Max(1, Math.Floor(112.0 / Math.Max(barcode.W, barcode.H))), Css.Paint(look.Color),
+                                                 look.Transparent ? (Color?)null : Css.Paint(look.Background));
+                    }
+                    else
+                    {
+                        var art = new QrArt(DesignFile.Read(code.Design, new QrDesign()));
+                        double k = 112 / Math.Max(art.W, art.H);
+                        source = art.Render(k, (int)Math.Ceiling(art.W * k), (int)Math.Ceiling(art.H * k));
+                    }
                 }
                 catch (Exception e) when (e is DesignFileException || e is QrException)
                 {

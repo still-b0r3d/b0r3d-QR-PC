@@ -9,10 +9,10 @@ qr.b0r3d.org, made by [b0r3d.org](https://b0r3d.org).
 It's one small exe that runs on Windows 10 and 11 with nothing to install, and it never
 goes online.
 
-**Being built.** This is version 0.4, the fourth of seven stages: the full QR designer, with
+**Being built.** This is version 0.5, the fifth of seven stages: the full QR designer, with
 the website's shapes, colours, logos, frames, presets, checks, every export and its design
-files; its data templates and recent codes; and reading codes from pictures, folders and the
-screen. Other barcodes, batch export and printing come next.
+files; its data templates and recent codes; its 13 other barcodes; and reading codes from
+pictures, folders and the screen. Batch export and printing come next.
 
 ## Make a code
 
@@ -60,6 +60,26 @@ all deletes the lot. Making the same text again replaces its old entry, and a Wi
 with its password is listed without a picture. To stop codes being added, untick **Add codes I
 save, copy or drag out** there.
 
+## Make a barcode
+
+**Code type**, above the settings, switches from a QR code to one of the website's other
+barcodes: Data Matrix, GS1 DataMatrix, Aztec and PDF417; EAN-13, EAN-8, UPC-A, UPC-E and
+ISBN; Code 128, GS1-128, ITF-14 and Code 39. The website has zint make them, so b0r3d QR
+follows zint's rules: a barcode comes out the same here as there, down to the SVG file.
+
+- **Data:** what goes in it, with the website's hint and example for each type. Check digits
+  are added for you, or checked when you type them; GS1 data goes in round brackets, like
+  `(01)09506000134352(10)ABC123`, and is checked as zint checks it. When something can't be
+  made, the website's message says why.
+- **Barcode settings:** the text under the bars, the bar height and the quiet zones (for
+  barcodes with bars), a rectangular Data Matrix, the colours or a see-through background,
+  the size in pixels per module, and a print size in mm or inches at 150, 300 or 600 DPI,
+  whole pixels for every bar.
+
+The scan check, warnings, What's in this code, the files (PNG, JPG, SVG and PDF), copying,
+dragging and Recent codes work for barcodes as for QR codes. Each type keeps its own text
+while b0r3d QR is open, and the barcode settings are kept for next time.
+
 **View → Look** follows Windows' light or dark setting, or stays light or dark.
 
 ## Read codes
@@ -86,7 +106,8 @@ that. The line under its name leaves out Wi-Fi passwords and sign-in secrets. **
 copies the text, **Open link…** asks first and says if anything about the link looks off
 (no encryption, a numbered address, letters from other alphabets that look like another
 site's), and **Make this code again** puts a plain QR code's exact text on the Make tab
-with the same error correction.
+with the same error correction, or a barcode's as the same type of barcode. GS1 data is
+shown in round brackets, as the Make tab takes it.
 
 ## Settings
 
@@ -128,4 +149,5 @@ files.
 
 MIT + Commons Clause: free to use, change and share, but not to sell. See
 [LICENSE](LICENSE). b0r3d QR includes [ZXing.Net](https://github.com/micjahn/ZXing.Net)
-(Apache-2.0); see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+(Apache-2.0), and its barcodes follow [zint](https://www.zint.org.uk) 2.16.0 (BSD-3-Clause);
+see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).

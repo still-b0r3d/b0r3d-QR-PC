@@ -24,14 +24,19 @@ namespace B0r3dQR.Design
 
         static readonly Rgb White = new Rgb { R = 255, G = 255, B = 255 };
 
-        public static List<string> Warnings(QrDesign d)
+        public static List<string> Warnings(QrDesign d) =>
+            Warnings(new[] { d.DotsColor, d.CornersSquareColor, d.CornersDotColor }, d.Background, d.Frame?.BackgroundColor, d.Frame == null ? d.Margin : (double?)null);
+
+        // the same for any code's colours: its parts, its background, a frame's background, and its
+        // quiet zone in modules (null with a frame, which gives the room)
+        public static List<string> Warnings(string[] colours, string backgroundCss, string frameBackground, double? margin)
         {
             var warnings = new List<string>();
             // what's behind the code: its background, over the frame's (see-through parts of either
             // over white paper)
-            Color? frame = d.Frame != null ? Css.Colour(d.Frame.BackgroundColor) : null;
+            Color? frame = frameBackground != null ? Css.Colour(frameBackground) : null;
             bool hasFrame = frame.HasValue && frame.Value.A > 0;
-            Color? background = Css.Colour(d.Background);
+            Color? background = Css.Colour(backgroundCss);
             Rgb under;
             if (background.HasValue && background.Value.A > 0) under = Over(background.Value, hasFrame ? Over(frame.Value, White) : White);
             else if (hasFrame) under = Over(frame.Value, White);
@@ -41,7 +46,7 @@ namespace B0r3dQR.Design
                 under = White;
             }
             var parts = new List<Rgb>();
-            foreach (string css in new[] { d.DotsColor, d.CornersSquareColor, d.CornersDotColor })
+            foreach (string css in colours)
             {
                 Color? c = Css.Colour(css);
                 if (c.HasValue && c.Value.A > 0) parts.Add(Over(c.Value, under));
@@ -56,8 +61,8 @@ namespace B0r3dQR.Design
                     warnings.Add("Low contrast (" + Math.Round(worst, 1, MidpointRounding.AwayFromZero).ToString("0.#", CultureInfo.InvariantCulture) +
                                  ":1) between the code and its background. Dark on light with at least 4:1 scans best.");
             }
-            if (d.Frame == null && d.Margin < 4)
-                warnings.Add("Only " + Math.Max(0, d.Margin).ToString("0.##", CultureInfo.InvariantCulture) + " modules of blank space around the code. Leave at least 4 (Quiet zone), or place it on a plain light area.");
+            if (margin < 4)
+                warnings.Add("Only " + Math.Max(0, margin.Value).ToString("0.##", CultureInfo.InvariantCulture) + " modules of blank space around the code. Leave at least 4 (Quiet zone), or place it on a plain light area.");
             return warnings;
         }
 

@@ -19,11 +19,11 @@
         <CommandBinding Command="{x:Static local:Commands.CopyPicture}" Executed="OnCopyPicture" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.SaveJpg}" Executed="OnSaveJpg" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.SavePdf}" Executed="OnSavePdf" CanExecute="WhenThereIsACode" />
-        <CommandBinding Command="{x:Static local:Commands.SaveText}" Executed="OnSaveText" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.SaveText}" Executed="OnSaveText" CanExecute="WhenThereIsAQrCode" />
         <CommandBinding Command="{x:Static local:Commands.CopySvg}" Executed="OnCopySvg" CanExecute="WhenThereIsACode" />
-        <CommandBinding Command="{x:Static local:Commands.CopyText}" Executed="OnCopyText" CanExecute="WhenThereIsACode" />
+        <CommandBinding Command="{x:Static local:Commands.CopyText}" Executed="OnCopyText" CanExecute="WhenThereIsAQrCode" />
         <CommandBinding Command="{x:Static local:Commands.OpenDesign}" Executed="OnOpenDesign" />
-        <CommandBinding Command="{x:Static local:Commands.SaveDesign}" Executed="OnSaveDesign" />
+        <CommandBinding Command="{x:Static local:Commands.SaveDesign}" Executed="OnSaveDesign" CanExecute="WhenMakingQr" />
         <CommandBinding Command="{x:Static local:Commands.ScanScreen}" Executed="OnScanScreen" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.OpenPicture}" Executed="OnOpenPicture" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.PastePicture}" Executed="OnPastePicture" CanExecute="WhenNotScanning" />
@@ -154,6 +154,14 @@
                                     <TextBlock Style="{StaticResource Hint}" Margin="0" FontFamily="Courier New"
                                                Text="Static codes: nothing expires, nothing is sent anywhere." />
 
+                                    <!-- QR codes, or one of the website's other barcode types -->
+                                    <DockPanel Margin="0,12,0,0">
+                                        <Label x:Name="CodeTypeLabel" Style="{StaticResource LabelFor}" Content="Code t_ype" Target="{Binding ElementName=CodeTypeBox}"
+                                               DockPanel.Dock="Left" Margin="0,0,10,0" VerticalAlignment="Center" />
+                                        <ComboBox x:Name="CodeTypeBox" SelectionChanged="OnCodeType" AutomationProperties.Name="Code type" />
+                                    </DockPanel>
+
+                                    <StackPanel x:Name="QrPanel">
                                     <Expander x:Name="DataSection" Style="{StaticResource Section}" Header="_Data" IsExpanded="True">
                                         <StackPanel>
                                             <TextBlock Style="{StaticResource Label}" Margin="0,0,0,4" Text="Data templates" />
@@ -336,6 +344,70 @@
                                             </StackPanel>
                                         </StackPanel>
                                     </Expander>
+                                    </StackPanel>
+
+                                    <!-- a barcode: plain, colours and size only, as on the website -->
+                                    <StackPanel x:Name="BarcodePanel" Visibility="Collapsed">
+                                        <Expander x:Name="BarcodeDataSection" Style="{StaticResource Section}" Header="_Data" IsExpanded="True">
+                                            <StackPanel>
+                                                <TextBox x:Name="BarcodeDataBox" AcceptsReturn="True" AcceptsTab="False" TextWrapping="Wrap" Height="56"
+                                                         VerticalScrollBarVisibility="Auto" TextChanged="OnBarcodeDataChanged" AutomationProperties.Name="Data to encode" />
+                                                <TextBlock x:Name="BarcodeHint" Style="{StaticResource Hint}" />
+                                                <TextBlock x:Name="BarcodeError" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0" Foreground="{DynamicResource Bad}"
+                                                           Visibility="Collapsed" AutomationProperties.LiveSetting="Assertive" />
+                                            </StackPanel>
+                                        </Expander>
+
+                                        <Expander x:Name="BarcodeLookSection" Style="{StaticResource Section}" Header="Barcode se_ttings" IsExpanded="True">
+                                            <StackPanel>
+                                                <StackPanel x:Name="LinearOptions">
+                                                    <CheckBox x:Name="ShowTextCheck" Content="Show the te_xt under the bars" Checked="OnBarcodeOption" Unchecked="OnBarcodeOption" />
+                                                    <StackPanel x:Name="QuietZonesRow">
+                                                        <CheckBox x:Name="QuietZonesCheck" Content="Include _quiet zones (margins)" Margin="0,8,0,0" Checked="OnBarcodeOption" Unchecked="OnBarcodeOption" />
+                                                        <TextBlock x:Name="QuietZonesNote" Style="{StaticResource Hint}" Foreground="{DynamicResource Warn}" Visibility="Collapsed"
+                                                                   Text="Leave blank space on both sides where you place it, about 10 times the thinnest bar: scanners need it to find the code." />
+                                                    </StackPanel>
+                                                    <DockPanel Margin="0,10,0,0">
+                                                        <c:NumberBox x:Name="BarHeightBox" DockPanel.Dock="Right" Width="90" Minimum="20" Maximum="150" Step="5" Decimals="2" Fallback="50" ValueChanged="OnBarHeight"
+                                                                     AutomationProperties.Name="Bar height in modules" />
+                                                        <TextBlock Text="Bar height (modules)" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                                    </DockPanel>
+                                                    <TextBlock Style="{StaticResource Hint}" Text="20 to 150; the default is 50." />
+                                                </StackPanel>
+                                                <CheckBox x:Name="RectangularCheck" Visibility="Collapsed" Checked="OnBarcodeOption" Unchecked="OnBarcodeOption">
+                                                    <AccessText TextWrapping="Wrap" Text="Allow a _rectangular code (narrower; fewer scanners read it)" />
+                                                </CheckBox>
+                                                <DockPanel Margin="0,14,0,0">
+                                                    <c:ColorBox x:Name="BarsColorBox" DockPanel.Dock="Right" ColorChanged="OnBarcodeColour" AutomationProperties.Name="Bars colour" />
+                                                    <TextBlock Text="Bars" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                                </DockPanel>
+                                                <DockPanel Margin="0,8,0,0">
+                                                    <c:ColorBox x:Name="BarcodeBackgroundBox" DockPanel.Dock="Right" ColorChanged="OnBarcodeColour" AutomationProperties.Name="Background colour" />
+                                                    <TextBlock Text="Background" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                                </DockPanel>
+                                                <CheckBox x:Name="TransparentCheck" Content="Transparent _background" Margin="0,8,0,0" Checked="OnBarcodeOption" Unchecked="OnBarcodeOption" />
+                                                <DockPanel Margin="0,12,0,0">
+                                                    <c:NumberBox x:Name="ScaleBox" DockPanel.Dock="Right" Width="90" Minimum="1" Maximum="20" Step="1" Decimals="2" Fallback="4" ValueChanged="OnBarcodeScale"
+                                                                 AutomationProperties.Name="Size in pixels per module" />
+                                                    <TextBlock Text="Size (pixels per module)" VerticalAlignment="Center" Foreground="{DynamicResource Dim}" />
+                                                </DockPanel>
+                                                <TextBlock x:Name="ScaleHint" Style="{StaticResource Hint}" />
+                                                <CheckBox x:Name="BarcodePrintCheck" Content="Size for pr_int" Margin="0,12,0,0" Checked="OnBarcodePrintOn" Unchecked="OnBarcodePrintOn" />
+                                                <StackPanel x:Name="BarcodePrintPanel" Visibility="Collapsed">
+                                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                                        <c:NumberBox x:Name="BarcodePrintWidthBox" Width="90" Minimum="0.01" Maximum="1000" Decimals="2" ValueChanged="OnBarcodePrint"
+                                                                     AutomationProperties.Name="Print width" />
+                                                        <ComboBox x:Name="BarcodePrintUnitBox" Width="64" Margin="6,0,0,0" SelectionChanged="OnBarcodePrintUnit" AutomationProperties.Name="Unit" />
+                                                        <ComboBox x:Name="BarcodePrintDpiBox" Width="104" Margin="6,0,0,0" SelectionChanged="OnBarcodePrint" AutomationProperties.Name="Resolution" />
+                                                    </StackPanel>
+                                                    <TextBlock x:Name="BarcodePrintHint" Style="{StaticResource Hint}" />
+                                                    <TextBlock x:Name="BarcodePrintWarn" Style="{StaticResource Hint}" Foreground="{DynamicResource Warn}" Visibility="Collapsed" />
+                                                </StackPanel>
+                                            </StackPanel>
+                                        </Expander>
+                                        <TextBlock Style="{StaticResource Hint}" Margin="0,12,0,0"
+                                                   Text="Barcodes are made by the rules of zint, the website's barcode maker, and checked with ZXing.Net. Help → About has their licences." />
+                                    </StackPanel>
                                 </StackPanel>
                             </ScrollViewer>
                         </Border>

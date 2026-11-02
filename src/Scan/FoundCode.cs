@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Windows.Media.Imaging;
+using B0r3dQR.Barcodes;
 using B0r3dQR.Qr;
 
 namespace B0r3dQR.Scan
@@ -15,7 +16,8 @@ namespace B0r3dQR.Scan
         public string Source { get; internal set; }      // "screen 2", "photo.jpg"
         public BitmapSource Thumbnail { get; internal set; }   // where it was found
         public bool IsWebLink { get; internal set; }     // an http or https link: it can be opened
-        public bool CanMakeAgain { get; internal set; }  // a plain QR code: the Make tab can make it again
+        public bool CanMakeAgain { get; internal set; }  // a plain QR code, or a barcode the Make tab takes: it can make it again
+        internal BarcodeType? Barcode { get; set; }        // the type a barcode is made again as (null for a QR code)
         public bool IsProblem { get; internal set; }     // a picture with no code, or one that couldn't be read
 
         public bool HasThumbnail => Thumbnail != null;

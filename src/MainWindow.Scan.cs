@@ -610,10 +610,22 @@ namespace B0r3dQR
         }
 
         // The Make tab, with the scanned text exactly as it was (Windows line breaks too, which
-        // typed text loses) and its error correction, when the code said.
+        // typed text loses) and its error correction, when the code said; a barcode as its own type.
         internal void MakeAgain(FoundCode code)
         {
             Tabs.SelectedItem = MakeTab;
+            if (code.Barcode != null)
+            {
+                MakeBarcodeAgain(code.Barcode.Value, code.Text);
+                Dispatcher.BeginInvoke(DispatcherPriority.Input, new Action(() =>
+                {
+                    BarcodeDataBox.Focus();
+                    BarcodeDataBox.CaretIndex = BarcodeDataBox.Text.Length;
+                }));
+                Flash("Made from the scanned code: the same type and text", "Good");
+                return;
+            }
+            if (MakingBarcode) ChooseCodeType(null);
             if (code.Level.HasValue) LevelButton(code.Level.Value).IsChecked = true;
             madeAgain = code.Text;
             DataBox.Text = code.Text;

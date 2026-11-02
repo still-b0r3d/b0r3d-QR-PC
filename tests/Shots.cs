@@ -58,6 +58,23 @@ namespace B0r3dQR.Tests
                 LayOut(designer.Root, MainWidth, MainHeight);
                 Shoot(designer.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "size-" + name + ".png"));
 
+                // barcodes: an EAN-13 with its check digit added and what's in it, and a Data Matrix
+                MainWindow barcodes = NewMain();
+                barcodes.ChooseCodeType(Barcodes.BarcodeType.Ean13, "400638133393");
+                WaitForCheck(barcodes);
+                barcodes.InCodeSection.IsExpanded = true;
+                Pump(() => barcodes.SavePngButton.IsEnabled, 2000);
+                LayOut(barcodes.Root, MainWidth, MainHeight);
+                Pump(() => false, 50);
+                LayOut(barcodes.Root, MainWidth, MainHeight);
+                Shoot(barcodes.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "barcode-ean13-" + name + ".png"));
+                barcodes.ChooseCodeType(Barcodes.BarcodeType.DataMatrix, "https://b0r3d.org");
+                WaitForCheck(barcodes);
+                LayOut(barcodes.Root, MainWidth, MainHeight);
+                Pump(() => false, 50);
+                LayOut(barcodes.Root, MainWidth, MainHeight);
+                Shoot(barcodes.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "barcode-datamatrix-" + name + ".png"));
+
                 // the data templates: the Wi-Fi form filled from a code's text, an EPC payment's form
                 // after Save with a message, and a contact's example, two fields to a row
                 MainWindow templated = NewMain();

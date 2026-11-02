@@ -2,6 +2,8 @@ using System;
 using System.Globalization;
 using System.IO;
 using System.Text;
+using B0r3dQR.Barcodes;
+using B0r3dQR.Design;
 using B0r3dQR.Qr;
 
 namespace B0r3dQR
@@ -30,6 +32,10 @@ namespace B0r3dQR
         public bool FromOlder;              // the ini is from b0r3d QR 0.1 or 0.2 (no whole_pixels line): its level, quiet zone and picture size are the design's
         public bool RecentCodes = true;     // add codes saved, copied or dragged out to Recent codes (on, as on the website)
         public bool RecentNoteShown;        // the note about Recent codes has been shown once
+
+        // the barcode settings and print size, kept apart from QR codes' as the website keeps them
+        public BarcodeLook BarcodeLook = new BarcodeLook();
+        public PrintSize BarcodePrint = new PrintSize();
 
         public static Settings Load() => Load(System.IO.Path.Combine(DataFolder.Path, FileName));
 
@@ -95,6 +101,42 @@ namespace B0r3dQR
                     case "recent_note":
                         s.RecentNoteShown = value.Equals("shown", StringComparison.OrdinalIgnoreCase);
                         break;
+                    case "barcode_colour":
+                        if (IsColour(value)) s.BarcodeLook.Color = value;
+                        break;
+                    case "barcode_background":
+                        if (IsColour(value)) s.BarcodeLook.Background = value;
+                        break;
+                    case "barcode_transparent":
+                        s.BarcodeLook.Transparent = value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "barcode_scale":
+                        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int scale)) s.BarcodeLook.Scale = Clamp(scale, BarcodeLook.MinScale, BarcodeLook.MaxScale);
+                        break;
+                    case "barcode_text":
+                        s.BarcodeLook.ShowText = !value.Equals("off", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "barcode_rectangular":
+                        s.BarcodeLook.AllowRectangular = value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "barcode_quiet_zones":
+                        s.BarcodeLook.QuietZones = !value.Equals("off", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "barcode_bar_height":
+                        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int bars)) s.BarcodeLook.BarHeight = Clamp(bars, Barcode.MinBarHeight, Barcode.MaxBarHeight);
+                        break;
+                    case "barcode_print":
+                        s.BarcodePrint.On = value.Equals("on", StringComparison.OrdinalIgnoreCase);
+                        break;
+                    case "barcode_print_width":
+                        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double barcodeWidth) && barcodeWidth > 0 && barcodeWidth <= 1000) s.BarcodePrint.Width = barcodeWidth;
+                        break;
+                    case "barcode_print_unit":
+                        if (value == "mm" || value == "in") s.BarcodePrint.Unit = value;
+                        break;
+                    case "barcode_print_dpi":
+                        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int barcodeDpi) && Array.IndexOf(PrintSize.Resolutions, barcodeDpi) >= 0) s.BarcodePrint.Dpi = barcodeDpi;
+                        break;
                 }
             }
             if (!wholePixelsLine && lines.Length > 0)
@@ -137,8 +179,24 @@ namespace B0r3dQR
             text.Append("whole_pixels=").Append(WholePixels ? "on" : "off").Append("\r\n");
             text.Append("recent_codes=").Append(RecentCodes ? "on" : "off").Append("\r\n");
             if (RecentNoteShown) text.Append("recent_note=shown\r\n");
+            text.Append("barcode_colour=").Append(BarcodeLook.Color).Append("\r\n");
+            text.Append("barcode_background=").Append(BarcodeLook.Background).Append("\r\n");
+            text.Append("barcode_transparent=").Append(BarcodeLook.Transparent ? "on" : "off").Append("\r\n");
+            text.Append("barcode_scale=").Append(BarcodeLook.Scale.ToString(CultureInfo.InvariantCulture)).Append("\r\n");
+            text.Append("barcode_text=").Append(BarcodeLook.ShowText ? "on" : "off").Append("\r\n");
+            text.Append("barcode_rectangular=").Append(BarcodeLook.AllowRectangular ? "on" : "off").Append("\r\n");
+            text.Append("barcode_quiet_zones=").Append(BarcodeLook.QuietZones ? "on" : "off").Append("\r\n");
+            text.Append("barcode_bar_height=").Append(BarcodeLook.BarHeight.ToString(CultureInfo.InvariantCulture)).Append("\r\n");
+            text.Append("barcode_print=").Append(BarcodePrint.On ? "on" : "off").Append("\r\n");
+            text.Append("barcode_print_width=").Append(BarcodePrint.Width.ToString("0.######", CultureInfo.InvariantCulture)).Append("\r\n");
+            text.Append("barcode_print_unit=").Append(BarcodePrint.Unit).Append("\r\n");
+            text.Append("barcode_print_dpi=").Append(BarcodePrint.Dpi.ToString(CultureInfo.InvariantCulture)).Append("\r\n");
             return text.ToString();
         }
+
+        // a colour as the website's colour boxes give it: #rrggbb
+        // a colour as the colour boxes write one (#rrggbb, #rrggbbaa, "transparent"), or any other the website takes
+        static bool IsColour(string value) => Css.Colour(value) != null;
 
         // false when settings can't be kept (DataFolder.WhyNotKept says why)
         public bool Save() => DataFolder.TryWrite(FileName, ToText());

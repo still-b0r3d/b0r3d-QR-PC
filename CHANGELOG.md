@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.5 (not released yet)
+
+The fifth stage: the website's 13 other barcodes, as qr.b0r3d.org makes them.
+
+- Code type, above the settings: QR code, or Data Matrix, GS1 DataMatrix, Aztec, PDF417,
+  EAN-13, EAN-8, UPC-A, UPC-E, ISBN, Code 128, GS1-128, ITF-14 and Code 39, in the website's
+  groups, each with its hint and example.
+- The website has zint 2.16.0 make these, so b0r3d QR follows zint's rules, written again in
+  C#: the same bars and modules, the same text under the bars, quiet zones and ITF-14 box, and
+  the same SVG, character for character (checked against 624 barcodes the website made, and
+  252 2D codes module for module). Check digits are added or checked, GS1 data in round
+  brackets is checked as zint checks it, and what can't be made gets the website's message.
+- Barcode settings: the text under the bars, bar height, quiet zones, a rectangular Data
+  Matrix, colours or a see-through background, pixels per module, and a print size with whole
+  pixels for every bar. The scan check, warnings, What's in this code, PNG, JPG, SVG and PDF,
+  copying, dragging and Recent codes all work for barcodes. Each type keeps its own text while
+  the program runs; the barcode settings are kept for next time.
+- Scan tab: Make this code again works for the barcodes it can make too, as the same type.
+  GS1 data (GS1-128, GS1 DataMatrix, GS1 QR codes) is shown in round brackets, and GS1-128's
+  fields no longer run together.
+
 ## 0.4 (not released yet)
 
 The fourth stage: data templates and recent codes, as qr.b0r3d.org has them.

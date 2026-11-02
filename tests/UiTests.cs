@@ -291,7 +291,7 @@ namespace B0r3dQR.Tests
             Type(window, "https://b0r3d.org");
             string Key(object label)
             {
-                string text = label as string ?? (label as TextBlock)?.Text ?? "";
+                string text = label as string ?? (label as TextBlock)?.Text ?? (label as AccessText)?.Text ?? "";
                 int at = text.IndexOf('_');
                 return at >= 0 && at + 1 < text.Length ? char.ToUpperInvariant(text[at + 1]).ToString() : null;
             }
@@ -304,9 +304,13 @@ namespace B0r3dQR.Tests
             }
             List<MenuItem> top = window.MenuBar.Items.OfType<MenuItem>().ToList();
             IEnumerable<string> always = top.Select(m => Key(m.Header)).Concat(new[] { Key(window.MakeTab.Header), Key(window.ScanTab.Header) });
-            Unique("the Make tab", always.Concat(new ContentControl[] { window.SavePngButton, window.SaveSvgButton, window.CopyButton, window.ChooseLogoButton, window.PasteLogoButton,
+            Unique("the Make tab", always.Concat(new ContentControl[] { window.CodeTypeLabel, window.SavePngButton, window.SaveSvgButton, window.CopyButton, window.ChooseLogoButton, window.PasteLogoButton,
                     window.BackgroundCheck, window.FrameCheck, window.MarkerCheck, window.WholePixelsCheck, window.PrintCheck }.Select(b => Key(b.Content)))
                 .Concat(new[] { window.DataSection, window.StyleSection, window.LogoSection, window.FrameSection, window.SizeSection }.Select(s => Key(s.Header))));
+            // with a barcode: its own settings in place of the QR code's (all of them, whichever type shows which)
+            Unique("the Make tab with a barcode", always.Concat(new ContentControl[] { window.CodeTypeLabel, window.SavePngButton, window.SaveSvgButton, window.CopyButton,
+                    window.ShowTextCheck, window.QuietZonesCheck, window.RectangularCheck, window.TransparentCheck, window.BarcodePrintCheck }.Select(b => Key(b.Content)))
+                .Concat(new[] { window.BarcodeDataSection, window.BarcodeLookSection }.Select(s => Key(s.Header))));
             Unique("the Scan tab", always.Concat(new[] { window.ScanScreenButton, window.OpenPictureButton, window.PastePictureButton, window.ScanFolderButton, window.ClearButton, window.CancelScanButton }.Select(b => Key(b.Content))));
             void Lists(MenuItem item)
             {
@@ -353,7 +357,7 @@ namespace B0r3dQR.Tests
             Check(about.VersionText.Text == "v" + Program.Version + " · Build: " + Program.Build, "the version line: " + about.VersionText.Text);
             Check(NewMain().VersionRun.Text == "b0r3d QR v" + Program.Version + " · Build: " + Program.Build, "the window's corner should show the version and the build apart");
             string licences = about.Licences.Text;
-            foreach (string part in new[] { "Commons Clause", "MIT License", "Licensor: b0r3d.org", "ZXing.Net", "Apache License" })
+            foreach (string part in new[] { "Commons Clause", "MIT License", "Licensor: b0r3d.org", "ZXing.Net", "Apache License", "zint 2.16.0", "BSD 3-Clause", "Grandzebu" })
                 Check(licences.Contains(part), "the licences don't mention " + part);
             Check(!licences.Contains("is missing from this build"), "a licence file is missing from the build");
             Check(about.FolderText.Text.StartsWith(DataFolder.Path), "the settings folder line: " + about.FolderText.Text);

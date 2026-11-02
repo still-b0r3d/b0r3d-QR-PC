@@ -29,11 +29,16 @@ namespace B0r3dQR.Controls
         public static readonly DependencyProperty DecimalsProperty = DependencyProperty.Register(
             nameof(Decimals), typeof(int), typeof(NumberBox), new PropertyMetadata(0, (d, e) => ((NumberBox)d).Field.Text = ((NumberBox)d).Show(((NumberBox)d).Value)));
 
+        // what 0 means when set: the website takes 0 as "the default" in some of its boxes
+        public static readonly DependencyProperty FallbackProperty = DependencyProperty.Register(
+            nameof(Fallback), typeof(double), typeof(NumberBox), new PropertyMetadata(double.NaN));
+
         public double Value { get => (double)GetValue(ValueProperty); set => SetValue(ValueProperty, value); }
         public double Minimum { get => (double)GetValue(MinimumProperty); set => SetValue(MinimumProperty, value); }
         public double Maximum { get => (double)GetValue(MaximumProperty); set => SetValue(MaximumProperty, value); }
         public double Step { get => (double)GetValue(StepProperty); set => SetValue(StepProperty, value); }
         public int Decimals { get => (int)GetValue(DecimalsProperty); set => SetValue(DecimalsProperty, value); }
+        public double Fallback { get => (double)GetValue(FallbackProperty); set => SetValue(FallbackProperty, value); }
 
         public event EventHandler ValueChanged;
 
@@ -52,6 +57,7 @@ namespace B0r3dQR.Controls
 
         double Fit(double value)
         {
+            if (value == 0 && !double.IsNaN(Fallback)) value = Fallback;
             if (double.IsNaN(value)) value = Minimum;
             return Math.Max(Minimum, Math.Min(Maximum, Math.Round(value, Decimals)));
         }

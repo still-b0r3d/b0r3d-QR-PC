@@ -1,7 +1,7 @@
 namespace B0r3dQR.Tests
 {
     // GENERATED TEST DATA. Each code made the way qr.b0r3d.org makes codes with the UTF-8 marker
-    // (src/lib/qr-code/eci.ts in the website repo at 2e50f87: zint inside zxing-wasm 3.1.4), by a
+    // (src/lib/qr-code/eci.ts in the website repo at d176adf: zint inside zxing-wasm 3.1.6), by a
     // script outside this repo: the text, the level, the version asked for (0 for any), the version
     // and mask zint used, and its modules, rows top to bottom, 8 to a byte, as base64. b0r3d QR's
     // encoder must make the same modules when the marker is on.
