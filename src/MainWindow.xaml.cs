@@ -107,12 +107,18 @@ namespace B0r3dQR
 
         void OnMaker(object sender, RoutedEventArgs e) => OpenInBrowser(this, Program.MakerUrl);
 
+        // Help → Check for a new version: the Releases page, where any newer exe is
+        void OnNewVersion(object sender, RoutedEventArgs e) => OpenInBrowser(this, Program.ReleasesUrl);
+
+        // what opens a link (the tests put their own here, so no browser opens)
+        internal static Action<string> Browser = url => Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+
         // a link opens in your browser; b0r3d QR itself never goes online
         internal static void OpenInBrowser(Window owner, string url)
         {
             try
             {
-                Process.Start(new ProcessStartInfo(url) { UseShellExecute = true });
+                Browser(url);
             }
             catch (Exception x) when (x is Win32Exception || x is InvalidOperationException)
             {

@@ -149,6 +149,10 @@ namespace B0r3dQR.Tests
                 object drawn = Picture();
                 list.Refresh();
                 Check(ReferenceEquals(drawn, Picture()), "each code is drawn once while the list is open");
+                list.ClearAll();
+                Check((string)list.ClearButton.Content == "Delete all 2 codes", "Clear all with two codes asks: " + list.ClearButton.Content);
+                list.CancelClearButton.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+                Check((string)list.ClearButton.Content == "C_lear all" && list.Codes.Count == 2, "Cancel keeps them: " + list.ClearButton.Content);
 
                 list.Open(list.Codes[1]);
                 Check(window.DataBox.Text == "https://b0r3d.org/recent", "Open should bring the code back into the window, its text and all");
@@ -163,7 +167,7 @@ namespace B0r3dQR.Tests
                 list.Delete(list.Codes[0]);
                 Check(list.Codes.Count == 1 && list.StatusLine.Text == "Deleted WiFi: home.", "Delete: " + list.StatusLine.Text);
                 list.ClearAll();
-                Check(list.Codes.Count == 1 && list.CancelClearButton.Visibility == Visibility.Visible && (string)list.ClearButton.Content == "Delete all 1 codes", "Clear all should ask first");
+                Check(list.Codes.Count == 1 && list.CancelClearButton.Visibility == Visibility.Visible && (string)list.ClearButton.Content == "Delete the 1 code", "Clear all should ask first: " + list.ClearButton.Content);
                 list.ClearAll();
                 Check(list.Codes.Count == 1, "a second click straight away (a double-click) shouldn't delete them");
                 list.ClearAll(true);

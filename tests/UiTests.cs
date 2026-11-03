@@ -357,10 +357,54 @@ namespace B0r3dQR.Tests
             Check(about.VersionText.Text == "v" + Program.Version + " · Build: " + Program.Build, "the version line: " + about.VersionText.Text);
             Check(NewMain().VersionRun.Text == "b0r3d QR v" + Program.Version + " · Build: " + Program.Build, "the window's corner should show the version and the build apart");
             string licences = about.Licences.Text;
-            foreach (string part in new[] { "Commons Clause", "MIT License", "Licensor: b0r3d.org", "ZXing.Net", "Apache License", "zint 2.16.0", "BSD 3-Clause", "Grandzebu" })
+            // everyone whose work is in the exe: ZXing.Net (with Barcode4J's notice, which ZXing carries), zint (with its
+            // Data Matrix, Reed-Solomon and QR mode authors, and GS1's syntax dictionary behind its AI table), qrcode-generator
+            foreach (string part in new[] { "Commons Clause", "MIT License", "Licensor: b0r3d.org", "ZXing.Net", "Apache License", "Barcode4J", "zint 2.16.0", "BSD 3-Clause",
+                                            "Grandzebu", "Adrian Kennard", "Stefan Schmidt", "Cliff Hones", "Project Nayuki", "GS1 AISBL", "qrcode-generator", "Kazuhiko Arase" })
                 Check(licences.Contains(part), "the licences don't mention " + part);
             Check(!licences.Contains("is missing from this build"), "a licence file is missing from the build");
             Check(about.FolderText.Text.StartsWith(DataFolder.Path), "the settings folder line: " + about.FolderText.Text);
+        }
+
+        // Help → Check for a new version opens b0r3d QR's Releases page in the browser (b0r3d QR never
+        // looks for itself), and Print… sits with Save and Copy under the code, there when they are
+        static void NewVersionAndPrintButton()
+        {
+            MainWindow window = NewMain();
+            MenuItem help = window.MenuBar.Items.OfType<MenuItem>().Single(m => (string)m.Header == "_Help");
+            Check(help.Items.OfType<MenuItem>().Contains(window.NewVersionMenu), "Check for a new version isn't in the Help menu");
+            Check(Program.ReleasesUrl == "https://github.com/still-b0r3d/b0r3d-QR-PC/releases", "the Releases page is " + Program.ReleasesUrl);
+            var opened = new List<string>();
+            Action<string> browser = MainWindow.Browser;
+            MainWindow.Browser = opened.Add;
+            try
+            {
+                window.NewVersionMenu.RaiseEvent(new RoutedEventArgs(MenuItem.ClickEvent));
+            }
+            finally
+            {
+                MainWindow.Browser = browser;
+            }
+            Check(opened.SequenceEqual(new[] { Program.ReleasesUrl }), "Check for a new version opened: " + string.Join(", ", opened));
+
+            var row = (Panel)window.CopyButton.Parent;
+            Check(window.PrintButton.Parent == row && row.Children.IndexOf(window.PrintButton) == row.Children.IndexOf(window.CopyButton) + 1,
+                "Print… should come straight after Copy picture under the code");
+            Check(window.PrintButton.Command == Commands.Print, "Print… isn't File → Print's command");
+            Pump(() => !window.PrintButton.IsEnabled, 2000);   // the buttons catch up when WPF is idle
+            Check(!window.PrintButton.IsEnabled && !window.CopyButton.IsEnabled, "with nothing typed there's nothing to print");
+            Type(window, "https://b0r3d.org");
+            Pump(() => window.PrintButton.IsEnabled, 2000);
+            Check(window.PrintButton.IsEnabled && window.CopyButton.IsEnabled, "with a code, Print… should be there as Copy picture is");
+            // a barcode: none while its data can't be made, then one to print (each state seen, not left over from the last)
+            window.ChooseCodeType(Barcodes.BarcodeType.Ean13, "12345");
+            WaitForCheck(window);
+            Pump(() => !window.PrintButton.IsEnabled, 2000);
+            Check(window.MakingBarcode && !window.HasCode && !window.PrintButton.IsEnabled, "an EAN-13 of 5 digits can't be made, so there's nothing to print");
+            window.ChooseCodeType(Barcodes.BarcodeType.Ean13, "400638133393");
+            WaitForCheck(window);
+            Pump(() => window.PrintButton.IsEnabled, 2000);
+            Check(window.MakingBarcode && window.HasCode && window.PrintButton.IsEnabled, "a barcode should print too");
         }
     }
 }

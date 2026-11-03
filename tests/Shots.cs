@@ -9,9 +9,13 @@ namespace B0r3dQR.Tests
     // b0r3dQRTests.exe --shots <folder>: draws the main window (empty, with a code, and the Scan
     // tab with codes read from a picture), About, and the screen-scanning overlay, in light and
     // dark, at 100 % and 150 %, into PNG files, straight from the controls. Nothing shows on
-    // screen and nothing takes focus; menus that pop open aren't in them.
+    // screen and nothing takes focus; menus that pop open aren't in them. The README's pictures
+    // (docs\images) are some of these, under the same names.
     static partial class TestMain
     {
+        // the settings folder About shows in the pictures (they go in the README): never a real one
+        const string ShownDataFolder = @"D:\Tools\b0r3d QR\b0r3dQR data";
+
         static int TakeShots(string folder)
         {
             Directory.CreateDirectory(folder);
@@ -182,9 +186,19 @@ namespace B0r3dQR.Tests
                 LayOut(batch.Root, MainWidth, MainHeight);
                 Shoot(batch.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "batch-" + name + ".png"));
 
-                var about = new AboutWindow();
-                Size size = LayOut(about.Root, 640);
-                Shoot(about.Root, size.Width, size.Height, 1, Path.Combine(folder, "about-" + name + ".png"));
+                // About names the settings folder: a made-up one here, so no picture shows this PC's folders
+                string real = DataFolder.Path;
+                DataFolder.Reset(ShownDataFolder);
+                try
+                {
+                    var about = new AboutWindow();
+                    Size size = LayOut(about.Root, 640);
+                    Shoot(about.Root, size.Width, size.Height, 1, Path.Combine(folder, "about-" + name + ".png"));
+                }
+                finally
+                {
+                    DataFolder.Reset(real);
+                }
             }
 
             // scanning the screen: a screen frozen and dimmed, with a box being drawn

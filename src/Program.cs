@@ -9,6 +9,8 @@ namespace B0r3dQR
         public const string Name = "b0r3d QR";
         public const string Maker = "b0r3d.org";
         public const string MakerUrl = "https://b0r3d.org";
+        // Help → Check for a new version opens this in the browser; b0r3d QR never looks by itself
+        public const string ReleasesUrl = "https://github.com/still-b0r3d/b0r3d-QR-PC/releases";
 
         // "0.3 build abc1234", the exe's Product version: the version, then the commit it was built
         // from ("dev" for a build made anywhere but GitHub). build.cmd passes the commit in.

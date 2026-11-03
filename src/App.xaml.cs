@@ -1,5 +1,6 @@
 using System;
 using System.Windows;
+using System.Windows.Controls.Primitives;
 using System.Windows.Threading;
 
 namespace B0r3dQR
@@ -8,6 +9,19 @@ namespace B0r3dQR
     {
         // The tests set this: a window that throws becomes a FAIL line instead of a message box.
         internal static Action<Exception> OnProblem;
+
+        // Ctrl+C, Cut and Copy in any text box of any window (the data box, a code's text, a template's
+        // fields) keep the text out of Windows' cloud clipboard, like Copy text does: it can be a Wi-Fi
+        // password, an IBAN or someone's contact details
+        static App()
+        {
+            EventManager.RegisterClassHandler(typeof(TextBoxBase), DataObject.CopyingEvent, new DataObjectCopyingEventHandler(OnTextCopying));
+        }
+
+        static void OnTextCopying(object sender, DataObjectCopyingEventArgs e)
+        {
+            if (!e.IsDragDrop) Exports.KeepOffTheCloud(e.DataObject);
+        }
 
         public App()
         {

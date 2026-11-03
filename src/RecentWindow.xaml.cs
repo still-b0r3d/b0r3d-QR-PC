@@ -231,7 +231,7 @@ namespace B0r3dQR
 
         void ShowConfirm()
         {
-            ClearButton.Content = !confirming ? "C_lear all" : damaged ? "Empty the file" : "Delete all " + codes.Count + " codes";
+            ClearButton.Content = !confirming ? "C_lear all" : damaged ? "Empty the file" : codes.Count == 1 ? "Delete the 1 code" : "Delete all " + codes.Count + " codes";
             if (confirming) ClearButton.SetResourceReference(ForegroundProperty, "Bad");
             else ClearButton.ClearValue(ForegroundProperty);
             CancelClearButton.Visibility = confirming ? Visibility.Visible : Visibility.Collapsed;

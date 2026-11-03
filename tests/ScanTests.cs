@@ -598,6 +598,16 @@ namespace B0r3dQR.Tests
             var typed = new DataObject(DataFormats.UnicodeText, "WIFI:S:x;P:secret;;");
             window.DataBox.RaiseEvent(new DataObjectCopyingEventArgs(typed, false));
             Check(OffTheCloud(typed), "Ctrl+C in a text box would let the text go to the cloud clipboard");
+            // ...in the other windows' text boxes too: a template's fields (an IBAN, a contact's details), About's
+            var fromForm = new DataObject(DataFormats.UnicodeText, "DE89370400440532013000");
+            window.TemplateFor(Design.TemplateKind.Epc).Input("iban").RaiseEvent(new DataObjectCopyingEventArgs(fromForm, false));
+            Check(OffTheCloud(fromForm), "Ctrl+C in a template's field would let the text go to the cloud clipboard");
+            var fromAbout = new DataObject(DataFormats.UnicodeText, "MIT License");
+            new AboutWindow().Licences.RaiseEvent(new DataObjectCopyingEventArgs(fromAbout, false));
+            Check(OffTheCloud(fromAbout), "Ctrl+C in About's licences would let the text go to the cloud clipboard");
+            var dragged = new DataObject(DataFormats.UnicodeText, "dragged");
+            window.DataBox.RaiseEvent(new DataObjectCopyingEventArgs(dragged, true));
+            Check(!OffTheCloud(dragged), "text dragged out of a text box never reaches the clipboard, so it isn't marked");
 
             window.ReadData(new DataObject(), "the copied picture", "Nothing to read on the clipboard.");
             Check(window.ScanStatus.Text == "Nothing to read on the clipboard." && !window.Scanning, "an empty clipboard: \"" + window.ScanStatus.Text + "\"");

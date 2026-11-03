@@ -20,7 +20,7 @@ namespace B0r3dQR
             SourceInitialized += (s, e) => Theme.TitleBar(this);
         }
 
-        // b0r3d QR's own licence, then the third-party notices (ZXing.Net), as built into the exe
+        // b0r3d QR's own licence, then the third-party notices (ZXing.Net, zint, qrcode-generator), as built into the exe
         internal static string LicenceText()
         {
             return "b0r3d QR\r\n========\r\n\r\n" + Resource("B0r3dQR.LICENSE") + "\r\n\r\n" + Resource("B0r3dQR.THIRD-PARTY-NOTICES.txt");

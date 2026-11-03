@@ -82,7 +82,7 @@ namespace B0r3dQR.Tests
         // and web types, XML that can fetch files, pictures and media loaded from addresses, calls
         // that take an address, native calls (only the Windows functions listed), COM objects (only
         // Windows' Save and Open dialogs), and web addresses in its strings and its XAML (only
-        // b0r3d.org's, which opens in the browser).
+        // b0r3d.org's and the Releases page, which open in the browser, and names never opened).
         static readonly string[] BannedSpaces = { "System.Net", "System.Xml", "System.Windows.Navigation", "System.Web", "System.ServiceModel", "System.Runtime.Remoting" };
         static readonly string[] BannedTypes = { "WebBrowser", "WebClient", "HttpClient", "Socket", "TcpClient", "UdpClient", "BitmapImage", "MediaElement", "MediaPlayer", "XamlReader", "XmlReader", "XmlDocument", "XmlUrlResolver" };
         static readonly Dictionary<string, string[]> AllowedNative = new Dictionary<string, string[]>
@@ -102,6 +102,7 @@ namespace B0r3dQR.Tests
         static readonly string[] AllowedAddresses =
         {
             "https://b0r3d.org",              // Help → b0r3d.org, opened in the browser
+            "https://github.com/still-b0r3d/b0r3d-QR-PC/releases",   // Help → Check for a new version, opened in the browser
             "http://www.w3.org/2000/svg",     // SVG's namespace name in saved files, never fetched
             "http://www.w3.org/1999/xlink",   // SVG's link namespace name (for a logo's href), never fetched
             "https://id.gs1.org",             // GS1's resolver, written into GS1 Digital Link codes as the website does, never opened

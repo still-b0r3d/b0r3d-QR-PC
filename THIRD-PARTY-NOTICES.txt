@@ -1,10 +1,23 @@
-b0r3d QR includes the following third-party software.
+b0r3d QR includes the following third-party software, or follows its code
+closely enough that its notice belongs here too.
 
 ZXing.Net 0.16.11
 https://github.com/micjahn/ZXing.Net
-Makes and reads the codes. A .NET port of ZXing ("Zebra Crossing"),
-https://github.com/zxing/zxing
+Reads the codes, and gives the QR codes their version tables, Reed-Solomon
+check words and module placement. It's merged into b0r3dQR.exe. A .NET port
+of ZXing ("Zebra Crossing"), https://github.com/zxing/zxing
 Copyright the ZXing authors and Michael Jahn.
+ZXing's PDF417 and Data Matrix writers came from Barcode4J, and ZXing
+carries its notice:
+
+    Barcode4J
+    Copyright 2002-2010 Jeremias Märki
+    Copyright 2005-2006 Dietmar Bürkle
+
+    Portions of this software were contributed under section 5 of the
+    Apache License. Contributors are listed under:
+    http://barcode4j.sourceforge.net/contributors.html
+
 Licensed under the Apache License, Version 2.0, the full text of which follows.
 
 -------------------------------------------------------------------------------
@@ -217,11 +230,33 @@ zint 2.16.0
 https://www.zint.org.uk
 The rules b0r3d QR makes its other barcodes by. Its code for Data Matrix,
 Aztec, PDF417, EAN-13, EAN-8, UPC-A, UPC-E, ISBN, Code 128, GS1-128, ITF-14
-and Code 39 follows zint's backend (written again in C#), so each comes out
-as qr.b0r3d.org makes it with zint.
+and Code 39, and for QR codes with the UTF-8 marker, follows zint's backend
+(written again in C#), so each comes out as qr.b0r3d.org makes it with zint.
 Copyright (C) 2008-2025 Robin Stuart and the zint contributors
 Portions Copyright (C) 2004 Grandzebu (PDF417)
-Licensed under the BSD 3-Clause License, the full text of which follows.
+
+zint's Data Matrix (dmatrix.c) was developed from and includes some
+functions from IEC16022 bar code generation, Adrian Kennard, Andrews &
+Arnold Ltd, with help from Cliff Hones on the RS coding:
+    (c) 2004 Adrian Kennard, Andrews & Arnold Ltd
+    (c) 2006 Stefan Schmidt
+Its Reed-Solomon encoder (reedsol.c, used for Data Matrix and Aztec):
+    (C) Cliff Hones 2004
+Its choice of QR code modes (qr.c's qr_define_modes, which b0r3d QR follows
+for QR codes with the UTF-8 marker) is adapted from Project Nayuki's QR Code
+generator library, https://www.nayuki.io/page/qr-code-generator-library
+    Copyright (c) Project Nayuki.
+    Licensed under the MIT License (its text is below, with qrcode-generator's).
+
+The lengths of GS1's Application Identifiers come from zint's gs1_lint.h,
+which zint makes from GS1's Barcode Syntax Dictionary,
+https://github.com/gs1/gs1-syntax-dictionary
+    Copyright (c) 2020-2021 BWIPP project
+    Copyright (c) 2020-2021 Zint Project
+    Copyright (c) 2021-2025 GS1 AISBL
+    Licensed under the Apache License, Version 2.0 (its text is above).
+
+zint is licensed under the BSD 3-Clause License, the full text of which follows.
 
 -------------------------------------------------------------------------------
 
@@ -249,3 +284,36 @@ HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
 LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
 OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
 SUCH DAMAGE.
+
+===============================================================================
+
+qrcode-generator 2.0.4
+https://github.com/kazuhikoarase/qrcode-generator
+qr.b0r3d.org makes its QR codes with it, so b0r3d QR scores the eight masks
+of a QR code the way it does (written again in C#) and picks the same one.
+Copyright (c) 2009 Kazuhiko Arase
+Licensed under the MIT License, the full text of which follows.
+
+-------------------------------------------------------------------------------
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+===============================================================================
+
+QR Code is a registered trademark of DENSO WAVE INCORPORATED.

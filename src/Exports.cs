@@ -166,7 +166,7 @@ namespace B0r3dQR
         }
 
         // Windows' cloud clipboard leaves alone what says it can't be uploaded. (Text copied with
-        // Ctrl+C from b0r3d QR's text boxes gets this too: MainWindow's OnTextCopying.)
+        // Ctrl+C from any of b0r3d QR's text boxes gets this too: App's OnTextCopying.)
         public static void KeepOffTheCloud(IDataObject data)
         {
             data.SetData("CanUploadToCloudClipboard", new MemoryStream(BitConverter.GetBytes(0)), false);

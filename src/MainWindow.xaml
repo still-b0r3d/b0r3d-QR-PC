@@ -129,6 +129,8 @@
             <MenuItem Header="_Help">
                 <MenuItem Header="_About b0r3d QR" Command="{x:Static local:Commands.About}" />
                 <Separator />
+                <MenuItem x:Name="NewVersionMenu" Header="Check for a _new version" Click="OnNewVersion"
+                          ToolTip="Opens b0r3d QR's Releases page in your browser. b0r3d QR itself never goes online." />
                 <MenuItem Header="b0r3d._org" Click="OnMaker" />
             </MenuItem>
         </Menu>
@@ -472,6 +474,8 @@
                                 <Button x:Name="SavePngButton" Content="_Save PNG…" Command="{x:Static local:Commands.SavePng}" Margin="0,0,8,0" />
                                 <Button x:Name="SaveSvgButton" Content="Save SV_G…" Command="{x:Static local:Commands.SaveSvg}" Margin="0,0,8,0" />
                                 <Button x:Name="CopyButton" Content="_Copy picture" Command="{x:Static local:Commands.CopyPicture}" Margin="0,0,8,0" />
+                                <!-- every letter of "Print" is another access key here; Ctrl+P prints -->
+                                <Button x:Name="PrintButton" Content="Print…" Command="{x:Static local:Commands.Print}" Margin="0,0,8,0" />
                                 <Button x:Name="RecentButton" Content="Recent codes…" Click="OnRecent" Margin="0,0,12,0" />
                                 <TextBlock Text="or drag the code into another program" Foreground="{DynamicResource Dim}" VerticalAlignment="Center" />
                             </WrapPanel>

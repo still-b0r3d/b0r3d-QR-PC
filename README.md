@@ -1,25 +1,39 @@
 # b0r3d QR for Windows
 
-**b0r3d QR** makes static QR codes on your PC, designed the way
-[qr.b0r3d.org](https://qr.b0r3d.org) designs them, and reads codes off pictures and the screen.
-Whatever you type goes straight into the pattern, so a code never expires, there's no
-account, and nothing you type or scan is sent anywhere. It's the Windows program of
-qr.b0r3d.org, made by [b0r3d.org](https://b0r3d.org).
+**b0r3d QR** makes static QR codes and barcodes on your PC, designed the way
+[qr.b0r3d.org](https://qr.b0r3d.org) designs them, and reads codes off pictures, folders and the
+screen. Whatever you type goes straight into the pattern, so a code never expires, there's no
+account, and nothing you type or scan is sent anywhere: b0r3d QR never goes online.
 
-It's one small exe that runs on Windows 10 and 11 with nothing to install, and it never
-goes online.
+Version 0.7, for Windows 10 and 11: one small exe, nothing to install. Made by
+[b0r3d.org](https://b0r3d.org).
 
-**Being built.** This is version 0.6, the sixth of seven stages: the full QR designer, with
-the website's shapes, colours, logos, frames, presets, checks, every export and its design
-files; its data templates and recent codes; its 13 other barcodes; batch export from a CSV and
-printing; and reading codes from pictures, folders and the screen. Getting it ready for its
-first release comes next.
+![The Make tab: a QR code in the b0r3d Cup style, in a frame with the caption "Scan for more info", and a line saying it scans](docs/images/design-light.png)
+
+**Not released yet.** 0.7 has everything planned for the first release, 1.0, which comes once
+it's been tried out in full.
+
+## Getting it
+
+1. On the [Releases page](https://github.com/still-b0r3d/b0r3d-QR-PC/releases), download
+   **b0r3dQR.exe**. It's one file and needs no installing. Put it in a folder of its own (a Tools
+   folder, or a USB stick): it keeps its settings in a `b0r3dQR data` folder next to itself.
+2. Run it.
+   - Your browser may say the file isn't commonly downloaded. Choose **Keep**.
+   - Windows may show **"Windows protected your PC"**. Click **More info**, then **Run anyway**.
+     It says that about any program it hasn't seen much of yet that isn't code-signed, and b0r3d
+     QR isn't (signing costs money every year).
+   - To check the file first: its SHA-256 is in `b0r3dQR.exe.sha256`, next to it on the Releases
+     page, and PowerShell's `Get-FileHash b0r3dQR.exe` shows the download's. Or
+     [build it yourself](#build-it-yourself).
+
+It runs on .NET Framework 4.8, which every up-to-date Windows 10 and 11 already has, and never
+asks for admin rights.
 
 ## Make a code
 
-Put `b0r3dQR.exe` in a folder of its own and double-click it. Type or paste a link or any
-text, and the code appears on the right with a line saying whether it scans. The settings
-on the left fold out like the website's:
+Type or paste a link or any text, and the code appears on the right with a line saying whether
+it scans. The settings on the left fold out like the website's:
 
 - **Data:** what goes in the code. Above it, the website's **data templates** (text, URL,
   Wi-Fi, contact card, email, phone, SMS, location, event, EPC payment and GS1 product link):
@@ -39,14 +53,17 @@ on the left fold out like the website's:
   pixels per module if you want the sharpest squares, and a print size in mm or inches at
   150, 300 or 600 DPI, with how big each module comes out and from how far it scans.
 
+![The Logo and Frame sections open: the cup as the logo, its size and the space around it, and a frame with its caption](docs/images/sections-light.png)
+
 Under the code: the scan check, warnings (low contrast, light on dark, see-through, too
 little quiet zone) and **What's in this code**: what's stored, the size, the level and how
 the text is encoded.
 
-Then **File** saves it as **PNG**, **JPG**, **SVG**, **PDF** or **text** (Unicode half or full
-blocks or ASCII, each as plain text or Markdown), at the website's sizes or the print size;
-**Edit** copies it as a picture, as SVG or as text; or drag the code into another program, or
-into a folder as a PNG file.
+Then **Save PNG…**, **Save SVG…**, **Copy picture** and **Print…** under the code, or the
+**File** menu for **JPG**, **PDF** and **text** too (Unicode half or full blocks or ASCII, each
+as plain text or Markdown), at the website's sizes or the print size. **Edit** copies it as a
+picture, as SVG or as text, or drag the code into another program, or into a folder as a PNG
+file.
 
 **File → Save design…** writes the website's own design file (`qr-code-config.json`), and
 **Open design…** (or dropping one on the window) opens one saved here or on the website. The
@@ -55,11 +72,17 @@ fetched from a web address isn't drawn here, since b0r3d QR never goes online: s
 picture and choose it under Logo. An SVG logo keeps its room and goes into SVG files, but
 isn't drawn into pictures yet; for those, use a PNG of it.
 
+A data template's form, here a contact card with the website's example in it:
+
+![The contact card form: first and last name, organization, phones, email, website and address, two fields to a row](docs/images/template-vcard-light.png)
+
 **Recent codes…** (under the code, or **File → Recent codes…**) lists the last 20 codes you
 saved, copied or dragged out, newest first, to open again (design and text) or delete; Clear
 all deletes the lot. Making the same text again replaces its old entry, and a Wi-Fi network
 with its password is listed without a picture. To stop codes being added, untick **Add codes I
 save, copy or drag out** there.
+
+![Recent codes: a contact card, a Wi-Fi network shown with a padlock instead of its picture, and a link](docs/images/recent-light.png)
 
 ## Make a barcode
 
@@ -77,9 +100,11 @@ follows zint's rules: a barcode comes out the same here as there, down to the SV
   the size in pixels per module, and a print size in mm or inches at 150, 300 or 600 DPI,
   whole pixels for every bar.
 
+![An EAN-13 barcode with its check digit added for you, and what's in it](docs/images/barcode-ean13-light.png)
+
 The scan check, warnings, What's in this code, the files (PNG, JPG, SVG and PDF), copying,
-dragging and Recent codes work for barcodes as for QR codes. Each type keeps its own text
-while b0r3d QR is open, and the barcode settings are kept for next time.
+dragging, printing and Recent codes work for barcodes as for QR codes. Each type keeps its own
+text while b0r3d QR is open, and the barcode settings are kept for next time.
 
 ## Many codes at once
 
@@ -89,24 +114,30 @@ settings. The CSV is the website's: for QR codes, a first row naming the columns
 code's text, a frame caption and a file name (a frameFontFamily column sets the caption's
 font), or a file of contacts with firstName and lastName columns, each row made into a contact
 card; for barcodes, the code and a file name, with or without a first row naming them.
-**Save an example…** writes one to start from. The window lists the rows that can't be made
-and why before anything is written, and shows each row's code in turn. Choose PNG, JPG, SVG,
-PDF or text, and a folder or a zip file; files already in the folder are asked about once
-(number the new ones, replace them or skip them). Every file is read back once it's written and
-scanned. The files are named as the website names them: the CSV's file name, else the caption,
-else something from the code's text.
+**Save an example…** writes one to start from.
+
+![Batch export: a CSV of four rows, one too long to be made and listed with why, and the second row's framed code](docs/images/batch-export-light.png)
+
+The window lists the rows that can't be made and why before anything is written, and shows
+each row's code in turn. Choose PNG, JPG, SVG, PDF or text, and a folder or a zip file; files
+already in the folder are asked about once (number the new ones, replace them or skip them).
+Every file is read back once it's written and scanned. The files are named as the website names
+them: the CSV's file name, else the caption, else something from the code's text (text files:
+the CSV's file name, else qr-0, qr-1 and so on).
 
 ## Print
 
-**File → Print…** (Ctrl+P) prints the code at its exact size, the print size set on the Make
-tab (its picture's size without one): alone in the middle of the page, or a sheet of copies
-with a caption under each code and cut marks at the corners. **Print them…** in Batch export
-prints a batch's codes on sheets, each with its file name, or one a page. The window shows each
-page before Windows' Print dialog, where you choose the printer and its paper. The codes are
-printed as shapes, as sharp as the printer prints; one bigger than the paper is printed smaller,
-and the window says so.
+**Print…** under the code, or **File → Print…** (Ctrl+P), prints the code at its exact size,
+the print size set on the Make tab (its picture's size without one): alone in the middle of the
+page, or a sheet of copies with a caption under each code and cut marks at the corners.
+**Print them…** in Batch export prints a batch's codes on sheets, each with its file name, or
+one a page.
 
-**View → Look** follows Windows' light or dark setting, or stays light or dark.
+![The Print window: a sheet of twelve copies with captions and cut marks, and the page's preview](docs/images/print-light.png)
+
+The window shows each page before Windows' Print dialog, where you choose the printer and its
+paper. The codes are printed as shapes, as sharp as the printer prints; one bigger than the
+paper is printed smaller, and the window says so.
 
 ## Read codes
 
@@ -126,6 +157,8 @@ there are in a picture:
   or "Couldn't open" and why. Pictures that are only online (OneDrive and the like) are
   left alone rather than downloaded.
 
+![The Scan tab after reading a picture with three codes: a link, a Wi-Fi network and a product number](docs/images/scan-light.png)
+
 Esc or **Cancel** stops a scan. Each code found shows what it is (a link, a Wi-Fi network, a
 contact, a product number…), its type and where it was, with its whole text in a box under
 that. The line under its name leaves out Wi-Fi passwords and sign-in secrets. **Copy text**
@@ -134,6 +167,19 @@ copies the text, **Open link…** asks first and says if anything about the link
 site's), and **Make this code again** puts a plain QR code's exact text on the Make tab
 with the same error correction, or a barcode's as the same type of barcode. GS1 data is
 shown in round brackets, as the Make tab takes it.
+
+| Scanning the screen | A folder checked as a batch |
+|---|---|
+| ![Every screen frozen and dimmed, with a box being dragged around a code](docs/images/snip.png) | ![A folder of labels: two codes found, one label with no code, one file that couldn't be opened](docs/images/batch-light.png) |
+
+## Light or dark
+
+**View → Look** follows Windows' light or dark setting, or stays light or dark. The code itself
+is never tinted.
+
+| Light | Dark |
+|---|---|
+| ![b0r3d QR in the light look](docs/images/design-light.png) | ![b0r3d QR in the dark look](docs/images/design-dark.png) |
 
 ## Settings
 
@@ -149,10 +195,13 @@ b0r3dQR.exe --data "D:\Somewhere\b0r3dQR settings"
 That folder can hold other things too: b0r3d QR only ever touches its own `b0r3dQR.ini`,
 `b0r3dQR design.json`, `b0r3dQR recent.json` and `b0r3dQR drag` folder there.
 
-The text you type is only kept in Recent codes: the codes you saved, copied or dragged out,
-while it's on. That file is plain text (Wi-Fi passwords included), so anyone who can open the
-data folder can read it; turn Recent codes off and Clear all if that matters. Nothing you scan
-is kept: pictures of the screen and the codes found only ever live in memory. If the exe's
+A code's text is only kept in Recent codes: the codes you saved, copied or dragged out, while
+it's on. That file is plain text (Wi-Fi passwords included), so anyone who can open the data
+folder can read it; turn Recent codes off and Clear all if that matters. A frame's caption is
+part of the design, so it's kept in `b0r3dQR design.json`. A code you drag out waits as a PNG
+in the `b0r3dQR drag` folder until b0r3d QR closes (or starts again, if it was stopped), so the
+program you drop it on can take it. Nothing you scan is kept: pictures of the screen and the
+codes found only ever live in memory. If the exe's
 folder can't be written to, it says so as soon as it starts and keeps working without saving
 settings. Run straight out of a zip, an email attachment or a download folder inside AppData,
 it keeps nothing there either.
@@ -162,18 +211,51 @@ dialogs remember the last folder you used, and Explorer notes which programs you
 started. b0r3d QR asks Windows not to add the files you open or save to your Recent items,
 and a copied code or text never goes to Windows' cloud clipboard.
 
+## What it doesn't do
+
+- It never goes online: there's no network code in it at all, and a test checks the exe for
+  any. A link opens in your browser only when you click it: b0r3d.org, the Releases page, or a
+  scanned code's link (after a question).
+- It doesn't keep what you scan, or a code's text outside Recent codes (and a dragged code's
+  picture until it closes).
+- No installer, no admin rights, nothing in AppData or the registry.
+
+## Newer versions
+
+**Help → Check for a new version** opens the Releases page in your browser; b0r3d QR never
+looks by itself. To update, put the new b0r3dQR.exe in place of the old one: the
+`b0r3dQR data` folder next to it keeps your settings and Recent codes.
+
+## Removing it
+
+Delete b0r3dQR.exe and its `b0r3dQR data` folder. There's nothing else to remove. (With
+`--data`, delete just b0r3d QR's own files in that folder, the four named under Settings.)
+
 ## Build it yourself
 
 Building needs the [.NET 10 SDK](https://dotnet.microsoft.com/download); running the result
 needs only Windows. Double-click `build.cmd`, or run `build.cmd test` to build and run the
-tests too. The program is `bin\b0r3dQR.exe`.
+tests too. The program is `bin\b0r3dQR.exe`. Every release is built the same way on GitHub's own
+machines, which stamp it with the commit it was built from (`v0.7 · Build: abc1234` in the
+window's corner and in Help → About); your own build says `Build: dev`. The SHA-256 next to each
+download is for checking that download: your own build won't match it byte for byte.
 
-`bin\tests\b0r3dQRTests.exe --shots <folder>` draws the windows in light and dark into PNG
-files.
+`bin\tests\b0r3dQRTests.exe --shots <folder>` draws every window offscreen (nothing shows on the
+screen), in light and dark, into PNG files; the pictures here are some of them, under the same
+names in `docs\images`. What changed in each version is in [CHANGELOG.md](CHANGELOG.md).
 
 ## License
 
 MIT + Commons Clause: free to use, change and share, but not to sell. See
 [LICENSE](LICENSE). b0r3d QR includes [ZXing.Net](https://github.com/micjahn/ZXing.Net)
-(Apache-2.0), and its barcodes follow [zint](https://www.zint.org.uk) 2.16.0 (BSD-3-Clause);
-see [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+(Apache-2.0). To come out as qr.b0r3d.org makes them, its barcodes follow
+[zint](https://www.zint.org.uk) 2.16.0 (BSD-3-Clause), and its QR codes follow
+[qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (MIT) and, with the UTF-8
+marker, zint, whose QR modes come from [Project Nayuki](https://www.nayuki.io/page/qr-code-generator-library)'s
+library (MIT). Everyone's notices are in [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
+
+QR Code is a registered trademark of DENSO WAVE INCORPORATED.
+
+---
+
+Made by [b0r3d.org](https://b0r3d.org).

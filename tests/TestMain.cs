@@ -166,6 +166,7 @@ namespace B0r3dQR.Tests
                 Run("screen readers: the number boxes have their names", NumberBoxesHaveNames);
                 Run("look: the text boxes' right-click menu is b0r3d QR's own, so it's themed", TextMenusAreThemed);
                 Run("about: the version, the build, the settings folder and every licence", AboutShowsItAll);
+                Run("help: Check for a new version opens the Releases page in the browser; Print… sits with Save and Copy", NewVersionAndPrintButton);
 
                 Run("footprint: nothing written to AppData, Temp or the registry", () => FootprintUnchanged(footprint));
 

@@ -43,14 +43,6 @@ namespace B0r3dQR
         {
             FoundList.ItemsSource = found;
             found.CollectionChanged += (s, e) => FoundHint.Visibility = found.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
-            DataObject.AddCopyingHandler(this, OnTextCopying);
-        }
-
-        // Ctrl+C, Cut and Edit → Copy in any text box here (the data box, a code's text) keep it out
-        // of Windows' cloud clipboard, like Copy text does: it can be a Wi-Fi password
-        static void OnTextCopying(object sender, DataObjectCopyingEventArgs e)
-        {
-            if (!e.IsDragDrop) Exports.KeepOffTheCloud(e.DataObject);
         }
 
         void WhenNotScanning(object sender, CanExecuteRoutedEventArgs e)

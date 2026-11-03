@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.7 (not released yet)
+
+The seventh stage: getting ready for the first release.
+
+- Help → Check for a new version opens b0r3d QR's Releases page in your browser. b0r3d QR still
+  never goes online itself: the page only opens when you click.
+- Print… sits under the code with Save PNG…, Save SVG… and Copy picture, as File → Print…
+  (Ctrl+P) does.
+- Recent codes: with one code in the list, Clear all asks "Delete the 1 code", not "Delete all
+  1 codes".
+- The README says how to get b0r3d QR and past Windows' SmartScreen warning (More info, then
+  Run anyway: it isn't code-signed), with pictures of every part of it, drawn offscreen.
+- The third-party notices (in THIRD-PARTY-NOTICES.txt and Help → About) now name everyone whose
+  work is in the exe: Barcode4J (behind ZXing's PDF417 and Data Matrix writers), zint's Data
+  Matrix and Reed-Solomon authors, Project Nayuki (behind zint's choice of QR modes), GS1's
+  Barcode Syntax Dictionary (the GS1 field lengths), and qrcode-generator (whose mask scoring
+  b0r3d QR's QR codes follow, as the website's do).
+- Ctrl+C in any text box keeps the text out of Windows' cloud clipboard, in every window: the
+  data templates' forms (an IBAN, a contact's details) let it through before.
+
 ## 0.6 (not released yet)
 
 The sixth stage: batch export and printing.
