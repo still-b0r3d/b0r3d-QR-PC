@@ -71,19 +71,21 @@ namespace B0r3dQR
             LookDark.IsChecked = Theme.Choice == Look.Dark;
         }
 
-        // the bottom line: why settings aren't kept, or why the last save of them failed
+        // the bottom line: why settings aren't kept, or why the last save of them failed (with the folder
+        // it was given, which can be any text: capped, as all outside text shown is, LongText)
         void ShowNote()
         {
-            string why = DataFolder.WhyNotKept ?? DataFolder.LastProblem ?? "";
+            string why = LongText.Cap(DataFolder.WhyNotKept ?? DataFolder.LastProblem ?? "");
             Note.Text = why;
             Note.ToolTip = why.Length > 0 ? why : null;
             Note.SetResourceReference(TextBlock.ForegroundProperty, "Warn");
         }
 
-        // a few seconds of news in the bottom line ("Saved b0r3d.org.png")
+        // a few seconds of news in the bottom line ("Saved b0r3d.org.png"; a file's name or why a picture
+        // can't be used, in the picture's own words, capped)
         void Flash(string text, string colour)
         {
-            Note.Text = text;
+            Note.Text = LongText.Cap(text);
             Note.ToolTip = null;
             Note.SetResourceReference(TextBlock.ForegroundProperty, colour);
             noteTimer.Stop();

@@ -168,9 +168,9 @@ namespace B0r3dQR
             BarcodeSvg made = Barcodes.Barcode.Make(text, type, look.Options, out string error);
             barcodeArt = made == null ? null : new BarcodeArt(made);
             string said = BarcodeError.Text;
-            BarcodeError.Text = error ?? "";
+            BarcodeError.Text = LongText.Cap(error ?? "");
             BarcodeError.Visibility = error != null ? Visibility.Visible : Visibility.Collapsed;
-            if (error != null && error != said) Say(BarcodeError);
+            if (error != null && BarcodeError.Text != said) Say(BarcodeError);
             if (barcodeArt != null)
             {
                 barcodePrepared = format.Prepare(text);
@@ -251,8 +251,9 @@ namespace B0r3dQR
         {
             InfoLine.Text = "";
             List<string> warnings = BarcodeExport.Warnings(look);
-            WarnLine.Text = string.Join("\n", warnings.Select(w => "⚠ " + w));
-            WarnLine.Visibility = warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            // the barcode data box caps the marks on each letter (LongText); say so when it did
+            if (LongText.GetTrimmed(BarcodeDataBox)) warnings.Insert(0, LongText.DataNote);
+            ShowWarnings(warnings);
             BarcodeFormat format = BarcodeFormats.Get(codeType.Value);
             var rows = new List<KeyValuePair<string, string>>
             {

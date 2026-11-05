@@ -36,5 +36,12 @@ dotnet build tests\b0r3dQRTests.csproj -c Release -nologo -v quiet -nodeReuse:fa
 if errorlevel 1 exit /b 1
 
 echo Built bin\b0r3dQR.exe, build %BUILD%
-if /i "%~1"=="test" bin\tests\b0r3dQRTests.exe
+if /i not "%~1"=="test" exit /b 0
+rem The tests, in three parts that each finish within 90 seconds (their watchdog), even on a
+rem 2-core CI machine: the exe and making codes, then files and reading codes, then the window.
+bin\tests\b0r3dQRTests.exe --part make
+if errorlevel 1 exit /b 1
+bin\tests\b0r3dQRTests.exe --part scan
+if errorlevel 1 exit /b 1
+bin\tests\b0r3dQRTests.exe --part window
 exit /b %ERRORLEVEL%

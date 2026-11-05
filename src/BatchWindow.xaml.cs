@@ -41,8 +41,9 @@ namespace B0r3dQR
         string madeIn;                 // where the last files went (a folder, or the zip), for Show the files
         string clashFolder;            // a folder waiting for the answer about files already there
 
-        // for the tests: where the files go, instead of asking (null: Don't make them)
+        // for the tests: where the files go, instead of asking (null: Don't make them); and how a row's file is made
         internal Func<string> AskFolder, AskZip;
+        internal Func<BatchItem, BatchKind, byte[]> MakeFile = (item, kind) => BatchExport.Make(item, kind, out _);
         internal Task Running { get; private set; } = Task.CompletedTask;
         internal IReadOnlyList<BatchItem> Items => items;
         internal BatchKind Kind => kind;
@@ -166,7 +167,7 @@ namespace B0r3dQR
             ReadProblem.Visibility = Visibility.Collapsed;
             rows = read;
             shown = 0;
-            FileLine.Text = name + " · " + Count(rows.Count, "row");
+            FileLine.Text = LongText.Cap(name + " · " + Count(rows.Count, "row"));
             if (kind.Barcode == null)
             {
                 // a frame when the file has captions, as the website does on reading it
@@ -181,7 +182,7 @@ namespace B0r3dQR
 
         void ShowReadProblem(string text)
         {
-            ReadProblem.Text = text;
+            ReadProblem.Text = LongText.Cap(text);
             ReadProblem.Visibility = Visibility.Visible;
             Say(ReadProblem);
         }
@@ -206,7 +207,7 @@ namespace B0r3dQR
                 {
                     items = new List<BatchItem>();
                     RowsPanel.Visibility = Visibility.Collapsed;
-                    StatusLine.Text = "Couldn't check the rows: " + done.Exception.GetBaseException().Message;
+                    StatusLine.Text = LongText.Cap("Couldn't check the rows: " + done.Exception.GetBaseException().Message);
                     return;
                 }
                 planned = true;
@@ -247,7 +248,8 @@ namespace B0r3dQR
             ShowMakeButton();
         }
 
-        static TextBlock Line(string text) => new TextBlock { Text = text, TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 1, 0, 1) };
+        // a line of the lists, which quote the rows' text, the files' names and why they can't be made: capped (LongText)
+        static TextBlock Line(string text) => new TextBlock { Text = LongText.Cap(text), TextWrapping = TextWrapping.Wrap, FontSize = 12, Margin = new Thickness(0, 1, 0, 1) };
 
         void ShowMakeButton()
         {
@@ -296,7 +298,7 @@ namespace B0r3dQR
             {
                 if (string.IsNullOrEmpty(value)) return;
                 RowFields.Children.Add(new TextBlock { Text = label, FontSize = 12, Foreground = (Brush)FindResource("Dim"), Margin = new Thickness(0, 4, 0, 0) });
-                var box = new TextBlock { Text = value.Length > 300 ? value.Substring(0, 297) + "…" : value, TextWrapping = TextWrapping.Wrap };
+                var box = new TextBlock { Text = LongText.Cap(value.Length > 300 ? value.Substring(0, 297) + "…" : value), TextWrapping = TextWrapping.Wrap };
                 if (code) box.FontFamily = new FontFamily("Consolas");
                 RowFields.Children.Add(box);
             }
@@ -314,7 +316,7 @@ namespace B0r3dQR
             if (item.Name != null) Field("File", item.Name + kind.Extension, true);
             if (item.Problem != null)
             {
-                var problem = new TextBlock { Text = item.Problem, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
+                var problem = new TextBlock { Text = LongText.Cap(item.Problem), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 6, 0, 0) };
                 problem.SetResourceReference(TextBlock.ForegroundProperty, "Bad");
                 RowFields.Children.Add(problem);
             }
@@ -431,8 +433,8 @@ namespace B0r3dQR
             }
             // asked once, for all of them
             clashFolder = folder;
-            ClashLine.Text = (already == 1 ? "1 of the files is" : already.ToString("N0") + " of the files are") + " already in " + folder + ". What should happen to " +
-                             (already == 1 ? "it?" : "them?");
+            ClashLine.Text = LongText.Cap((already == 1 ? "1 of the files is" : already.ToString("N0") + " of the files are") + " already in " + folder + ". What should happen to " +
+                                          (already == 1 ? "it?" : "them?"));
             ClashPanel.Visibility = Visibility.Visible;
             Busy(true, asking: true);
             Say(ClashLine);
@@ -534,8 +536,9 @@ namespace B0r3dQR
             Finish(outcome, todo.Count, folder);
         }
 
-        // Into a zip: written beside it under a temporary name and put in its place once whole; then each file read
-        // back out of the finished zip, one at a time (a batch can be bigger than the memory there is).
+        // Into a zip: written beside it under a temporary name and put in its place once whole (whatever stops it
+        // first, the temporary file is deleted); then each file read back out of the finished zip, one at a time (a
+        // batch can be bigger than the memory there is).
         async Task MakeZip(string zipPath)
         {
             List<BatchItem> todo = items.Where(i => i.Problem == null).ToList();
@@ -569,7 +572,6 @@ namespace B0r3dQR
                 }
                 if (stopping)
                 {
-                    TryDelete(temporary);
                     StatusLine.Text = "Stopped: no zip file was made.";
                     Say(StatusLine);
                     return;
@@ -607,13 +609,13 @@ namespace B0r3dQR
             }
             catch (Exception x) when (x is IOException || x is UnauthorizedAccessException || x is NotSupportedException || x is InvalidDataException || x is System.Security.SecurityException)
             {
-                TryDelete(temporary);
-                StatusLine.Text = "Couldn't make " + Path.GetFileName(zipPath) + ": " + x.Message;
+                StatusLine.Text = LongText.Cap("Couldn't make " + Path.GetFileName(zipPath) + ": " + x.Message);
                 Say(StatusLine);
                 return;
             }
             finally
             {
+                TryDelete(temporary);   // gone already once the zip is in its place
                 Busy(false);
             }
             madeIn = zipPath;
@@ -626,16 +628,19 @@ namespace B0r3dQR
             public readonly List<string> Failed = new List<string>(), Unread = new List<string>();
         }
 
-        // a row's file, or null after noting why it couldn't be made (a picture too big to draw, say)
+        // A row's file, or null after noting why it couldn't be made (a picture too big to draw, say). Whatever goes
+        // wrong in making one row's file is that row's, as the rows that can't be made at all are: it's listed with
+        // why, and the other rows are still made.
         byte[] MakeOne(BatchItem item, BatchKind snapshot, Outcome outcome, string file)
         {
             try
             {
-                return BatchExport.Make(item, snapshot, out _);
+                return MakeFile(item, snapshot);
             }
-            catch (Exception x) when (x is QrException || x is OutOfMemoryException || x is IOException)
+            catch (Exception x)
             {
-                outcome.Failed.Add(file + ": " + (x is OutOfMemoryException ? "there isn't enough memory for a picture that big" : x.Message));
+                outcome.Failed.Add(file + ": " + (x is OutOfMemoryException ? "there isn't enough memory for a picture that big" :
+                                                  x is QrException || x is IOException ? x.Message : "it couldn't be made (" + x.Message + ")"));
                 return null;
             }
         }
@@ -683,7 +688,7 @@ namespace B0r3dQR
 
         void Progress(int n, int total, string file)
         {
-            StatusLine.Text = "Making " + (n + 1).ToString("N0") + " of " + total.ToString("N0") + ": " + file;
+            StatusLine.Text = LongText.Cap("Making " + (n + 1).ToString("N0") + " of " + total.ToString("N0") + ": " + file);
         }
 
         void Finish(Outcome outcome, int total, string where)
@@ -695,9 +700,9 @@ namespace B0r3dQR
             said.Append(outcome.Made > 0 && outcome.Unread.Count == 0 ? ", each read back and scanned." : ".");
             if (outcome.Skipped > 0) said.Append(" " + Count(outcome.Skipped, "file") + (outcome.Skipped == 1 ? " was" : " were") + " already there and left as they were.");
             if (leftOut > 0) said.Append(" " + Count(leftOut, "row") + " couldn't be made (listed above).");
-            if (outcome.Failed.Count > 0) said.Append(" " + Count(outcome.Failed.Count, "file") + " couldn't be written:");
+            if (outcome.Failed.Count > 0) said.Append(" " + Count(outcome.Failed.Count, "file") + (outcome.Failed.Count == 1 ? " wasn't" : " weren't") + " made:");
             if (outcome.Unread.Count > 0) said.Append(" " + Count(outcome.Unread.Count, "file") + " didn't scan when read back: try more contrast or a larger size.");
-            StatusLine.Text = said.ToString();
+            StatusLine.Text = LongText.Cap(said.ToString());
             StatusLine.SetResourceReference(TextBlock.ForegroundProperty, outcome.Failed.Count + outcome.Unread.Count > 0 || outcome.Made == 0 ? "Warn" : "Good");
             OutcomeList.Items.Clear();
             foreach (string line in outcome.Failed.Concat(outcome.Unread.Select(f => f + ": didn't scan when read back")).Take(30)) OutcomeList.Items.Add(Line(line));
@@ -767,7 +772,7 @@ namespace B0r3dQR
             try
             {
                 Exports.Write(path, new UTF8Encoding(false).GetBytes(Example(chosen)));
-                StatusLine.Text = "Saved " + Path.GetFileName(path) + ". Fill it in with a spreadsheet or a text editor, then choose it here.";
+                StatusLine.Text = LongText.Cap("Saved " + Path.GetFileName(path) + ". Fill it in with a spreadsheet or a text editor, then choose it here.");
             }
             catch (Exception x) when (x is IOException || x is UnauthorizedAccessException || x is NotSupportedException || x is System.Security.SecurityException)
             {

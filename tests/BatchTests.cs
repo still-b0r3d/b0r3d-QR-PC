@@ -226,5 +226,50 @@ namespace B0r3dQR.Tests
                 "barcodes made: " + barcodes.LastOutcome + " · " + string.Join(", ", Directory.GetFiles(barcodeFolder).Select(Path.GetFileName)));
             barcodes.Close();
         }
+
+        // A row whose file can't be made, for whatever reason (here a made-up one: the error odd text once gave), is
+        // listed with why and the other rows are still made, into a zip or a folder, and the summary says so; nothing
+        // half-made is left, a zip's temporary file included, nor when the batch is stopped half-way
+        static void BatchRowThatFails()
+        {
+            string folder = Path.Combine(Work, "batch-fails");
+            Fresh(folder);
+            MainWindow window = NewMain();
+            Type(window, "https://b0r3d.org");
+            BatchWindow batch = NewBatch(window, "url,frameText,fileName\nhttps://b0r3d.org/a,,a\nhttps://b0r3d.org/b,,b\nhttps://b0r3d.org/c,,c\n");
+            batch.MakeFile = (item, kind) => item.Name == "b" ? throw new ArgumentException("Invalid Unicode code point found at index 0.") : BatchExport.Make(item, kind, out _);
+            foreach (bool zip in new[] { true, false })
+            {
+                string into = zip ? Path.Combine(folder, "codes.zip") : Path.Combine(folder, "files");
+                if (!zip) Fresh(into);
+                MakeBatch(batch, into, zip);
+                string[] made;
+                if (zip)
+                    using (ZipArchive archive = ZipFile.OpenRead(into)) made = archive.Entries.Select(e => e.FullName).ToArray();
+                else made = Directory.GetFiles(into).Select(Path.GetFileName).ToArray();
+                List<string> listed = batch.OutcomeList.Items.Cast<System.Windows.Controls.TextBlock>().Select(t => t.Text).ToList();
+                string where = zip ? "into a zip" : "into a folder";
+                Check(batch.LastOutcome == "2 made, 0 skipped, 1 failed, 0 unread" && made.OrderBy(n => n, StringComparer.Ordinal).SequenceEqual(new[] { "a.png", "c.png" }),
+                    where + ": " + batch.LastOutcome + " · " + string.Join(", ", made) + " · " + batch.StatusLine.Text);
+                Check(batch.StatusLine.Text.Contains("1 file wasn't made:") && listed.Count == 1 && listed[0] == "b.png: it couldn't be made (Invalid Unicode code point found at index 0.)",
+                    where + ", the row that failed should be listed with why: " + batch.StatusLine.Text + " · " + string.Join(" | ", listed));
+            }
+            Check(!Directory.GetFiles(folder, "*.tmp", SearchOption.AllDirectories).Any(), "a temporary file was left behind: " + string.Join(", ", Directory.GetFiles(folder, "*", SearchOption.AllDirectories).Select(Path.GetFileName)));
+
+            // stopped half-way, at the second row: no zip, and no temporary file
+            batch.MakeFile = (item, kind) =>
+            {
+                if (item.Name == "b") batch.CancelButton.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+                return BatchExport.Make(item, kind, out _);
+            };
+            string stopped = Path.Combine(folder, "stopped.zip");
+            batch.AskZip = () => stopped;
+            batch.ZipChoice.IsChecked = true;
+            batch.MakeButton.RaiseEvent(new System.Windows.RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Pump(() => batch.Running.IsCompleted, 30000);
+            Check(!File.Exists(stopped) && batch.StatusLine.Text == "Stopped: no zip file was made." && !Directory.GetFiles(folder, "*.tmp").Any(),
+                "stopped: " + batch.StatusLine.Text + " · " + string.Join(", ", Directory.GetFiles(folder).Select(Path.GetFileName)));
+            batch.Close();
+        }
     }
 }

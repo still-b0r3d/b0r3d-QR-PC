@@ -64,6 +64,39 @@ namespace B0r3dQR.Scan
         static readonly List<BarcodeFormat> FoundFromTheMiddle = new List<BarcodeFormat> { BarcodeFormat.DATA_MATRIX, BarcodeFormat.AZTEC };
         const int MaxPatches = 150;
 
+        // the camera's: square codes (QR, Data Matrix, Aztec) and PDF417, then the barcodes
+        static readonly List<BarcodeFormat> Squares = Everything.Take(4).ToList();
+        static readonly List<BarcodeFormat> Bars = Everything.Skip(4).ToList();
+
+        // The camera's quick look at one of its pictures, a few times a second: the first code ZXing
+        // finds, or null, without ReadAll's extra rounds. Looking hard for square codes costs little, so
+        // every look does; for barcodes (more rows, and turned on their side) it costs about ten times as
+        // much, so every fourth look does. Every other look tries light on dark too, as the website's
+        // reader does. `look` counts the looks. Safe on any thread.
+        public static FoundCode ReadFrame(byte[] grays, int width, int height, string source, int look)
+        {
+            LuminanceSource picture = new RGBLuminanceSource(grays, width, height, RGBLuminanceSource.BitmapFormat.Gray8);
+            Result result = First(picture, Squares, true) ?? First(picture, Bars, look % 4 == 3);
+            if (result == null && look % 2 == 1)
+            {
+                LuminanceSource inverted = picture.invert();
+                result = First(inverted, Squares, true) ?? First(inverted, Bars, false);
+            }
+            if (result == null) return null;
+            ResultPoint[] points = (result.ResultPoints ?? new ResultPoint[0]).Where(p => p != null).ToArray();
+            return Make(result, points, grays, width, height, source);
+        }
+
+        static Result First(LuminanceSource picture, List<BarcodeFormat> formats, bool harder)
+        {
+            var reader = new BarcodeReaderGeneric { AutoRotate = false };
+            reader.Options.PossibleFormats = formats;
+            reader.Options.TryHarder = harder;
+            reader.Options.AssumeGS1 = true;
+            Result result = Safely(() => reader.Decode(picture));
+            return result != null && !string.IsNullOrEmpty(result.Text) ? result : null;
+        }
+
         // Data Matrix and Aztec finders look outward from the middle of what they're given, so
         // they only see a code that covers the middle of the picture. Each patch that could be one
         // of those codes gets a look of its own, in a piece of the picture with the patch in the

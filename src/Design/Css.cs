@@ -18,8 +18,15 @@ namespace B0r3dQR.Design
             if (v.Length == 0) return null;
             if (IsTransparent(v)) return Color.FromArgb(0, 0, 0, 0);
             if (v[0] == '#') return Hex(v.Substring(1));
-            Match f = Regex.Match(v, @"^(rgba?|hsla?)\(\s*(.*?)\s*\)$", RegexOptions.IgnoreCase);
-            if (f.Success) return Function(f.Groups[1].Value.ToLowerInvariant(), f.Groups[2].Value);
+            // rgb(...) and the like, what's inside on one line but for space around it (looked at without a
+            // pattern for the inside: one that has to try every way to split spaces took minutes for a
+            // few thousand of them)
+            Match f = Regex.Match(v, @"^(rgba?|hsla?)\(", RegexOptions.IgnoreCase);
+            if (f.Success && v.EndsWith(")", StringComparison.Ordinal))
+            {
+                string inside = v.Substring(f.Length, v.Length - f.Length - 1).Trim();
+                if (inside.IndexOf('\n') < 0) return Function(f.Groups[1].Value.ToLowerInvariant(), inside);
+            }
             if (!Regex.IsMatch(v, "^[A-Za-z]+$")) return null;
             if (v.Equals("rebeccapurple", StringComparison.OrdinalIgnoreCase)) return Color.FromRgb(0x66, 0x33, 0x99);
             try

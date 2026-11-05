@@ -27,6 +27,7 @@
         <CommandBinding Command="{x:Static local:Commands.Batch}" Executed="OnBatch" />
         <CommandBinding Command="{x:Static local:Commands.Print}" Executed="OnPrintCode" CanExecute="WhenThereIsACode" />
         <CommandBinding Command="{x:Static local:Commands.ScanScreen}" Executed="OnScanScreen" CanExecute="WhenNotScanning" />
+        <CommandBinding Command="{x:Static local:Commands.ScanCamera}" Executed="OnScanCamera" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.OpenPicture}" Executed="OnOpenPicture" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.PastePicture}" Executed="OnPastePicture" CanExecute="WhenNotScanning" />
         <CommandBinding Command="{x:Static local:Commands.ScanFolder}" Executed="OnScanFolder" CanExecute="WhenNotScanning" />
@@ -35,6 +36,8 @@
 
     <Window.Resources>
         <BooleanToVisibilityConverter x:Key="Shown" />
+        <!-- caps the marks on each letter of a scanned code's text, so the card can't end the program -->
+        <local:CapMarks x:Key="CapMarks" />
 
         <!-- one code found by a scan; or, in a batch, a picture with no code or that couldn't be
              read (no text and no buttons, its title in the warning colour). Screen readers get
@@ -63,8 +66,8 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBlock Text="{Binding Summary}" Foreground="{DynamicResource Dim}" TextWrapping="Wrap" Margin="0,2,0,0" />
-                        <TextBox Text="{Binding Text, Mode=OneWay}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="120" Margin="0,8,0,0"
+                        <TextBlock Text="{Binding Summary, Converter={StaticResource CapMarks}}" Foreground="{DynamicResource Dim}" TextWrapping="Wrap" Margin="0,2,0,0" />
+                        <TextBox Text="{Binding Text, Mode=OneWay, Converter={StaticResource CapMarks}}" IsReadOnly="True" TextWrapping="Wrap" MaxHeight="120" Margin="0,8,0,0"
                                  VerticalScrollBarVisibility="Auto" FontFamily="Consolas" AutomationProperties.Name="What the code holds"
                                  Visibility="{Binding HasText, Converter={StaticResource Shown}}" />
                         <WrapPanel Margin="0,8,0,0" Visibility="{Binding IsCode, Converter={StaticResource Shown}}">
@@ -83,7 +86,7 @@
 
     <DockPanel x:Name="Root" Background="{DynamicResource Back}">
         <!-- Access keys: F E N V H on the bar, M A for the tabs; then S G C and the sections D T L R Z
-             on Make, S O P D L C on Scan; each menu list has its own. -->
+             on Make, S W O P D L C on Scan; each menu list has its own. -->
         <Menu x:Name="MenuBar" DockPanel.Dock="Top">
             <MenuItem Header="_File">
                 <MenuItem Header="Save _PNG…" Command="{x:Static local:Commands.SavePng}" />
@@ -115,6 +118,7 @@
             </MenuItem>
             <MenuItem Header="Sca_n">
                 <MenuItem Header="Scan the _screen" Command="{x:Static local:Commands.ScanScreen}" />
+                <MenuItem Header="Scan _with the camera" Command="{x:Static local:Commands.ScanCamera}" />
                 <MenuItem Header="_Open picture…" Command="{x:Static local:Commands.OpenPicture}" />
                 <MenuItem Header="_Paste picture" Command="{x:Static local:Commands.PastePicture}" />
                 <MenuItem Header="Scan a fol_der…" Command="{x:Static local:Commands.ScanFolder}" />
@@ -501,6 +505,11 @@
                                     <Button x:Name="ScanScreenButton" Content="Scan the _screen" Command="{x:Static local:Commands.ScanScreen}" HorizontalAlignment="Stretch" />
                                     <TextBlock Style="{StaticResource Hint}"
                                                Text="b0r3d QR steps aside and every screen freezes. Drag a box around a code, or click a screen to read all of it. Enter reads every screen; Esc cancels." />
+
+                                    <TextBlock Style="{StaticResource Heading}" Text="With a camera" />
+                                    <Button x:Name="ScanCameraButton" Content="Scan _with the camera" Command="{x:Static local:Commands.ScanCamera}" HorizontalAlignment="Stretch" />
+                                    <TextBlock Style="{StaticResource Hint}"
+                                               Text="Hold a code up to your webcam. The first one it sees is read, then the camera goes off. Nothing it sees is saved." />
 
                                     <TextBlock Style="{StaticResource Heading}" Text="From pictures" />
                                     <Button x:Name="OpenPictureButton" Content="_Open picture…" Command="{x:Static local:Commands.OpenPicture}" HorizontalAlignment="Stretch" />

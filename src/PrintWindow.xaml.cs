@@ -194,7 +194,7 @@ namespace B0r3dQR
             try
             {
                 dialog.PrintDocument(document.DocumentPaginator, batch ? "b0r3d QR batch" : "b0r3d QR code");
-                StatusLine.Text = "Sent to " + dialog.PrintQueue.FullName + ": " + (document.Pages.Count == 1 ? "1 page." : document.Pages.Count.ToString("N0") + " pages.");
+                StatusLine.Text = LongText.Cap("Sent to " + dialog.PrintQueue.FullName + ": " + (document.Pages.Count == 1 ? "1 page." : document.Pages.Count.ToString("N0") + " pages."));
                 if (System.Windows.Automation.Peers.AutomationPeer.ListenerExists(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged))
                     System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(StatusLine)?.RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
             }

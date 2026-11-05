@@ -1,5 +1,41 @@
 # Changelog
 
+## 0.8 (not released yet)
+
+The last of what qr.b0r3d.org does: SVG logos, its caption fonts and the camera.
+
+- SVG logos and SVG frame pictures are drawn into every picture: the preview, PNG, JPG, PDF,
+  copying, dragging, printing, batch export and Recent codes. b0r3d QR reads SVG itself and
+  draws it as the website's browser does (checked against 210 pictures Chromium drew the
+  website's way); an SVG's patterns, masks, filters and markers are left out. An SVG logo can
+  be pasted too. One that can't be drawn, or is too big or too deeply nested to draw safely
+  (more than 2,000 characters of text, say), is refused with the reason.
+- Captions in the website's 18 fonts, built into the exe, in the preview and every file, so a
+  caption looks the same on any PC and its lines break where the website's preview breaks them
+  (checked against 1,083 widths and 445 layouts measured in Chromium). The generic monospace is
+  Consolas now, as in Chrome and Edge on Windows. The fonts make the exe about 4 MB.
+- Emoji in captions, and in an SVG logo's or frame picture's text, are in colour in the
+  preview and every picture (PNG, JPG, PDF, copying, dragging, printing, batch export and
+  Recent codes), from Windows' Segoe UI Emoji as on the website; an SVG file keeps the caption
+  as text, as the website's does. An emoji takes the room it takes on the website, so a
+  caption's lines break where its preview breaks them.
+- A letter carrying more than 100 accents or other marks (in a scanned code, a paste, a design
+  file, a file or camera name: anywhere b0r3d QR shows text) is shown with its first 100:
+  Windows' text layout ends a program at about 700. What counts as a mark follows Unicode 17,
+  newer than the Unicode .NET knows. Copy text still copies a scanned code's whole text. A
+  paste with more goes in without the extra ones, as one step to undo, and the Make tab (or a
+  template's field) says so for as long as the code holds less.
+- Scan with the camera (Scan tab, Scan menu, Ctrl+Shift+A): your webcam's picture with the
+  website's aiming frame, read a few times a second at the website's size. The first code found
+  goes to the Scan tab and the camera turns off at once. A list of cameras when there's more
+  than one, and the website's messages when there's no camera, it's in use, or Windows doesn't
+  allow it (with where to allow it). Closing the window or choosing another camera turns the
+  camera off at once, even on a busy PC. Nothing the camera sees is saved.
+- Batch export: a row whose file fails to be made is listed with why in the summary, and the
+  other rows are still made; a zip that's stopped or fails never leaves its temporary file.
+- The Windows DLLs b0r3d QR calls are only ever loaded from System32, never from the folder
+  the exe is in.
+
 ## 0.7 (not released yet)
 
 The seventh stage: getting ready for the first release.

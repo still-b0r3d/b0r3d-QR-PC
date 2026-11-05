@@ -16,6 +16,9 @@ namespace B0r3dQR
         static App()
         {
             EventManager.RegisterClassHandler(typeof(TextBoxBase), DataObject.CopyingEvent, new DataObjectCopyingEventHandler(OnTextCopying));
+            // every text box caps the marks on each letter before it's laid out, so no scanned code,
+            // opened file, paste or drop can end the program in WPF's text layout (Unicode.Capped)
+            LongText.Guard();
         }
 
         static void OnTextCopying(object sender, DataObjectCopyingEventArgs e)

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Windows;
 using System.Windows.Automation;
 using System.Windows.Automation.Peers;
@@ -19,7 +20,7 @@ namespace B0r3dQR
         sealed class FieldUi
         {
             public TemplateField Field;
-            public TextBlock Label, Note, Problem, Placeholder;
+            public TextBlock Label, Note, Problem, Placeholder, Cut;
             public Control Input;          // a TextBox, PasswordBox, ComboBox or CheckBox
         }
 
@@ -29,11 +30,19 @@ namespace B0r3dQR
         TemplateKind kind;
         bool submitted, showing;
 
+        // The fields of a form (kept with its values while b0r3d QR runs) whose text had marks left out: a text box
+        // keeps at most 100 on a letter (LongText). Their note shows for as long as they hold those letters.
+        static readonly ConditionalWeakTable<Dictionary<string, string>, HashSet<string>> cutFields = new ConditionalWeakTable<Dictionary<string, string>, HashSet<string>>();
+
         // the text to use, once Save has written it; null while there's none
         public string Result { get; private set; }
 
+        // Save's text holds a field's text with marks left out, so less than was put in the form
+        internal bool Shortened { get; private set; }
+
         internal TemplateKind Kind => kind;
         internal Dictionary<string, string> Values => forms[kind];
+        HashSet<string> Cut => cutFields.GetOrCreateValue(Values);
 
         internal TemplateWindow(TemplateKind start, string data, Dictionary<TemplateKind, Dictionary<string, string>> forms)
         {
@@ -52,11 +61,14 @@ namespace B0r3dQR
             SourceInitialized += (s, e) => Theme.TitleBar(this);
         }
 
-        // the window over `owner`, and the text it wrote (null when it was cancelled)
-        internal static string Ask(Window owner, TemplateKind start, string data, Dictionary<TemplateKind, Dictionary<string, string>> forms)
+        // the window over `owner`, and the text it wrote (null when it was cancelled), `shortened` when a field's
+        // marks were left out
+        internal static string Ask(Window owner, TemplateKind start, string data, Dictionary<TemplateKind, Dictionary<string, string>> forms, out bool shortened)
         {
             var window = new TemplateWindow(start, data, forms) { Owner = owner };
-            return window.ShowDialog() == true ? window.Result : null;
+            bool saved = window.ShowDialog() == true;
+            shortened = saved && window.Shortened;
+            return saved ? window.Result : null;
         }
 
         void ShowForm(TemplateKind k)
@@ -118,6 +130,7 @@ namespace B0r3dQR
                 box.Children.Add(ui.Placeholder == null ? (UIElement)ui.Input : WithPlaceholder(ui));
                 box.Children.Add(ui.Note);
                 box.Children.Add(ui.Problem);
+                if (ui.Cut != null) box.Children.Add(ui.Cut);
                 if (grid == null)
                 {
                     FieldsPanel.Children.Add(box);
@@ -183,6 +196,14 @@ namespace B0r3dQR
                 default:
                 {
                     var text = new TextBox { Text = Shown(f, value) };
+                    // what the box keeps of a value with too many marks on a letter is the field's value from now on, so the
+                    // code holds what's shown; the note under the field says so (and again, opened later, while it holds it)
+                    if (LongText.GetTrimmed(text))
+                    {
+                        Values[f.Name] = Typed(f, text.Text);
+                        Cut.Add(f.Name);
+                    }
+                    else if (Cut.Contains(f.Name)) LongText.MarkCut(text);
                     if (f.MaxLength > 0) text.MaxLength = f.MaxLength;
                     if (f.Kind == FieldKind.Lines)
                     {
@@ -194,9 +215,13 @@ namespace B0r3dQR
                     text.TextChanged += (s, e) =>
                     {
                         ShowPlaceholder(ui);
+                        if (LongText.GetTrimmed(text)) Cut.Add(f.Name);
+                        else Cut.Remove(f.Name);
                         if (!showing) Changed(f, Typed(f, text.Text));
                     };
                     ui.Input = text;
+                    ui.Cut = new TextBlock { Text = LongText.FieldNote, Style = (Style)FindResource("Hint"), Visibility = Visibility.Collapsed };
+                    ui.Cut.SetResourceReference(TextBlock.ForegroundProperty, "Warn");
                     break;
                 }
             }
@@ -297,6 +322,7 @@ namespace B0r3dQR
                 ui.Problem.Visibility = red != null ? Visibility.Visible : Visibility.Collapsed;
                 ui.Note.Text = dim ?? "";
                 ui.Note.Visibility = dim != null ? Visibility.Visible : Visibility.Collapsed;
+                if (ui.Cut != null) ui.Cut.Visibility = Cut.Contains(name) ? Visibility.Visible : Visibility.Collapsed;
             }
         }
 
@@ -320,6 +346,7 @@ namespace B0r3dQR
                 return false;
             }
             Result = Templates.Make(kind, Values);
+            Shortened = Cut.Count > 0;
             try
             {
                 DialogResult = true;
@@ -337,5 +364,8 @@ namespace B0r3dQR
         internal string ProblemText(string name) => fields.FirstOrDefault(f => f.Field.Name == name)?.Problem.Text ?? "";
 
         internal bool HasAsterisk(string name) => fields.FirstOrDefault(f => f.Field.Name == name)?.Label?.Inlines.Count == 2;
+
+        // whether a field's note says its text had marks left out
+        internal bool CutNoted(string name) => fields.FirstOrDefault(f => f.Field.Name == name)?.Cut?.Visibility == Visibility.Visible;
     }
 }

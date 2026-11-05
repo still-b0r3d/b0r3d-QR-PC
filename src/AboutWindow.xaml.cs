@@ -41,7 +41,7 @@ namespace B0r3dQR
             string text = DataFolder.Path;
             if (!DataFolder.CanKeep) text += "\n" + DataFolder.WhyNotKept;
             else if (!made) text += "\n(made the first time there's a setting to keep)";
-            FolderText.Text = text;
+            FolderText.Text = LongText.Cap(text);   // (the folder --data gave, which can be any text)
             OpenFolder.IsEnabled = made;
         }
 

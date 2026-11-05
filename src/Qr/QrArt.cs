@@ -29,7 +29,7 @@ namespace B0r3dQR.Qr
 
         readonly double margin, module;         // the quiet zone in modules; px per module
         readonly Outline dots, rings, centres;
-        readonly BitmapSource logo, frameImage;
+        readonly ImageSource logo, frameImage;  // a bitmap, or an SVG drawing (Images.Draw places either)
         readonly Rect logoBox;                  // px, from the code's top-left
         readonly Point codeAt;                  // the code's top-left in the picture
         readonly double padding, border, radius;
@@ -281,16 +281,16 @@ namespace B0r3dQR.Qr
         public IReadOnlyList<string> CaptionLines => lines;
 
         // The lines the caption takes in the website's preview of the frame, which sizes its saved
-        // pictures: the browser's own line breaking of the text at 18 px, in the caption's font (the
-        // page's when it has none: Inter if it's on the PC, else system-ui, Segoe UI), in a column of
-        // `column` px. Runs of spaces count as one and line breaks are kept (white-space: pre-line),
-        // a word wider than the column keeps a line to itself, and a line break at the very end adds
-        // no line.
+        // pictures: the browser's own line breaking of the text at 18 px, in the caption's font, the
+        // same one that draws it (the page's when it has none: Inter if it's installed, else
+        // system-ui, Segoe UI; the website doesn't load its Inter web font for the page), in a column
+        // of `column` px. Runs of spaces count as one and line breaks are kept (white-space:
+        // pre-line), a word wider than the column keeps a line to itself, and a line break at the
+        // very end adds no line.
         internal static int PreviewLines(string text, string fontCss, double column)
         {
-            FontFamily family = !string.IsNullOrWhiteSpace(fontCss) ? CaptionFont(fontCss) : new FontFamily(Installed("Inter") ? "Inter" : "Segoe UI");
-            var typeface = new Typeface(family, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
-            double Width(string s) => new FormattedText(s, CultureInfo.InvariantCulture, FlowDirection.LeftToRight, typeface, CaptionSize, Brushes.Black, 1.0).Width;
+            CaptionFont font = !string.IsNullOrWhiteSpace(fontCss) ? CaptionFont.For(fontCss) : CaptionFont.Page;
+            double Width(string s) => font.Text(s, CaptionSize, Brushes.Black, CultureInfo.InvariantCulture).Width;
             string[] paragraphs = text.Replace("\r\n", "\n").Split('\n');
             int count = paragraphs.Length;
             if (count > 1 && paragraphs[count - 1].Trim(' ', '\t').Length == 0) count--;
@@ -314,29 +314,13 @@ namespace B0r3dQR.Qr
             return result;
         }
 
-        // the caption's font: the first family in the CSS list that's on this PC, else its kind
-        internal static FontFamily CaptionFont(string css)
-        {
-            foreach (string part in (css ?? "").Split(','))
-            {
-                string name = part.Trim().Trim('\'', '"').Trim();
-                if (name.Length == 0) continue;
-                switch (name.ToLowerInvariant())
-                {
-                    case "sans-serif": return new FontFamily("Arial");
-                    case "serif": return new FontFamily("Times New Roman");
-                    case "monospace": return new FontFamily("Courier New");
-                    case "cursive": return new FontFamily("Comic Sans MS");
-                    case "system-ui": return new FontFamily("Segoe UI");
-                }
-                if (Installed(name)) return new FontFamily(name);
-            }
-            return new FontFamily("Arial");
-        }
+        // whether a font family is installed on this PC (the website's web fonts are in the exe instead:
+        // CaptionFont); the tests can pretend one is
+        internal static Func<string, bool> Installed = OnThisPc;
 
         static HashSet<string> installed;
 
-        internal static bool Installed(string family)
+        static bool OnThisPc(string family)
         {
             if (installed == null)
             {
@@ -370,23 +354,23 @@ namespace B0r3dQR.Qr
                     if (frameImage != null)
                     {
                         dc.PushClip(new RectangleGeometry(new Rect(0, 0, W, H), radius, radius));
-                        dc.DrawImage(frameImage, Cover(frameImage, new Rect(0, 0, W, H)));
+                        Images.Draw(dc, frameImage, new Rect(0, 0, W, H), true);
                         dc.Pop();
                         if (pen != null) dc.DrawRoundedRectangle(null, pen, box, radius, radius);
                     }
                     DrawCode(dc, codeAt);
-                    var typeface = new Typeface(CaptionFont(f.FontFamily), FontStyles.Normal, FontWeights.Normal, FontStretches.Normal);
+                    CaptionFont font = CaptionFont.For(f.FontFamily);   // with none: Arial, the sans-serif the website's file names
                     Brush ink = Brush(f.TextColor);
                     double y = firstBaseline;
                     for (int i = 0; i < lines.Count; i++)
                     {
                         // as browsers draw the website's SVG: each line after the first moves down a
                         // line, but an empty line has no letter for its move to act on, so it moves
-                        // nothing and its room is left at the bottom
+                        // nothing and its room is left at the bottom; emoji in their colours
                         if (lines[i].Length == 0) continue;
                         if (i > 0) y += LineHeight;
-                        var text = new FormattedText(lines[i], CultureInfo.CurrentUICulture, FlowDirection.LeftToRight, typeface, CaptionSize, ink, 1.0);
-                        dc.DrawText(text, new Point(captionX - text.WidthIncludingTrailingWhitespace / 2, y - text.Baseline));
+                        FormattedText text = font.Text(lines[i], CaptionSize, ink, CultureInfo.CurrentUICulture);
+                        ColourGlyphs.DrawText(dc, text, new Point(captionX - text.WidthIncludingTrailingWhitespace / 2, y - text.Baseline));
                     }
                 }
             }
@@ -402,8 +386,7 @@ namespace B0r3dQR.Qr
             dc.DrawGeometry(Brush(Design.CornersDotColor), null, centres.ToGeometry(module, at.X, at.Y));
             if (logo != null)
             {
-                var place = new Rect(at.X + logoBox.X, at.Y + logoBox.Y, logoBox.Width, logoBox.Height);
-                dc.DrawImage(logo, Fit(logo, place));
+                Images.Draw(dc, logo, new Rect(at.X + logoBox.X, at.Y + logoBox.Y, logoBox.Width, logoBox.Height), false);
             }
         }
 
@@ -412,24 +395,6 @@ namespace B0r3dQR.Qr
             var b = new SolidColorBrush(Css.Paint(css));
             b.Freeze();
             return b;
-        }
-
-        // a picture fitted inside a box, centred (SVG's xMidYMid meet)
-        internal static Rect Fit(BitmapSource picture, Rect box)
-        {
-            double w = picture.PixelWidth, h = picture.PixelHeight;
-            if (w <= 0 || h <= 0) return box;
-            double scale = Math.Min(box.Width / w, box.Height / h);
-            return new Rect(box.X + (box.Width - w * scale) / 2, box.Y + (box.Height - h * scale) / 2, w * scale, h * scale);
-        }
-
-        // a picture covering a box, centred and cropped (SVG's xMidYMid slice)
-        static Rect Cover(BitmapSource picture, Rect box)
-        {
-            double w = picture.PixelWidth, h = picture.PixelHeight;
-            if (w <= 0 || h <= 0) return box;
-            double scale = Math.Max(box.Width / w, box.Height / h);
-            return new Rect(box.X + (box.Width - w * scale) / 2, box.Y + (box.Height - h * scale) / 2, w * scale, h * scale);
         }
 
         // The drawing as pixels: `scale` pixels to one of the picture's px, on a canvas of the given
@@ -485,7 +450,7 @@ namespace B0r3dQR.Qr
                 s.Append("<rect x=\"").Append(N(border / 2)).Append("\" y=\"").Append(N(border / 2)).Append("\" width=\"").Append(N(Math.Max(0, W - border)))
                  .Append("\" height=\"").Append(N(Math.Max(0, H - border))).Append("\" rx=\"").Append(r).Append("\" ry=\"").Append(r)
                  .Append("\" fill=\"").Append(Attr(f.BackgroundColor)).Append("\" stroke=\"").Append(Attr(f.BorderColor)).Append("\" stroke-width=\"").Append(b).Append("\"/>");
-                if (frameImage != null || IsData(f.BackgroundImage))   // an SVG picture b0r3d QR can't draw still goes in the file
+                if (frameImage != null || IsData(f.BackgroundImage))   // a picture b0r3d QR can't draw (a broken one) still goes in the file
                 {
                     s.Append("<defs><clipPath id=\"frame-bg-clip\"><rect width=\"").Append(w).Append("\" height=\"").Append(h).Append("\" rx=\"").Append(r).Append("\" ry=\"").Append(r)
                      .Append("\"/></clipPath></defs><image x=\"0\" y=\"0\" width=\"").Append(w).Append("\" height=\"").Append(h)
@@ -520,8 +485,8 @@ namespace B0r3dQR.Qr
             s.Append("<path class=\"qr-corner-dot\" fill=\"").Append(Attr(Design.CornersDotColor)).Append("\" d=\"").Append(centres.ToSvgPath(module, x, y)).Append("\"/>");
         }
 
-        // the logo, as the website writes it: also one b0r3d QR can't draw itself (an SVG), since a
-        // viewer can; never one on the web, which b0r3d QR leaves out
+        // the logo, as the website writes it: an SVG one as it is, and also one b0r3d QR can't draw
+        // itself, since a viewer might; never one on the web, which b0r3d QR leaves out
         void LogoImage(StringBuilder s, double x, double y)
         {
             if (!Design.LogoCounts) return;

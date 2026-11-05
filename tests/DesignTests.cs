@@ -90,8 +90,8 @@ namespace B0r3dQR.Tests
             Check(web.LogoProblem != null && web.LogoProblem.Contains("never goes online") && web.LevelUsed == QrLevel.L && web.Cleared == 0, "a logo on the web is left out with a note, and clears nothing");
             low.Logo = "data:image/svg+xml;base64," + Convert.ToBase64String(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 10 10\"><circle cx=\"5\" cy=\"5\" r=\"5\"/></svg>"));
             QrArt drawing = new QrArt(low);
-            Check(drawing.LogoProblem != null && drawing.LevelUsed == QrLevel.Q && drawing.Cleared > 0 && drawing.ToSvg().Contains("class=\"qr-logo\"") && drawing.ToSvg().Contains(low.Logo),
-                "an SVG logo should clear its room and raise L to Q as on the website, go into SVG files, and say why pictures leave it out");
+            Check(drawing.LogoProblem == null && drawing.LevelUsed == QrLevel.Q && drawing.Cleared > 0 && drawing.ToSvg().Contains("class=\"qr-logo\"") && drawing.ToSvg().Contains(low.Logo),
+                "an SVG logo should clear its room and raise L to Q as on the website, be drawn, and go into SVG files as it is: " + drawing.LogoProblem);
 
             // a phone photo saved sideways, with a note of how to turn it
             var wide = BitmapSource.Create(20, 10, 96, 96, PixelFormats.Bgr24, null, new byte[20 * 10 * 3], 20 * 3);

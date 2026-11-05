@@ -311,7 +311,7 @@ namespace B0r3dQR.Tests
             Unique("the Make tab with a barcode", always.Concat(new ContentControl[] { window.CodeTypeLabel, window.SavePngButton, window.SaveSvgButton, window.CopyButton,
                     window.ShowTextCheck, window.QuietZonesCheck, window.RectangularCheck, window.TransparentCheck, window.BarcodePrintCheck }.Select(b => Key(b.Content)))
                 .Concat(new[] { window.BarcodeDataSection, window.BarcodeLookSection }.Select(s => Key(s.Header))));
-            Unique("the Scan tab", always.Concat(new[] { window.ScanScreenButton, window.OpenPictureButton, window.PastePictureButton, window.ScanFolderButton, window.ClearButton, window.CancelScanButton }.Select(b => Key(b.Content))));
+            Unique("the Scan tab", always.Concat(new[] { window.ScanScreenButton, window.ScanCameraButton, window.OpenPictureButton, window.PastePictureButton, window.ScanFolderButton, window.ClearButton, window.CancelScanButton }.Select(b => Key(b.Content))));
             void Lists(MenuItem item)
             {
                 List<MenuItem> lines = item.Items.OfType<MenuItem>().ToList();
@@ -358,10 +358,14 @@ namespace B0r3dQR.Tests
             Check(NewMain().VersionRun.Text == "b0r3d QR v" + Program.Version + " · Build: " + Program.Build, "the window's corner should show the version and the build apart");
             string licences = about.Licences.Text;
             // everyone whose work is in the exe: ZXing.Net (with Barcode4J's notice, which ZXing carries), zint (with its
-            // Data Matrix, Reed-Solomon and QR mode authors, and GS1's syntax dictionary behind its AI table), qrcode-generator
+            // Data Matrix, Reed-Solomon and QR mode authors, and GS1's syntax dictionary behind its AI table), qrcode-generator,
+            // and the website's 18 caption fonts under the OFL
             foreach (string part in new[] { "Commons Clause", "MIT License", "Licensor: b0r3d.org", "ZXing.Net", "Apache License", "Barcode4J", "zint 2.16.0", "BSD 3-Clause",
-                                            "Grandzebu", "Adrian Kennard", "Stefan Schmidt", "Cliff Hones", "Project Nayuki", "GS1 AISBL", "qrcode-generator", "Kazuhiko Arase" })
+                                            "Grandzebu", "Adrian Kennard", "Stefan Schmidt", "Cliff Hones", "Project Nayuki", "GS1 AISBL", "qrcode-generator", "Kazuhiko Arase",
+                                            "Fontsource 5.3.0", "SIL OPEN FONT LICENSE Version 1.1", "The Pacifico Project Authors", "The Merriweather Project Authors", "IBM Corp." })
                 Check(licences.Contains(part), "the licences don't mention " + part);
+            foreach (WebFont font in WebFonts.All)
+                Check(licences.Contains("\n" + font.Name + "\r\n    ") || licences.Contains("\n" + font.Name + "\n    "), "the licences don't give " + font.Name + "'s copyright");
             Check(!licences.Contains("is missing from this build"), "a licence file is missing from the build");
             Check(about.FolderText.Text.StartsWith(DataFolder.Path), "the settings folder line: " + about.FolderText.Text);
         }

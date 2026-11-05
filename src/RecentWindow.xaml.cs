@@ -55,7 +55,7 @@ namespace B0r3dQR
             else if (trouble == RecentTrouble.Newer) problem = "b0r3dQR recent.json in the data folder is from a newer b0r3d QR, so this one leaves it as it is.";
             else if (damaged) problem = "b0r3dQR recent.json in the data folder can't be read, so it's left as it is. Clear all starts it again.";
             else if (LastFailed) problem = "The last code couldn't be kept: b0r3dQR recent.json couldn't be written. Delete some codes, or check the data folder (Help → About shows where it is).";
-            ProblemLine.Text = problem ?? "";
+            ProblemLine.Text = LongText.Cap(problem ?? "");
             ProblemLine.Visibility = problem != null ? Visibility.Visible : Visibility.Collapsed;
             EmptyLine.Text = settings.RecentCodes
                 ? "Codes you save, copy or drag out will appear here."
@@ -90,8 +90,9 @@ namespace B0r3dQR
             DockPanel.SetDock(buttons, Dock.Right);
             row.Children.Add(buttons);
 
+            // (the name is the file's, which anything can have written: capped, as all outside text shown is, LongText)
             var words = new StackPanel();
-            words.Children.Add(new TextBlock { Text = code.Name, FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
+            words.Children.Add(new TextBlock { Text = LongText.Cap(code.Name), FontWeight = FontWeights.SemiBold, TextWrapping = TextWrapping.Wrap });
             var when = new TextBlock { Text = code.SavedLocal.ToString("g", CultureInfo.CurrentCulture) + (code.Sensitive ? " · picture and password hidden" : ""), FontSize = 12, Margin = new Thickness(0, 2, 0, 0) };
             when.SetResourceReference(TextBlock.ForegroundProperty, "Dim");
             words.Children.Add(when);
@@ -161,7 +162,7 @@ namespace B0r3dQR
 
         void Say(string text)
         {
-            StatusLine.Text = text;
+            StatusLine.Text = LongText.Cap(text);
             if (AutomationPeer.ListenerExists(AutomationEvents.LiveRegionChanged))
                 UIElementAutomationPeer.CreatePeerForElement(StatusLine)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);
         }

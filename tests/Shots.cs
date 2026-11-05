@@ -1,5 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -15,6 +17,14 @@ namespace B0r3dQR.Tests
     {
         // the settings folder About shows in the pictures (they go in the README): never a real one
         const string ShownDataFolder = @"D:\Tools\b0r3d QR\b0r3dQR data";
+
+        // a cup drawn in SVG (steam, a gradient, a handle and text), as a logo pasted from a design program
+        const string ShotSvgLogo = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 64 64\"><defs><linearGradient id=\"mug\" x2=\"0\" y2=\"1\">" +
+            "<stop offset=\"0\" stop-color=\"#d040d0\"/><stop offset=\"1\" stop-color=\"#700070\"/></linearGradient></defs>" +
+            "<path d=\"M22 5c-3 4 3 6 0 10M32 3c-3 4 3 6 0 10M42 5c-3 4 3 6 0 10\" fill=\"none\" stroke=\"#9a9a9a\" stroke-width=\"2.5\" stroke-linecap=\"round\"/>" +
+            "<path d=\"M48 26h4a7 7 0 0 1 0 14h-4\" fill=\"none\" stroke=\"#700070\" stroke-width=\"4\"/>" +
+            "<path d=\"M10 19h38v23a12 12 0 0 1-12 12H22a12 12 0 0 1-12-12z\" fill=\"url(#mug)\"/>" +
+            "<text x=\"29\" y=\"40\" font-family=\"Consolas, monospace\" font-size=\"10\" font-weight=\"bold\" fill=\"#fff\" text-anchor=\"middle\">b0r3d</text></svg>";
 
         static int TakeShots(string folder)
         {
@@ -61,6 +71,39 @@ namespace B0r3dQR.Tests
                 Pump(() => false, 50);
                 LayOut(designer.Root, MainWidth, MainHeight);
                 Shoot(designer.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "size-" + name + ".png"));
+
+                // the b0r3d Cup preset's look with an SVG drawing pasted as its logo, the Logo section open
+                MainWindow svgLogo = NewMain();
+                Type(svgLogo, "https://b0r3d.org");
+                svgLogo.PresetBox.SelectedItem = "b0r3d Cup";
+                Pump(() => false, 50);
+                svgLogo.LogoFromData(new DataObject(DataFormats.UnicodeText, ShotSvgLogo));
+                WaitForCheck(svgLogo);
+                svgLogo.DataSection.IsExpanded = false;
+                svgLogo.StyleSection.IsExpanded = false;
+                svgLogo.LogoSection.IsExpanded = true;
+                LayOut(svgLogo.Root, MainWidth, MainHeight);
+                Pump(() => false, 50);
+                LayOut(svgLogo.Root, MainWidth, MainHeight);
+                Shoot(svgLogo.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "svg-logo-" + name + ".png"));
+                // a frame's caption in two of the website's own fonts, built into b0r3d QR, with the Frame section open
+                foreach (var (font, caption) in new[] { ("Pacifico", "Scan me for the menu"), ("Bebas Neue", "Scan for more info") })
+                {
+                    MainWindow captioned = NewMain();
+                    Type(captioned, "https://b0r3d.org");
+                    captioned.FrameCheck.IsChecked = true;
+                    captioned.CaptionBox.Text = caption;
+                    captioned.FontBox.SelectedItem = captioned.FontBox.Items.Cast<object>().First(item => item.ToString() == font);
+                    captioned.CatchUp();
+                    WaitForCheck(captioned);
+                    captioned.DataSection.IsExpanded = false;
+                    captioned.StyleSection.IsExpanded = false;
+                    captioned.FrameSection.IsExpanded = true;
+                    LayOut(captioned.Root, MainWidth, MainHeight);
+                    Pump(() => false, 50);
+                    LayOut(captioned.Root, MainWidth, MainHeight);
+                    Shoot(captioned.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "caption-" + font.ToLowerInvariant().Replace(' ', '-') + "-" + name + ".png"));
+                }
 
                 // barcodes: an EAN-13 with its check digit added and what's in it, and a Data Matrix
                 MainWindow barcodes = NewMain();
@@ -164,6 +207,22 @@ namespace B0r3dQR.Tests
                 Pump(() => false, 200);
                 LayOut(scanner.Root, MainWidth, MainHeight);
                 Shoot(scanner.Root, MainWidth, MainHeight, 1, Path.Combine(folder, "scan-" + name + ".png"));
+
+                // the camera window reading a pretend camera's picture, with two cameras to choose from;
+                // and its message when Windows' privacy settings keep the camera off (never a real camera)
+                var reading = new CameraWindow(new FakeCameras());
+                LayOut(reading.Root, 720, 620);
+                reading.ShowForShots(CameraPicture(1280, 720, "https://b0r3d.org/camera"),
+                    new List<Camera.CameraInfo> { new Camera.CameraInfo { Name = "Integrated Webcam" }, new Camera.CameraInfo { Name = "USB Camera" } });
+                LayOut(reading.Root, 720, 620);
+                Pump(() => false, 50);
+                LayOut(reading.Root, 720, 620);
+                Shoot(reading.Root, 720, 620, 1, Path.Combine(folder, "camera-" + name + ".png"));
+                reading.Close();
+                CameraWindow denied = StartCamera(new FakeCameras(new FakeCamera { Name = "Integrated Webcam", OpenTrouble = Camera.Webcams.Problem(unchecked((int)0x80070005), "Windows didn't start Integrated Webcam") }));
+                WaitForCamera(denied, () => denied.Problem != null, 5000);
+                Shoot(denied.Root, 720, 620, 1, Path.Combine(folder, "camera-denied-" + name + ".png"));
+                denied.Close();
 
                 // a folder of labels checked as a batch: a line for every picture, with or without a code
                 string labels = Path.Combine(Work, "shots-" + name, "Labels");

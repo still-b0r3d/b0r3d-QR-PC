@@ -1,20 +1,24 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using B0r3dQR.Svg;
 
 namespace B0r3dQR.Design
 {
-    // Pictures in designs (the logo, a frame's background), which files keep as data: URLs. One
-    // that's a web address or a path on the website can't be drawn: b0r3d QR never goes online.
+    // Pictures in designs (the logo, a frame's background), which files keep as data: URLs: PNG,
+    // JPEG and GIF pictures, and SVG drawings, drawn as the website's browser draws them. One that's
+    // a web address or a path on the website can't be drawn: b0r3d QR never goes online.
     static class Images
     {
         sealed class Kept
         {
             public string Value, Problem;
-            public BitmapSource Picture;
+            public ImageSource Picture;
         }
 
         // the last few pictures read (a design's logo and its frame's picture among them), so a
@@ -23,8 +27,12 @@ namespace B0r3dQR.Design
         static readonly List<Kept> kept = new List<Kept>();
         const int Keep = 4;
 
-        // The picture in a design's value, or null with `problem` saying why (null problem: no picture).
-        public static BitmapSource Load(string value, out string problem)
+        // the SVG drawing behind each DrawingImage that Load gives
+        static readonly ConditionalWeakTable<ImageSource, SvgImage> drawings = new ConditionalWeakTable<ImageSource, SvgImage>();
+
+        // The picture in a design's value, or null with `problem` saying why (null problem: no picture):
+        // a BitmapSource, or for an SVG drawing a DrawingImage of it at its own size.
+        public static ImageSource Load(string value, out string problem)
         {
             problem = null;
             string v = (value ?? "").Trim();
@@ -44,48 +52,109 @@ namespace B0r3dQR.Design
             }
         }
 
-        static BitmapSource Decode(string v, out string problem)
+        static ImageSource Decode(string v, out string problem)
         {
             problem = null;
             if (Regex.IsMatch(v, "^https?://", RegexOptions.IgnoreCase))
             {
-                string host = Uri.TryCreate(v, UriKind.Absolute, out Uri uri) ? uri.Host : "a web address";
+                // (what a note quotes from the design file goes through Xml.Quote: cut short, and kept to one line)
+                string host = Uri.TryCreate(v, UriKind.Absolute, out Uri uri) ? Xml.Quote(uri.Host) : "a web address";
                 problem = "This picture is on the web (" + host + "), and b0r3d QR never goes online: save it, then choose the file.";
                 return null;
             }
             if (!v.StartsWith("data:", StringComparison.OrdinalIgnoreCase))
             {
-                problem = "This picture is a file on the website (" + Short(v) + "), which b0r3d QR can't reach: choose the picture itself.";
+                problem = "This picture is a file on the website (" + Xml.Quote(v) + "), which b0r3d QR can't reach: choose the picture itself.";
                 return null;
             }
-            int comma = v.IndexOf(',');
-            if (comma < 0)
+            // the data as a browser reads a data: URL (base64 with spaces or without its padding, or %-escaped)
+            if (!SvgImage.DataUrl(v, out byte[] bytes, out string type, out string charset))
             {
                 problem = "This picture's data is broken.";
                 return null;
             }
-            string header = v.Substring(5, comma - 5).ToLowerInvariant();
-            if (header.StartsWith("image/svg", StringComparison.Ordinal))
+            if (type == "image/svg+xml")
             {
-                problem = "This picture is an SVG drawing: it goes into SVG files, but b0r3d QR can't draw it into pictures yet. For PNG, JPG and PDF files, use a PNG or JPEG of it.";
-                return null;
-            }
-            byte[] bytes;
-            try
-            {
-                bytes = header.EndsWith(";base64", StringComparison.Ordinal)
-                    ? Convert.FromBase64String(v.Substring(comma + 1))
-                    : System.Text.Encoding.UTF8.GetBytes(Uri.UnescapeDataString(v.Substring(comma + 1)));
-            }
-            catch (FormatException)
-            {
-                problem = "This picture's data is broken.";
-                return null;
+                ImageSource drawing = Drawing(bytes, charset, out string why);
+                if (drawing == null) problem = "b0r3d QR can't draw this SVG picture: " + why + ".";
+                return drawing;
             }
             BitmapSource picture = FromBytes(bytes);
             if (picture == null) problem = "Windows can't read this picture.";
             return picture;
         }
+
+        // An SVG drawing, read and drawn once to be sure it can be, or null with why not (`why`, as
+        // a few words: "the file is empty").
+        public static ImageSource Drawing(byte[] bytes, string charset, out string why)
+        {
+            why = null;
+            try
+            {
+                SvgImage svg = SvgImage.Read(bytes, charset);
+                Size size = svg.NaturalSize;
+                if (!(size.Width > 0 && size.Height > 0) || size.Width > 1e6 || size.Height > 1e6) size = new Size(300, 150);
+                var picture = new DrawingImage(svg.Render(size));
+                picture.Freeze();
+                drawings.Add(picture, svg);
+                return picture;
+            }
+            catch (SvgException x)
+            {
+                why = x.Message;
+                return null;
+            }
+            catch (Exception x)
+            {
+                why = Unexpected(x);
+                return null;
+            }
+        }
+
+        // The tests set this: a drawing that stops with anything but a refusal (SvgException) is a FAIL there, where
+        // the program refuses the picture in plain words.
+        internal static Action<Exception> OnUnexpected;
+
+        // Whatever else stops an SVG drawing (a value WPF won't take, a mistake of b0r3d QR's) is a refusal too, in a
+        // line, never the program's "Something went wrong" (a design file, template or Recent code holding the picture
+        // would show that on every change): as a batch's row is (BatchWindow.MakeOne).
+        static string Unexpected(Exception x)
+        {
+            OnUnexpected?.Invoke(x);
+            if (x is OutOfMemoryException) return "there isn't enough memory to draw it";
+            string message = (x.Message ?? "").Split('\r', '\n')[0].Trim();
+            return "something in it stopped the drawing" + (message.Length > 0 ? " (" + Xml.Quote(message) + ")" : "");
+        }
+
+        // A picture in its box, as the website's <image> puts it there: a bitmap fitted inside it,
+        // centred (xMidYMid meet, the logo), or covering it, centred and cropped (xMidYMid slice, a
+        // frame's picture; the caller clips it). An SVG drawing takes the box as its viewport either
+        // way, as Chromium draws one (see SvgImage). Drawn as vectors, so prints stay sharp.
+        public static void Draw(DrawingContext dc, ImageSource picture, Rect box, bool slice)
+        {
+            if (picture == null || !(box.Width > 0 && box.Height > 0)) return;
+            if (drawings.TryGetValue(picture, out SvgImage svg))
+            {
+                // drawn once already, at its own size (Drawing), so it should draw at any; one that doesn't is left
+                // out, as a refused picture is (and `dc` is as it was: SvgImage.Draw)
+                try
+                {
+                    svg.Draw(dc, box);
+                }
+                catch (Exception x)
+                {
+                    Unexpected(x);
+                }
+                return;
+            }
+            if (!(picture is BitmapSource bitmap) || bitmap.PixelWidth <= 0 || bitmap.PixelHeight <= 0) return;
+            double w = bitmap.PixelWidth, h = bitmap.PixelHeight;
+            double scale = slice ? Math.Max(box.Width / w, box.Height / h) : Math.Min(box.Width / w, box.Height / h);
+            dc.DrawImage(bitmap, new Rect(box.X + (box.Width - w * scale) / 2, box.Y + (box.Height - h * scale) / 2, w * scale, h * scale));
+        }
+
+        // the SVG drawing behind a picture Load gave, or null for a bitmap
+        public static SvgImage SvgOf(ImageSource picture) => picture != null && drawings.TryGetValue(picture, out SvgImage svg) ? svg : null;
 
         public static BitmapSource FromBytes(byte[] bytes)
         {
@@ -131,7 +200,5 @@ namespace B0r3dQR.Design
             }
             return new TransformedBitmap(frame, t);
         }
-
-        static string Short(string text) => text.Length <= 40 ? text : text.Substring(0, 37) + "...";
     }
 }

@@ -502,7 +502,7 @@ namespace B0r3dQR
             ClearButton.IsEnabled = false;
             CommandManager.InvalidateRequerySuggested();
             Dispatcher ui = Dispatcher;
-            void Progress(string text) => ui.BeginInvoke(new Action(() => { if (scanning == cancel) ScanStatus.Text = text; }));
+            void Progress(string text) => ui.BeginInvoke(new Action(() => { if (scanning == cancel) ScanStatus.Text = LongText.Cap(text); }));
             Task.Run(() => work(cancel.Token, Progress)).ContinueWith(done => ui.BeginInvoke(new Action(() => Finished(cancel, done))));
         }
 
@@ -532,10 +532,11 @@ namespace B0r3dQR
             cancel.Dispose();
         }
 
-        // the line over the codes; screen readers hear it too (it's a polite live region)
+        // the line over the codes; screen readers hear it too (it's a polite live region). It names files,
+        // folders and cameras, and quotes Windows: capped.
         void ShowSummary(string text, string colour)
         {
-            ScanStatus.Text = text;
+            ScanStatus.Text = LongText.Cap(text);
             ScanStatus.SetResourceReference(TextBlock.ForegroundProperty, colour);
             if (text.Length > 0 && AutomationPeer.ListenerExists(AutomationEvents.LiveRegionChanged))
                 UIElementAutomationPeer.CreatePeerForElement(ScanStatus)?.RaiseAutomationEvent(AutomationEvents.LiveRegionChanged);

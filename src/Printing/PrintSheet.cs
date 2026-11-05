@@ -105,9 +105,10 @@ namespace B0r3dQR.Printing
                     Place(page, code, new Rect(cell.X + (cellWidth - size.Width) / 2, cell.Y + (cellHeight - size.Height) / 2, size.Width, size.Height));
                     if (captions && !string.IsNullOrEmpty(code.Caption))
                     {
+                        // (a batch row's file name or a code's text: capped, as all outside text shown is, LongText)
                         var caption = new TextBlock
                         {
-                            Text = code.Caption, FontFamily = new FontFamily("Segoe UI"), FontSize = CaptionSize, Foreground = Brushes.Black,
+                            Text = LongText.Cap(code.Caption), FontFamily = new FontFamily("Segoe UI"), FontSize = CaptionSize, Foreground = Brushes.Black,
                             Width = cell.Width, TextAlignment = TextAlignment.Center, TextTrimming = TextTrimming.CharacterEllipsis,
                         };
                         FixedPage.SetLeft(caption, cell.X);

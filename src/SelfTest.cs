@@ -10,13 +10,19 @@ namespace B0r3dQR
     // b0r3dQR.exe --selftest <file>: no window shown. Makes a code, draws it the way a PNG is saved,
     // reads it back (as the scan check and as the Scan tab), checks the SVG, builds the windows
     // (the Scan tab with a card, and a screen's overlay too), draws a designed code (a preset's logo,
-    // a frame), makes and reads back a barcode of each kind (the Make tab with one too), a small batch
-    // in a zip and a printed page, fills a data template and builds the Recent codes window, and writes
+    // a frame, an SVG logo), opens and measures the website's caption fonts and draws a caption in one,
+    // makes and reads back a barcode of each kind (the Make tab with one too), a small batch
+    // in a zip and a printed page, fills a data template and builds the Recent codes window, reads a
+    // code off a pretend camera in the camera window, and writes
     // what it found to <file> as key=value lines; the exit code is 0 when it all worked. The tests run it on the finished
     // one-file exe, on its own in a folder, to prove it works with nothing beside it.
     static class SelfTest
     {
         public const string Text = "b0r3d QR self-test: héllo ✓ https://b0r3d.org";
+
+        // a logo in an SVG file's own words: a style sheet, a class and a path (#c08040 in its middle)
+        const string SvgLogo = "<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 20 20\"><style>.ring { fill: none; stroke: #222; stroke-width: 2 }</style>" +
+                               "<circle class=\"ring\" cx=\"10\" cy=\"10\" r=\"8\"/><path d=\"M6 6h8v8H6z\" fill=\"#c08040\"/></svg>";
 
         public static int Run(string reportPath)
         {
@@ -97,6 +103,38 @@ namespace B0r3dQR
                 bool designerOk = art.Cleared > 0 && art.LogoProblem == null && designed == Text && art.ToSvg().Contains("class=\"qr-logo\"");
                 lines.Add("designer=" + (designerOk ? "ok" : "failed"));
                 ok &= designerOk;
+
+                // an SVG logo inside this exe: read by b0r3d QR's own SVG reader, drawn into the code (its
+                // colour where the logo goes) and read back
+                var svgDesign = new Design.QrDesign { Data = Text, Logo = "data:image/svg+xml;base64," + Convert.ToBase64String(System.Text.Encoding.UTF8.GetBytes(SvgLogo)) };
+                var svgArt = new QrArt(svgDesign);
+                ReadBack(svgArt, out string withSvg);
+                var svgPicture = svgArt.Render(1, (int)svgArt.W, (int)svgArt.H, System.Windows.Media.Colors.White);
+                var middle = new byte[4];
+                svgPicture.CopyPixels(new Int32Rect((int)svgArt.W / 2, (int)svgArt.H / 2, 1, 1), middle, 4, 0);
+                bool svgLogoOk = svgArt.LogoProblem == null && withSvg == Text && middle[0] == 0x40 && middle[1] == 0x80 && middle[2] == 0xC0;
+                lines.Add("svglogo=" + (svgLogoOk ? "ok" : "failed"));
+                ok &= svgLogoOk;
+                // the website's 18 caption fonts inside this exe: every face opens from the exe's own resources, each font
+                // measures captions apart from its generic family (the website's stand-in for it), and a caption in
+                // Pacifico is drawn with Pacifico's own glyphs
+                bool fontsOk = WebFonts.All.Length == 18;
+                string[] samples = { "Scan for more info", "The quick brown fox jumps over the lazy dog", "Wi-Fi: b0r3d_guest 0123456789 & more!" };
+                foreach (WebFont font in WebFonts.All)
+                {
+                    foreach (WebFontFace face in font.Faces)
+                        fontsOk &= new System.Windows.Media.Typeface(face.Family, FontStyles.Normal, FontWeights.Normal, FontStretches.Normal).TryGetGlyphTypeface(out var glyphs)
+                                   && glyphs.FontUri.Scheme == "pack" && glyphs.FontUri.AbsolutePath.EndsWith("/fonts/" + face.File, StringComparison.OrdinalIgnoreCase);
+                    string css = Array.Find(MainWindow.WebsiteFonts, w => w.Label == font.Name).Value ?? "";
+                    double apart = 0;
+                    foreach (string sample in samples)
+                        apart += Math.Abs(CaptionWidth(CaptionFont.For(css), sample) - CaptionWidth(CaptionFont.For(css.Substring(css.LastIndexOf(',') + 1)), sample));
+                    fontsOk &= css.Length > 0 && apart > 5;
+                }
+                var inPacifico = new QrArt(new Design.QrDesign { Data = Text, Frame = new Design.QrFrame { Text = "Scan me", FontFamily = "'Pacifico', cursive" } });
+                fontsOk &= FontFiles(inPacifico.ToDrawing()) == "pacifico-latin-400-normal.ttf";
+                lines.Add("fonts=" + (fontsOk ? "ok" : "failed"));
+                ok &= fontsOk;
 
                 // the other barcodes inside this exe: one made by each kind of encoder (bars, Data Matrix,
                 // Aztec, PDF417), drawn as the scan check draws them and read back with their own reader;
@@ -200,6 +238,20 @@ namespace B0r3dQR
                 recent.Close();
                 lines.Add("templates=" + (templatesOk ? "ok" : "failed"));
                 ok &= templatesOk;
+
+                // the camera window inside this exe, reading a pretend camera that holds up a blank
+                // picture and then the code (never a real camera): the code read, the camera let go of
+                var blank = System.Windows.Media.Imaging.BitmapSource.Create(320, 240, 96, 96, System.Windows.Media.PixelFormats.Gray8, null, new byte[320 * 240], 320);
+                var pretend = new Camera.PictureCameras("the self-test camera", blank, blank, picture);
+                var cameraWindow = new CameraWindow(pretend);
+                cameraWindow.Root.Measure(new Size(720, 620));
+                cameraWindow.Root.Arrange(new Rect(0, 0, 720, 620));
+                cameraWindow.Root.UpdateLayout();
+                cameraWindow.Begin();
+                Wait(() => cameraWindow.IsClosed && cameraWindow.CameraLetGo, 10000);
+                bool cameraOk = cameraWindow.Code?.Text == Text && cameraWindow.Code.Source == "the camera" && pretend.LetGo && pretend.Shown >= 3;
+                lines.Add("camera=" + (cameraOk ? "ok" : "failed"));
+                ok &= cameraOk;
             }
             catch (Exception e)
             {
@@ -208,6 +260,34 @@ namespace B0r3dQR
             }
             lines.Add("result=" + (ok ? "ok" : "failed"));
             return Report(reportPath, lines, ok);
+        }
+
+        static double CaptionWidth(CaptionFont font, string text) => font.Text(text, QrArt.CaptionSize, System.Windows.Media.Brushes.Black, System.Globalization.CultureInfo.InvariantCulture).Width;
+
+        // the font files a drawing's text comes from, by file name
+        static string FontFiles(System.Windows.Media.Drawing drawing)
+        {
+            var files = new SortedSet<string>(StringComparer.OrdinalIgnoreCase);
+            void Walk(System.Windows.Media.Drawing d)
+            {
+                if (d is System.Windows.Media.DrawingGroup group) foreach (System.Windows.Media.Drawing child in group.Children) Walk(child);
+                else if (d is System.Windows.Media.GlyphRunDrawing glyphs) files.Add(Path.GetFileName(glyphs.GlyphRun.GlyphTypeface.FontUri.AbsolutePath));
+            }
+            Walk(drawing);
+            return string.Join(", ", files);
+        }
+
+        // lets the window's queued work run (the camera's pictures, its code) until `done`, or `ms` pass
+        static void Wait(Func<bool> done, int ms)
+        {
+            var watch = System.Diagnostics.Stopwatch.StartNew();
+            while (!done() && watch.ElapsedMilliseconds < ms)
+            {
+                var frame = new System.Windows.Threading.DispatcherFrame();
+                System.Windows.Threading.Dispatcher.CurrentDispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, new Action(() => frame.Continue = false));
+                System.Windows.Threading.Dispatcher.PushFrame(frame);
+                System.Threading.Thread.Sleep(5);
+            }
         }
 
         // a design drawn at twice its size on white, read back

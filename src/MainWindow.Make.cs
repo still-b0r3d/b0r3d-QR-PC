@@ -98,10 +98,10 @@ namespace B0r3dQR
             PrintUnitBox.ItemsSource = new[] { "mm", "in" };
             PrintDpiBox.ItemsSource = PrintSize.Resolutions.Select(d => d + " DPI").ToList();
             fonts.Add(new FontChoice { Label = "Default", Value = null });
-            foreach (var (label, value) in WebsiteFonts)
-                fonts.Add(new FontChoice { Label = label + (QrArt.Installed(label) ? "" : " (not on this PC)"), Value = value });
+            foreach (var (label, value) in WebsiteFonts)   // the website's web fonts are inside b0r3d QR
+                fonts.Add(new FontChoice { Label = label + (WebFonts.Named(label) != null || QrArt.Installed(label) ? "" : " (not on this PC)"), Value = value });
             foreach (string family in Fonts.SystemFontFamilies.Select(f => f.Source).Where(f => !WebsiteFonts.Any(w => w.Label == f)).OrderBy(f => f, StringComparer.CurrentCultureIgnoreCase))
-                fonts.Add(new FontChoice { Label = family, Value = "'" + family + "', sans-serif" });
+                fonts.Add(new FontChoice { Label = LongText.Cap(family), Value = "'" + family + "', sans-serif" });
             FontBox.ItemsSource = fonts;
             CheckLine.ToolTip = "Every change is drawn the way it's saved and read back with a scanner (ZXing), the way a phone camera would read it.";
             InCodeFooter.Text = Checks.EverythingLine;
@@ -207,7 +207,7 @@ namespace B0r3dQR
             FontChoice font = fonts.FirstOrDefault(c => c.Value == f.FontFamily);
             if (font == null)
             {
-                font = new FontChoice { Label = "From the design: " + f.FontFamily, Value = f.FontFamily };
+                font = new FontChoice { Label = LongText.Cap("From the design: " + f.FontFamily), Value = f.FontFamily };
                 fonts.Insert(1, font);
                 FontBox.Items.Refresh();
             }
@@ -586,7 +586,7 @@ namespace B0r3dQR
             ShowVersionHint();
             MarkerNote.Visibility = art != null && art.Code.MarkerLeftOut ? Visibility.Visible : Visibility.Collapsed;
             ShowLogoNote();
-            FrameNote.Text = art?.FrameImageProblem ?? "";
+            FrameNote.Text = LongText.Cap(art?.FrameImageProblem ?? "");   // (an SVG's problem can quote a name from the file)
             ShowSize();
             ShowPrint();
             CommandManager.InvalidateRequerySuggested();
@@ -594,7 +594,7 @@ namespace B0r3dQR
 
         void ShowStage(string text, bool problem)
         {
-            StageNote.Text = text;
+            StageNote.Text = LongText.Cap(text);
             StageNote.SetResourceReference(TextBlock.ForegroundProperty, problem ? "Bad" : "Dim");
             StageNote.Visibility = Visibility.Visible;
         }
@@ -648,10 +648,12 @@ namespace B0r3dQR
             else ShowCheck("ok", "✓ Scans. A test decode matches your data exactly.", "Good");
         }
 
-        // the check's line, which screen readers say when its result changes (as the website's does)
+        // the check's line, which screen readers say when its result changes (as the website's does); what a
+        // scan read is quoted, capped
         void ShowCheck(string result, string text, string colour)
         {
             CheckResult = result;
+            text = LongText.Cap(text);
             CheckLine.Text = text;
             CheckLine.SetResourceReference(TextBlock.ForegroundProperty, colour);
             if (result != "checking" && text != lastSaidCheck)
@@ -681,8 +683,10 @@ namespace B0r3dQR
             var warnings = Checks.Warnings(design);
             if (art.LogoProblem != null) warnings.Insert(0, "The logo isn't drawn. " + art.LogoProblem);
             if (art.FrameImageProblem != null) warnings.Insert(0, "The frame's picture isn't drawn. " + art.FrameImageProblem);
-            WarnLine.Text = string.Join("\n", warnings.Select(w => "⚠ " + w));
-            WarnLine.Visibility = warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+            // the data box caps the marks on each letter (LongText); say so when it did, since the code
+            // then holds less than the text that was typed, pasted or made again
+            if (LongText.GetTrimmed(DataBox)) warnings.Insert(0, LongText.DataNote);
+            ShowWarnings(warnings);
 
             ShowInCode(Checks.InTheCode(art), null);
             InCodeText.Text = code.Text;
@@ -690,7 +694,15 @@ namespace B0r3dQR
             InCodeFooter.Text = Checks.EverythingLine;
         }
 
-        // "What's in this code", a name and a value to a row (the row named `typed` in a typewriter font)
+        // the warnings under the code, a line each (a picture's problem can quote a name from its file: capped)
+        void ShowWarnings(List<string> warnings)
+        {
+            WarnLine.Text = LongText.Cap(string.Join("\n", warnings.Select(w => "⚠ " + w)));
+            WarnLine.Visibility = warnings.Count > 0 ? Visibility.Visible : Visibility.Collapsed;
+        }
+
+        // "What's in this code", a name and a value to a row (the row named `typed` in a typewriter font;
+        // a barcode's text is one, capped)
         void ShowInCode(IEnumerable<KeyValuePair<string, string>> rows, string typed)
         {
             InCodeRows.Children.Clear();
@@ -701,7 +713,7 @@ namespace B0r3dQR
                 InCodeRows.RowDefinitions.Add(new RowDefinition { Height = GridLength.Auto });
                 var name = new TextBlock { Text = pair.Key, Margin = new Thickness(0, 2, 14, 2) };
                 name.SetResourceReference(TextBlock.ForegroundProperty, "Dim");
-                var value = new TextBlock { Text = pair.Value, TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 2) };
+                var value = new TextBlock { Text = LongText.Cap(pair.Value), TextWrapping = TextWrapping.Wrap, Margin = new Thickness(0, 2, 0, 2) };
                 if (pair.Key == typed) value.FontFamily = new FontFamily("Consolas");
                 Grid.SetRow(name, row);
                 Grid.SetRow(value, row);
@@ -749,7 +761,7 @@ namespace B0r3dQR
             }
             if (art?.LogoProblem != null)
             {
-                LogoNote.Text = art.LogoProblem;
+                LogoNote.Text = LongText.Cap(art.LogoProblem);
                 LogoNote.SetResourceReference(TextBlock.ForegroundProperty, "Warn");
                 LogoHint.Text = "";
                 return;
@@ -830,10 +842,12 @@ namespace B0r3dQR
                     Refresh();
                 };
                 DockPanel.SetDock(fix, Dock.Right);
-                var message = new TextBlock { Text = "⚠ " + check.Message, TextWrapping = TextWrapping.Wrap, FontSize = 12 };
+                // (a link's tracking parameters are named as written, percent escapes and all undone: capped)
+                string words = LongText.Cap(check.Message);
+                var message = new TextBlock { Text = "⚠ " + words, TextWrapping = TextWrapping.Wrap, FontSize = 12 };
                 message.SetResourceReference(TextBlock.ForegroundProperty, "Warn");
                 AutomationProperties.SetLiveSetting(message, AutomationLiveSetting.Polite);
-                AutomationProperties.SetHelpText(fix, check.Message);
+                AutomationProperties.SetHelpText(fix, words);
                 row.Children.Add(fix);
                 row.Children.Add(message);
                 DataChecksPanel.Children.Add(row);
@@ -1212,13 +1226,16 @@ namespace B0r3dQR
         void OpenTemplate(TemplateKind kind)
         {
             CatchUp();
-            UseTemplateText(AskTemplate != null ? AskTemplate(kind) : TemplateWindow.Ask(this, kind, DataText, templateForms));
+            bool shortened = false;
+            UseTemplateText(AskTemplate != null ? AskTemplate(kind) : TemplateWindow.Ask(this, kind, DataText, templateForms, out shortened), shortened);
         }
 
         // for the tests: stands in for the window a template opens
         internal Func<TemplateKind, string> AskTemplate;
 
-        internal void UseTemplateText(string written)
+        // `shortened`: a field's text had marks left out in the form, so the code holds less than was put in it, which
+        // the Make tab says as it does of the data box's own (LongText)
+        internal void UseTemplateText(string written, bool shortened = false)
         {
             // cancelled, or nothing written: the text stays (an empty one never goes over it)
             if (string.IsNullOrEmpty(written))
@@ -1227,6 +1244,7 @@ namespace B0r3dQR
                 return;
             }
             DataBox.Text = written;
+            if (shortened) LongText.MarkCut(DataBox);
             typingPause.Stop();
             Refresh();
         }
@@ -1335,7 +1353,7 @@ namespace B0r3dQR
                 Flash("Couldn't look at the clipboard: another program is using it. Try again.", "Bad");
                 return;
             }
-            if (!LogoFromData(data)) Flash("Nothing to use on the clipboard: copy a picture first.", "Warn");
+            if (!LogoFromData(data)) Flash("Nothing to use on the clipboard: copy a picture or an SVG drawing first.", "Warn");
         }
 
         void OnRemoveLogo(object sender, RoutedEventArgs e)
@@ -1405,15 +1423,18 @@ namespace B0r3dQR
             return url;
         }
 
-        // a picture copied or dropped, as the logo; false when there was none
+        // a picture copied or dropped, as the logo; false when there was none. An SVG drawing (as
+        // image/svg+xml, the way design programs copy one, or as its text) comes before a picture of it.
         internal bool LogoFromData(IDataObject data)
         {
             if (data == null) return false;
             string[] files;
             BitmapSource picture;
+            byte[] svg;
             try
             {
                 Pictures.From(data, out files, out picture);
+                svg = files != null && files.Length > 0 ? null : SvgIn(data);
             }
             catch (ExternalException)
             {
@@ -1424,8 +1445,8 @@ namespace B0r3dQR
                 LogoFromFile(files[0]);
                 return true;
             }
-            if (picture == null) return false;
-            string url = DesignPicture(QrExport.Png(picture), 1024, out string problem);
+            if (svg == null && picture == null) return false;
+            string url = DesignPicture(svg ?? QrExport.Png(picture), 1024, out string problem);
             if (url == null)
             {
                 Flash("Couldn't use that picture: " + problem, "Bad");
@@ -1438,17 +1459,46 @@ namespace B0r3dQR
             return true;
         }
 
+        // An SVG drawing in what's copied or dragged: image/svg+xml (Inkscape and other design programs
+        // put one there), or text that's an SVG file (Figma's Copy as SVG, a text editor); else null.
+        static byte[] SvgIn(IDataObject data)
+        {
+            try
+            {
+                if (data.GetDataPresent("image/svg+xml"))
+                {
+                    object svg = data.GetData("image/svg+xml");
+                    byte[] bytes = svg is MemoryStream stream ? stream.ToArray() : svg is byte[] raw ? raw : svg is string text ? new UTF8Encoding(false).GetBytes(text) : null;
+                    if (bytes != null && Svg.SvgImage.Looks(bytes)) return bytes;
+                }
+                if (data.GetDataPresent(DataFormats.UnicodeText) && data.GetData(DataFormats.UnicodeText) is string copied)
+                {
+                    string text = copied.Trim();
+                    // (the start says whether it's one, before all of a long text is turned into bytes)
+                    if (Svg.SvgImage.Looks(new UTF8Encoding(false).GetBytes(text.Length > 65536 ? text.Substring(0, 65536) : text))) return new UTF8Encoding(false).GetBytes(text);
+                }
+            }
+            catch (Exception x) when (x is ExternalException || x is OutOfMemoryException || x is ArgumentException)
+            {
+                // another program's data that won't come out: nothing to use
+            }
+            return null;
+        }
+
         // A picture for a design, as the website keeps an upload: as it is when it's small enough
         // (at most `largest` pixels each way and 256 KB) and a kind browsers show; otherwise shrunk
         // to `largest` pixels on its longer side, as a JPEG if it was one and a PNG otherwise,
         // whichever of the two comes out smaller (turned the right way up, as browsers draw photos).
-        // SVG and GIF files are kept as they are.
+        // SVG and GIF files are kept as they are: an SVG one only once it's been read and drawn.
         internal static string DesignPicture(byte[] bytes, int largest, out string problem)
         {
             problem = null;
-            string start = Encoding.UTF8.GetString(bytes, 0, Math.Min(bytes.Length, 512)).TrimStart((char)0xFEFF, ' ', '\t', '\r', '\n');
-            if (start.StartsWith("<svg", StringComparison.OrdinalIgnoreCase) || start.StartsWith("<?xml", StringComparison.OrdinalIgnoreCase) && start.Contains("<svg"))
-                return "data:image/svg+xml;base64," + Convert.ToBase64String(bytes);
+            if (Svg.SvgImage.Looks(bytes))
+            {
+                if (Images.Drawing(bytes, null, out string why) != null) return "data:image/svg+xml;base64," + Convert.ToBase64String(bytes);
+                problem = "it's an SVG drawing b0r3d QR can't draw: " + why + ".";
+                return null;
+            }
             BitmapDecoder decoder;
             try
             {
@@ -1507,9 +1557,10 @@ namespace B0r3dQR
                 if (drop) Dispatcher.BeginInvoke(new Action(() => OpenBatch(csvFile)));
                 return true;
             }
-            if (Tabs.SelectedItem != MakeTab || !LogoSection.IsVisible || !Pictures.CanRead(e.Data)) return false;
+            if (Tabs.SelectedItem != MakeTab || !LogoSection.IsVisible) return false;
             Point at = e.GetPosition(LogoSection);
             if (at.X < 0 || at.Y < 0 || at.X > LogoSection.ActualWidth || at.Y > LogoSection.ActualHeight) return false;
+            if (!Pictures.CanRead(e.Data) && SvgIn(e.Data) == null) return false;
             e.Effects = DragDropEffects.Copy;
             e.Handled = true;
             if (drop) LogoFromData(e.Data);

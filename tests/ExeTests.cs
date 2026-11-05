@@ -67,10 +67,13 @@ namespace B0r3dQR.Tests
                 Check(found.TryGetValue("windows", out string windows) && windows == "ok", "the windows didn't build from inside the exe: " + all);
                 Check(found.TryGetValue("scan", out string scan) && scan == "ok", "the Scan tab's reader didn't work inside the exe: " + all);
                 Check(found.TryGetValue("designer", out string designer) && designer == "ok", "a designed code (a preset's logo, a frame) didn't draw and read back inside the exe: " + all);
+                Check(found.TryGetValue("svglogo", out string svgLogo) && svgLogo == "ok", "an SVG logo didn't draw and read back inside the exe: " + all);
+                Check(found.TryGetValue("fonts", out string fonts) && fonts == "ok", "the website's caption fonts didn't open, measure and draw inside the exe: " + all);
                 Check(found.TryGetValue("barcodes", out string barcodes) && barcodes == "ok", "the barcodes (bars, Data Matrix, Aztec, PDF417) didn't make and read back inside the exe: " + all);
                 Check(found.TryGetValue("batch", out string batchMade) && batchMade == "ok", "a batch (a CSV into a zip, read back) or the Batch export window didn't work inside the exe: " + all);
                 Check(found.TryGetValue("print", out string printed) && printed == "ok", "a printed page didn't lay out and read back, or the Print window didn't build, inside the exe: " + all);
                 Check(found.TryGetValue("templates", out string templates) && templates == "ok", "the data templates' and Recent codes windows didn't work inside the exe: " + all);
+                Check(found.TryGetValue("camera", out string camera) && camera == "ok", "the camera window didn't read a pretend camera's code inside the exe: " + all);
                 Check(found["dpi"] == "per-monitor-v2", "the exe follows the screens' scaling as \"" + found["dpi"] + "\", not per-monitor-v2 (is the manifest in?)");
                 Check(found["version"] == Program.FullVersion, "the exe says " + found["version"]);
             }
@@ -93,6 +96,12 @@ namespace B0r3dQR.Tests
             { "gdi32.dll", new[] { "CreateCompatibleDC", "CreateCompatibleBitmap", "SelectObject", "BitBlt", "DeleteObject", "DeleteDC" } },  // screen pictures
             { "shcore.dll", new[] { "GetDpiForMonitor" } },                                                                        // each screen's scaling
             { "comdlg32.dll", new[] { "ChooseColorW" } },                                                                          // Windows' colour dialog
+            // the camera, through Media Foundation: none of these takes an address. MFStartup is called
+            // with MFSTARTUP_NOSOCKET (no network sockets); MFEnumDeviceSources lists the cameras plugged
+            // into this PC; the source reader reads the pictures of a camera started from that list
+            { "mfplat.dll", new[] { "MFStartup", "MFShutdown", "MFCreateAttributes", "MFCreateMediaType" } },
+            { "mf.dll", new[] { "MFEnumDeviceSources" } },
+            { "mfreadwrite.dll", new[] { "MFCreateSourceReaderFromMediaSource" } },
         };
         static readonly string[] AllowedCom =
         {
@@ -107,12 +116,16 @@ namespace B0r3dQR.Tests
             "http://www.w3.org/1999/xlink",   // SVG's link namespace name (for a logo's href), never fetched
             "https://id.gs1.org",             // GS1's resolver, written into GS1 Digital Link codes as the website does, never opened
             "https://example.com",            // the website's placeholder and example in the data templates' forms, never opened
+            "pack://application:,,,/b0r3dQR;component/",   // the exe's own resources, where the caption fonts are (WebFonts.Inside):
+                                                            // an application pack address only reads from inside the running program
         };
         // an address: a scheme, then a host after the // ("https://" alone, in "Add https://", is none)
         const string Address = @"[A-Za-z][A-Za-z0-9+.\-]*://[A-Za-z0-9\[][^\s""'<>]*";
         // Calls into .NET that take an address (a Uri). Uri's own members only take one apart;
         // these two only read from inside the exe and refuse anything but a relative address.
-        static readonly string[] AllowedUriTakers = { "System.Windows.Application.LoadComponent", "System.Windows.Application.GetResourceStream" };
+        // FontFamily's is only given the exe's own resources (the pack address allowed above,
+        // made in WebFonts.Inside) with the name of one of its own font files (WebFontFace.Family).
+        static readonly string[] AllowedUriTakers = { "System.Windows.Application.LoadComponent", "System.Windows.Application.GetResourceStream", "System.Windows.Media.FontFamily..ctor" };
         // XAML's own namespace names, which are names, never fetched
         const string XamlNamespaces = "http://schemas.microsoft.com/winfx/2006/xaml";
 
@@ -182,6 +195,15 @@ namespace B0r3dQR.Tests
                     foreach (Match address in Regex.Matches(text, Address))
                         if (!AllowedAddresses.Contains(address.Value)) bad.Add("the address " + address.Value);
                 Check(bad.Count == 0, "the exe has " + string.Join(", ", bad.Distinct()));
+                List<string> fontCallers = FontFamilyCallers(pe, md, typeNames);
+                Check(fontCallers.SequenceEqual(new[] { "B0r3dQR.Qr.WebFontFace.get_Family" }),
+                    "FontFamily's address-taking constructor should be called only for the exe's own font files, not from " + string.Join(", ", fontCallers));
+                // FontFamily(string) (and Typeface(string), which makes one) reads anything before a '#' as a place to
+                // load a font from: only a name written in the code, or a font installed on this PC by its name, which
+                // the caption's fonts (PcFace) and the SVG renderer both refuse when it has a '#', '/' or '\'
+                List<string> nameCallers = FontNameCallers(pe, md, typeNames);
+                Check(nameCallers.SequenceEqual(new[] { "B0r3dQR.Qr.PcFace..ctor", "B0r3dQR.Svg.Renderer.Face", "B0r3dQR.Svg.Renderer.XHeight" }),
+                    "FontFamily(string) should be given only names written in the code, or installed fonts' names that can't be places, not from " + string.Join(", ", nameCallers));
                 Check(md.TypeReferences.Count > 50, "the scan saw almost nothing; is this the right file?");
                 bool zxingInside = md.TypeDefinitions.Any(h => md.GetString(md.GetTypeDefinition(h).Namespace) == "ZXing");
                 Check(zxingInside, "ZXing's code isn't inside the exe");
@@ -213,6 +235,72 @@ namespace B0r3dQR.Tests
                     }
                 }
             }
+        }
+
+        // The methods in the exe (ZXing's too) that make a FontFamily from an address (a newobj with
+        // that constructor's token in their IL), as "B0r3dQR.Qr.WebFontFace.get_Family".
+        static List<string> FontFamilyCallers(PEReader pe, MetadataReader md, TypeNames names)
+        {
+            var tokens = new HashSet<int>();
+            foreach (MemberReferenceHandle handle in md.MemberReferences)
+            {
+                MemberReference member = md.GetMemberReference(handle);
+                if (member.GetKind() == MemberReferenceKind.Method && md.GetString(member.Name) == ".ctor" && ParentName(md, member.Parent, names) == "System.Windows.Media.FontFamily" &&
+                    member.DecodeMethodSignature(names, null).ParameterTypes.Contains("System.Uri"))
+                    tokens.Add(MetadataTokens.GetToken(handle));
+            }
+            var callers = new List<string>();
+            foreach (TypeDefinitionHandle handle in md.TypeDefinitions)
+            {
+                TypeDefinition type = md.GetTypeDefinition(handle);
+                foreach (MethodDefinitionHandle methodHandle in type.GetMethods())
+                {
+                    MethodDefinition method = md.GetMethodDefinition(methodHandle);
+                    if (method.RelativeVirtualAddress == 0) continue;
+                    byte[] il = pe.GetMethodBody(method.RelativeVirtualAddress).GetILBytes();
+                    for (int i = 0; i + 4 < il.Length; i++)
+                        if (il[i] == 0x73 && tokens.Contains(BitConverter.ToInt32(il, i + 1)))  // newobj, then the constructor's token
+                        {
+                            callers.Add(names.GetTypeFromDefinition(md, handle, 0) + "." + md.GetString(method.Name));
+                            break;
+                        }
+                }
+            }
+            return callers.Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
+        }
+
+        // The methods in the exe (ZXing's too) that make a FontFamily or a Typeface from a name that isn't written right
+        // there in the code (a newobj with FontFamily(string) or Typeface(string) that doesn't come straight after an
+        // ldstr), as "B0r3dQR.Qr.PcFace..ctor".
+        static List<string> FontNameCallers(PEReader pe, MetadataReader md, TypeNames names)
+        {
+            var tokens = new HashSet<int>();
+            foreach (MemberReferenceHandle handle in md.MemberReferences)
+            {
+                MemberReference member = md.GetMemberReference(handle);
+                if (member.GetKind() != MemberReferenceKind.Method || md.GetString(member.Name) != ".ctor") continue;
+                string parent = ParentName(md, member.Parent, names);
+                if ((parent == "System.Windows.Media.FontFamily" || parent == "System.Windows.Media.Typeface") && member.DecodeMethodSignature(names, null).ParameterTypes.SequenceEqual(new[] { "String" }))
+                    tokens.Add(MetadataTokens.GetToken(handle));
+            }
+            var callers = new List<string>();
+            foreach (TypeDefinitionHandle handle in md.TypeDefinitions)
+            {
+                TypeDefinition type = md.GetTypeDefinition(handle);
+                foreach (MethodDefinitionHandle methodHandle in type.GetMethods())
+                {
+                    MethodDefinition method = md.GetMethodDefinition(methodHandle);
+                    if (method.RelativeVirtualAddress == 0) continue;
+                    byte[] il = pe.GetMethodBody(method.RelativeVirtualAddress).GetILBytes();
+                    for (int i = 0; i + 4 < il.Length; i++)
+                        if (il[i] == 0x73 && tokens.Contains(BitConverter.ToInt32(il, i + 1)) && !(i >= 5 && il[i - 5] == 0x72 && il[i - 1] == 0x70))  // newobj, not after ldstr "..."
+                        {
+                            callers.Add(names.GetTypeFromDefinition(md, handle, 0) + "." + md.GetString(method.Name));
+                            break;
+                        }
+                }
+            }
+            return callers.Distinct().OrderBy(c => c, StringComparer.Ordinal).ToList();
         }
 
         // The web addresses in the compiled XAML (BAML) inside the exe's resources. BAML keeps its
@@ -315,6 +403,88 @@ namespace B0r3dQR.Tests
                 Check((pe.PEHeaders.CoffHeader.Characteristics & Characteristics.LargeAddressAware) != 0, "large addresses are off");
             }
         }
+
+        const int System32Only = 0x800;      // DllImportSearchPath.System32
+        const uint SearchSystem32 = 0x800;   // LOAD_LIBRARY_SEARCH_SYSTEM32
+        static readonly string[] MediaDlls = { "mfplat.dll", "mf.dll", "mfreadwrite.dll" };
+
+        // Every native call in the one-file exe loads its DLL from System32 alone: the rule for it
+        // ([assembly: DefaultDllImportSearchPaths(System32)]) is in the finished exe after the merge, no
+        // call has a rule of its own, each names its DLL without a folder, and each DLL and function is
+        // there in System32 (Media Foundation's wherever Windows has its media features). Without the
+        // rule, .NET looks beside the exe first: an mfplat.dll next to it, in Downloads say, would run.
+        static void ExeLoadsItsDllsFromSystem32()
+        {
+            NeedTheExe();
+            using (FileStream stream = File.OpenRead(OneExe))
+            using (var pe = new PEReader(stream))
+            {
+                MetadataReader md = pe.GetMetadataReader();
+                int? rule = SearchPaths(md, md.GetAssemblyDefinition().GetCustomAttributes());
+                Check(rule != null, "the exe has no rule for where its native calls' DLLs come from, so .NET looks for them beside it first");
+                Check(rule == System32Only, "the exe's native calls look for their DLLs in 0x" + rule.Value.ToString("X") + ", not in System32 alone");
+                var bad = new List<string>();
+                int calls = 0;
+                foreach (MethodDefinitionHandle handle in md.MethodDefinitions)
+                {
+                    MethodDefinition method = md.GetMethodDefinition(handle);
+                    MethodImport import = method.GetImport();
+                    if (import.Module.IsNil) continue;
+                    calls++;
+                    string dll = md.GetString(md.GetModuleReference(import.Module).Name);
+                    string entry = md.GetString(import.Name.IsNil ? method.Name : import.Name);
+                    int? own = SearchPaths(md, method.GetCustomAttributes());
+                    if (own != null && own != System32Only) bad.Add(dll + " " + entry + " has a rule of its own (0x" + own.Value.ToString("X") + ")");
+                    if (dll.IndexOfAny(new[] { '\\', '/', ':' }) >= 0) bad.Add(dll + " " + entry + " names a folder");
+                    else if (!InSystem32(dll, entry, import.Attributes)) bad.Add(dll + " " + entry + " isn't in System32");
+                }
+                Check(calls >= 10, "the scan saw only " + calls + " native calls (has the code moved?)");
+                Check(bad.Count == 0, "native calls that don't load from System32 alone: " + string.Join(", ", bad));
+            }
+        }
+
+        // the DllImportSearchPath of a [DefaultDllImportSearchPaths] among these attributes, or null
+        static int? SearchPaths(MetadataReader md, CustomAttributeHandleCollection attributes)
+        {
+            foreach (CustomAttributeHandle handle in attributes)
+            {
+                CustomAttribute attribute = md.GetCustomAttribute(handle);
+                if (attribute.Constructor.Kind != HandleKind.MemberReference) continue;
+                MemberReference constructor = md.GetMemberReference((MemberReferenceHandle)attribute.Constructor);
+                if (constructor.Parent.Kind != HandleKind.TypeReference) continue;
+                TypeReference type = md.GetTypeReference((TypeReferenceHandle)constructor.Parent);
+                if (md.GetString(type.Namespace) != "System.Runtime.InteropServices" || md.GetString(type.Name) != "DefaultDllImportSearchPathsAttribute") continue;
+                BlobReader value = md.GetBlobReader(attribute.Value);
+                value.ReadUInt16();  // the prolog
+                return value.ReadInt32();
+            }
+            return null;
+        }
+
+        // Whether System32's `dll` has `entry`, looked for as .NET looks: as it's spelt, or unless the
+        // spelling is exact with A on the end (W for Unicode). A Windows without its media features has
+        // no Media Foundation, and the camera window says so.
+        static bool InSystem32(string dll, string entry, System.Reflection.MethodImportAttributes how)
+        {
+            IntPtr module = LoadLibraryEx(dll, IntPtr.Zero, SearchSystem32);
+            if (module == IntPtr.Zero)
+                return MediaDlls.Contains(dll.ToLowerInvariant()) && !File.Exists(Path.Combine(Environment.SystemDirectory, dll));
+            try
+            {
+                var names = new List<string> { entry };
+                var charSet = how & System.Reflection.MethodImportAttributes.CharSetMask;
+                if ((how & System.Reflection.MethodImportAttributes.ExactSpelling) == 0)
+                    names.Add(entry + (charSet == System.Reflection.MethodImportAttributes.CharSetUnicode || charSet == System.Reflection.MethodImportAttributes.CharSetAuto ? "W" : "A"));
+                return names.Any(name => GetProcAddress(module, name) != IntPtr.Zero);
+            }
+            finally
+            {
+                FreeLibrary(module);
+            }
+        }
+
+        [DllImport("kernel32.dll", CharSet = CharSet.Ansi, ExactSpelling = true, BestFitMapping = false, ThrowOnUnmappableChar = true)]
+        static extern IntPtr GetProcAddress(IntPtr module, string name);
 
         // Windows' Save, Open and folder dialogs are told not to add files to Recent items (set up, not shown)
         static void FileDialogsStayOutOfRecent()
