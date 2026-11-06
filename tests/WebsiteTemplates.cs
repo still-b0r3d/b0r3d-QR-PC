@@ -88,6 +88,8 @@ namespace B0r3dQR.Tests
             ("mailto:a@b.co?subject=Hi%20there&body=a+b&cc=c@d", "email", "{\"address\":\"a@b.co\",\"subject\":\"Hi there\",\"body\":\"a b\",\"cc\":\"c@d\",\"bcc\":\"\"}"),
             ("mailto:a@b.co?", "email", "{\"address\":\"a@b.co\"}"),
             ("MAILTO:x@y?subject=%E2%82%AC&subject=second", "email", "{\"address\":\"x@y\",\"subject\":\"\u20ac\",\"body\":\"\",\"cc\":\"\",\"bcc\":\"\"}"),
+            ("mailto:a@b.co??subject=x", "email", "{\"address\":\"a@b.co\"}"),
+            ("mailto:a@b.co?subject=1?2&body=x", "email", "{\"address\":\"a@b.co\",\"subject\":\"1?2\",\"body\":\"x\",\"cc\":\"\",\"bcc\":\"\"}"),
             ("mailto:x@y?subject=%ZZbroken&body=%E2%82", "email", "{\"address\":\"x@y\",\"subject\":\"%ZZbroken\",\"body\":\"\ufffd\",\"cc\":\"\",\"bcc\":\"\"}"),
             ("tel:+1555", "phone", "{\"phone\":\"+1555\"}"),
             ("TEL:5", "phone", "{\"phone\":\"5\"}"),

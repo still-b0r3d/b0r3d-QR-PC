@@ -50,20 +50,20 @@ namespace B0r3dQR.Qr
             S = Math.Max(1, Math.Min(design.Width, design.Height));
             module = S / (n + 2 * margin);
 
-            // the square of modules cleared for the logo, drawn or not (the website clears it for
-            // any logo it has: QrDesign.LogoCounts)
+            // The square of modules cleared for the logo, drawn or not (the website clears it for
+            // any logo it has: QrDesign.LogoCounts). The logo may take its share (LogoSize, 0 to 1)
+            // of the modules the level can lose; the square is the biggest that holds no more than
+            // that, at most three tenths of the code across, with an odd side so it has a middle
+            // module, and never less than one module.
             int first = 0, last = -1;
             if (design.LogoCounts)
             {
-                double ratio = design.LogoSize ?? QrDesign.DefaultLogoSize;
-                ratio = double.IsNaN(ratio) ? QrDesign.DefaultLogoSize : Math.Max(0, Math.Min(1, ratio));
-                double factor = LevelUsed == QrLevel.L ? 0.07 : LevelUsed == QrLevel.M ? 0.15 : LevelUsed == QrLevel.Q ? 0.25 : 0.30;
-                int budget = (int)Math.Floor(ratio * factor * n * n);
-                int a = (int)Math.Floor(Math.Sqrt(budget));
-                if (a % 2 == 0 && a > 1) a--;
-                if (a < 1) a = 1;
-                int cap = Math.Max(1, (int)Math.Floor(0.3 * n));
-                if (a > cap) a = cap % 2 == 0 && cap > 1 ? cap - 1 : cap;
+                double share = design.LogoSize ?? QrDesign.DefaultLogoSize;
+                if (double.IsNaN(share)) share = QrDesign.DefaultLogoSize;
+                share = Math.Max(0, Math.Min(1, share));
+                int room = (int)Math.Floor(share * Recoverable(LevelUsed) * n * n);
+                int side = Math.Min((int)Math.Sqrt(room), (int)(0.3 * n));
+                int a = Math.Max(1, side % 2 == 1 ? side : side - 1);
                 Cleared = a;
                 first = (n - a) / 2;
                 last = first + a - 1;
@@ -90,39 +90,51 @@ namespace B0r3dQR.Qr
             padding = Css.Pixels(f.Padding, 12);
             border = Css.Pixels(f.BorderWidth, 2);
             radius = Css.Pixels(f.BorderRadius, 8);
-            double column = f.Beside ? (f.CaptionWidth > 0 ? f.CaptionWidth : S) : S;
+
+            // The frame holds two boxes in a line, the code (S square) and the caption's block (its
+            // column wide, its lines tall): side by side for a caption on the left or right, one above
+            // the other otherwise (any other position is drawn as "bottom"). Along that line
+            // they're the padding apart and padding + border in from the frame's ends; across it the
+            // frame is as big as the bigger box, padding + border in, and side by side both boxes are
+            // centred in it. (Sums are added in the order the website adds them, so every size comes
+            // out to the same last digit as in its files.)
+            bool beside = f.Beside, captionFirst = f.Position == "top" || f.Position == "left";
+            double column = beside && f.CaptionWidth > 0 ? f.CaptionWidth : S;
             lines = Wrap(string.IsNullOrEmpty(f.Text) ? QrFrame.DefaultText : f.Text, column);
-            double text = lines.Count * LineHeight, p = padding, b = border;
-            switch (f.Position)
+            double tall = lines.Count * LineHeight;
+            double block = beside ? column : tall;                   // the caption's block, along the line
+            double along = S + block + 3 * padding + 2 * border;      // the frame, along the line
+            double across = Math.Max(S, beside ? tall : S) + 2 * padding + 2 * border;
+            double firstAt = padding + border;                        // where the first box starts along the line
+            double secondAt = (captionFirst ? block : S) + 2 * padding + border;
+            double codeAlong = captionFirst ? secondAt : firstAt, blockAlong = captionFirst ? firstAt : secondAt;
+            if (beside)
             {
-                case "top":
-                    W = S + 2 * p + 2 * b;
-                    H = S + text + 3 * p + 2 * b;
-                    codeAt = new Point(p + b, text + 2 * p + b);
-                    captionX = W / 2;
-                    firstBaseline = p + b + CaptionSize;
-                    break;
-                case "left":
-                    W = S + column + 3 * p + 2 * b;
-                    H = Math.Max(S, text) + 2 * p + 2 * b;
-                    codeAt = new Point(column + 2 * p + b, (H - S) / 2);
-                    captionX = p + b + column / 2;
-                    firstBaseline = (H - text) / 2 + CaptionSize;
-                    break;
-                case "right":
-                    W = S + column + 3 * p + 2 * b;
-                    H = Math.Max(S, text) + 2 * p + 2 * b;
-                    codeAt = new Point(p + b, (H - S) / 2);
-                    captionX = S + 2 * p + b + column / 2;
-                    firstBaseline = (H - text) / 2 + CaptionSize;
-                    break;
-                default:   // bottom
-                    W = S + 2 * p + 2 * b;
-                    H = S + text + 3 * p + 2 * b;
-                    codeAt = new Point(p + b, p + b);
-                    captionX = W / 2;
-                    firstBaseline = S + 2 * p + b + CaptionSize;
-                    break;
+                W = along;
+                H = across;
+                codeAt = new Point(codeAlong, (H - S) / 2);
+                captionX = blockAlong + column / 2;
+                firstBaseline = (H - tall) / 2 + CaptionSize;
+            }
+            else
+            {
+                W = across;
+                H = along;
+                codeAt = new Point(firstAt, codeAlong);
+                captionX = W / 2;
+                firstBaseline = blockAlong + CaptionSize;
+            }
+        }
+
+        // what a code at each level can lose and still be read, as the QR standard has it
+        static double Recoverable(QrLevel level)
+        {
+            switch (level)
+            {
+                case QrLevel.L: return 0.07;
+                case QrLevel.M: return 0.15;
+                case QrLevel.Q: return 0.25;
+                default: return 0.30;
             }
         }
 
@@ -248,34 +260,34 @@ namespace B0r3dQR.Qr
 
         // ---------- the caption ----------
 
-        // The website's caption lines: paragraphs at line breaks, words at spaces (runs of spaces
-        // count as one), a line full when it would pass the column, widths estimated at 0.6 of the
-        // font size per character, as the website's export does.
+        // The caption's lines in the files, as the website lays them out: a line break always ends a
+        // line; otherwise words (cut at spaces, a run of spaces counting as one) go on a line for as
+        // long as it stays within the column, every character guessed at 0.6 of the font size. A
+        // word too long for the column gets a line to itself, and a paragraph with no words is an
+        // empty line. (b0r3d QR drops the CR of a CR LF break; the website keeps it at the end of
+        // the line, where it counts as a character, so a line that only just fits can wrap there.)
         internal static List<string> Wrap(string text, double column)
         {
-            var result = new List<string>();
-            double perChar = 0.6 * CaptionSize;
+            double perCharacter = 0.6 * CaptionSize;
+            var lines = new List<string>();
+            var line = new StringBuilder();
             foreach (string paragraph in text.Replace("\r\n", "\n").Split('\n'))
             {
-                string[] words = paragraph.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
-                if (words.Length == 0)
+                foreach (string word in paragraph.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
                 {
-                    result.Add("");
-                    continue;
-                }
-                string line = "";
-                foreach (string word in words)
-                {
-                    if (line.Length > 0 && (line.Length + 1 + word.Length) * perChar > column)
+                    bool tooWide = line.Length > 0 && (line.Length + 1 + word.Length) * perCharacter > column;
+                    if (tooWide)
                     {
-                        result.Add(line);
-                        line = word;
+                        lines.Add(line.ToString());
+                        line.Clear();
                     }
-                    else line = line.Length == 0 ? word : line + " " + word;
+                    if (line.Length > 0) line.Append(' ');
+                    line.Append(word);
                 }
-                result.Add(line);
+                lines.Add(line.ToString());
+                line.Clear();
             }
-            return result;
+            return lines;
         }
 
         public IReadOnlyList<string> CaptionLines => lines;
@@ -290,28 +302,27 @@ namespace B0r3dQR.Qr
         internal static int PreviewLines(string text, string fontCss, double column)
         {
             CaptionFont font = !string.IsNullOrWhiteSpace(fontCss) ? CaptionFont.For(fontCss) : CaptionFont.Page;
-            double Width(string s) => font.Text(s, CaptionSize, Brushes.Black, CultureInfo.InvariantCulture).Width;
-            string[] paragraphs = text.Replace("\r\n", "\n").Split('\n');
-            int count = paragraphs.Length;
-            if (count > 1 && paragraphs[count - 1].Trim(' ', '\t').Length == 0) count--;
-            int result = 0;
-            for (int p = 0; p < count; p++)
+            bool Fits(string line) => !(font.Text(line, CaptionSize, Brushes.Black, CultureInfo.InvariantCulture).Width > column);
+            List<string> paragraphs = text.Replace("\r\n", "\n").Split('\n').ToList();
+            if (paragraphs.Count > 1 && paragraphs[paragraphs.Count - 1].Trim(' ', '\t').Length == 0) paragraphs.RemoveAt(paragraphs.Count - 1);
+            int lines = 0;
+            foreach (string paragraph in paragraphs)
             {
-                string[] words = paragraphs[p].Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                result++;
-                string line = "";
-                foreach (string word in words)
+                lines++;   // every paragraph takes a line, an empty one too
+                string[] words = paragraph.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                string line = words.Length > 0 ? words[0] : "";   // a line's first word is on it, however wide
+                for (int w = 1; w < words.Length; w++)
                 {
-                    string longer = line.Length == 0 ? word : line + " " + word;
-                    if (line.Length > 0 && Width(longer) > column)
+                    string joined = line + " " + words[w];
+                    if (Fits(joined)) line = joined;
+                    else
                     {
-                        result++;
-                        line = word;
+                        lines++;
+                        line = words[w];
                     }
-                    else line = longer;
                 }
             }
-            return result;
+            return lines;
         }
 
         // whether a font family is installed on this PC (the website's web fonts are in the exe instead:

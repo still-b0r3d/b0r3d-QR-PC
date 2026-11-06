@@ -22,9 +22,9 @@ namespace B0r3dQR.Design
         public bool Address;                      // a web or email address (the website's url and email fields)
     }
 
-    // The website's "Data to encode" window as data (its src/components/DataTemplatesModal.vue): each
-    // template's fields in order, what's required and its messages, the example it fills in, and
-    // the fields it fills from existing text.
+    // The website's "Data to encode" window as data: each template's fields in order, what's required,
+    // the example it fills in, and the fields it fills from existing text. The rules are the website's;
+    // the words (help lines, placeholders, examples and what a field that's wrong says) are b0r3d QR's own.
     static class TemplateForms
     {
         // the Data section's list, in the website's order
@@ -67,13 +67,13 @@ namespace B0r3dQR.Design
                 case TemplateKind.Gs1DigitalLink:
                     return "A web address for a product. Phones open it as a link; shop checkouts read the product number from it, the same as from an EAN or UPC barcode.";
                 case TemplateKind.Epc:
-                    return "Generates a SEPA Credit Transfer QR code (also known as GiroCode) that banking apps can scan to pre-fill a payment.";
+                    return "A bank transfer in euros, as an EPC QR code (also called GiroCode): banking apps that scan it fill in the payment for you.";
                 default:
                     return null;
             }
         }
 
-        public const string RequiredNote = "Required fields are marked with an asterisk (*)";
+        public const string RequiredNote = "Fields with a * have to be filled in.";
 
         static TemplateField F(string name, string label, string placeholder = "", FieldKind kind = FieldKind.Line, int max = 0, string hint = null) =>
             new TemplateField { Name = name, Label = label, Placeholder = placeholder, Kind = kind, MaxLength = max, Hint = hint };
@@ -89,20 +89,20 @@ namespace B0r3dQR.Design
             switch (kind)
             {
                 case TemplateKind.Url:
-                    return new List<TemplateField> { Address(F("url", "URL", "https://example.com")) };
+                    return new List<TemplateField> { Address(F("url", "URL", "https://b0r3d.org")) };
                 case TemplateKind.Email:
                     return new List<TemplateField>
                     {
-                        Address(F("address", "Email Address", "recipient@example.com")),
-                        Address(F("cc", "CC", "Optional CC")),
-                        Address(F("bcc", "BCC", "Optional BCC")),
-                        F("subject", "Subject", "Optional subject line"),
-                        F("body", "Message", "Optional email body", FieldKind.Lines),
+                        Address(F("address", "Email Address", "name@example.com")),
+                        Address(F("cc", "CC", "Copied in, if anyone")),
+                        Address(F("bcc", "BCC", "Copied in unseen, if anyone")),
+                        F("subject", "Subject", "What it's about"),
+                        F("body", "Message", "What it says", FieldKind.Lines),
                     };
                 case TemplateKind.Phone:
-                    return new List<TemplateField> { F("phone", "Phone Number", "+1234567890") };
+                    return new List<TemplateField> { F("phone", "Phone Number", "+1-202-555-0100") };
                 case TemplateKind.Sms:
-                    return new List<TemplateField> { F("phone", "Phone Number", "+1234567890"), F("message", "Message", "Optional SMS message", FieldKind.Lines) };
+                    return new List<TemplateField> { F("phone", "Phone Number", "+1-202-555-0100"), F("message", "Message", "What it says", FieldKind.Lines) };
                 case TemplateKind.Wifi:
                     return new List<TemplateField>
                     {
@@ -111,28 +111,29 @@ namespace B0r3dQR.Design
                             Name = "encryption", Label = "Encryption", Kind = FieldKind.Choice,
                             Choices = new[] { ("nopass", "No encryption"), ("WEP", "WEP"), ("WPA", "WPA/WPA2/WPA3 (most networks)"), ("SAE", "WPA3 only") },
                         },
-                        F("ssid", "Wireless SSID", "Your network name"),
-                        F("password", "Password", "Network password (case-sensitive)", FieldKind.Password),
+                        F("ssid", "Wireless SSID", "The network's name, as phones list it"),
+                        F("password", "Password", "Capital letters count", FieldKind.Password),
                         F("hidden", "Hidden SSID", "", FieldKind.Check),
                     };
                 case TemplateKind.VCard:
                     return new List<TemplateField>
                     {
                         new TemplateField { Name = "version", Label = "vCard Version", Kind = FieldKind.Choice, Wide = true, Choices = new[] { ("2", "vCard 2.1"), ("3", "vCard 3.0"), ("4", "vCard 4.0") } },
-                        F("firstName", "First Name", "e.g., John"), F("lastName", "Last Name", "e.g., Doe"),
-                        F("org", "Organization", "e.g., Acme Corp"), F("position", "Position", "e.g., Software Engineer"),
-                        F("phoneWork", "Phone (Work)", "+1-555-123-4567"), F("phonePrivate", "Phone (Private)", "+1-555-987-6543"),
-                        F("phoneMobile", "Phone (Mobile)", "+1-555-111-2222"), Address(F("email", "Email", "john.doe@acme.com")),
-                        Address(F("website", "Website", "https://example.com")), F("street", "Street", "123 Main St"),
-                        F("zipcode", "Zipcode", "90210"), F("city", "City", "Anytown"),
+                        F("firstName", "First Name", "Rukus"), F("lastName", "Last Name", "Cat"),
+                        F("org", "Organization", "b0r3d.org"), F("position", "Position", "Chief napper"),
+                        F("phoneWork", "Phone (Work)", "+1 202 555 0100"), F("phonePrivate", "Phone (Private)", "+1 202 555 0142"),
+                        F("phoneMobile", "Phone (Mobile)", "+1 202 555 0199"), Address(F("email", "Email", "rukus@example.com")),
+                        Address(F("website", "Website", "https://b0r3d.org")), F("street", "Street", "1 Loaf Lane"),
+                        F("zipcode", "Zipcode", "12345"), F("city", "City", "Breadville"),
                         F("state", "State", "CA"), F("country", "Country", "USA"),
                     };
                 case TemplateKind.Location:
-                    return new List<TemplateField> { F("latitude", "Latitude", "e.g., 40.7128", FieldKind.Number), F("longitude", "Longitude", "e.g., -74.0060", FieldKind.Number) };
+                    // Greenwich's old observatory, on the prime meridian
+                    return new List<TemplateField> { F("latitude", "Latitude", "51.4769", FieldKind.Number), F("longitude", "Longitude", "-0.0005", FieldKind.Number) };
                 case TemplateKind.Event:
                     return new List<TemplateField>
                     {
-                        F("title", "Event Title", "e.g., Team Meeting"), F("location", "Event Location", "e.g., Conference Room A"),
+                        F("title", "Event Title", "Nap time"), F("location", "Event Location", "The sunny windowsill"),
                         F("startTime", "Start Time", "", FieldKind.DateTime), F("endTime", "End Time", "", FieldKind.DateTime),
                     };
                 case TemplateKind.Gs1DigitalLink:
@@ -147,19 +148,21 @@ namespace B0r3dQR.Design
                 case TemplateKind.Epc:
                     return new List<TemplateField>
                     {
-                        new TemplateField { Name = "version", Label = "EPC QR Version", Kind = FieldKind.Choice, Choices = new[] { ("002", "Version 2 (BIC optional within SEPA)"), ("001", "Version 1 (BIC required)") } },
-                        F("name", "Beneficiary Name", "e.g., Jane Smith", FieldKind.Line, 70),
-                        F("iban", "IBAN", "DE89370400440532013000", FieldKind.Line, 34),
-                        F("bic", "BIC", "DEUTDEFF", FieldKind.Line, 11),
-                        F("amount", "Amount (EUR)", "25.00"),
+                        new TemplateField { Name = "version", Label = "EPC QR Version", Kind = FieldKind.Choice, Choices = new[] { ("002", "Version 2 (the BIC can be left out)"), ("001", "Version 1 (the BIC is needed)") } },
+                        F("name", "Beneficiary Name", "Rukus Cat", FieldKind.Line, 70),
+                        // the example IBAN banks' own documents use, and the BIC of its bank
+                        F("iban", "IBAN", "DE89 3704 0044 0532 0130 00", FieldKind.Line, 34),
+                        F("bic", "BIC", "COBADEFFXXX", FieldKind.Line, 11),
+                        F("amount", "Amount (EUR)", "12.50"),
                         F("purpose", "Purpose Code", "GDDS", FieldKind.Line, 4),
-                        F("remittanceText", "Payment Reference", "e.g., Invoice 12345", FieldKind.Line, 140),
-                        F("remittanceReference", "Structured Creditor Reference", "e.g., RF18539007547034", FieldKind.Line, 35,
-                          "Only one of Payment Reference or Structured Creditor Reference is included; the reference takes priority when both are filled."),
+                        F("remittanceText", "Payment Reference", "Cat food", FieldKind.Line, 140),
+                        // an ISO 11649 reference with real check digits
+                        F("remittanceReference", "Structured Creditor Reference", "RF76B0R3D", FieldKind.Line, 35,
+                          "A code holds one reference or the other: once this one is filled in, the payment reference is left out."),
                         F("originatorInfo", "Beneficiary Information", "", FieldKind.Line, 70),
                     };
                 default:
-                    return new List<TemplateField> { F("text", "Text", "Have a beautiful day!", FieldKind.Lines) };
+                    return new List<TemplateField> { F("text", "Text", "A note, a quote, anything", FieldKind.Lines) };
             }
         }
 
@@ -175,30 +178,74 @@ namespace B0r3dQR.Design
 
         static string Get(IDictionary<string, string> v, string name) => v != null && v.TryGetValue(name, out string s) && s != null ? s : "";
 
-        // a required field is marked with an asterisk
-        public static bool Required(TemplateKind kind, string field, IDictionary<string, string> v)
+        // What each template asks of its fields: whether a field is marked * (always, or only with a
+        // choice made: a password for a network that has one, a BIC for an EPC version 1 code), whether
+        // it's off (a password for an open network; the payment reference once there's a structured
+        // one), and what Save says when it's missing or wrong. A field that isn't here asks nothing.
+        sealed class Rule
         {
-            switch (kind)
-            {
-                case TemplateKind.Text: return field == "text";
-                case TemplateKind.Url: return field == "url";
-                case TemplateKind.Email: return field == "address";
-                case TemplateKind.Phone:
-                case TemplateKind.Sms: return field == "phone";
-                case TemplateKind.Wifi: return field == "ssid" || (field == "password" && Get(v, "encryption").ToLowerInvariant() != "nopass");
-                case TemplateKind.Location: return field == "latitude" || field == "longitude";
-                case TemplateKind.Event: return field == "title" || field == "startTime" || field == "endTime";
-                case TemplateKind.Gs1DigitalLink: return field == "gtin";
-                case TemplateKind.Epc: return field == "name" || field == "iban" || (field == "bic" && Get(v, "version") == "001");
-                default: return false;
-            }
+            public TemplateKind Kind;
+            public string Field;
+            public Func<IDictionary<string, string>, bool> Starred = Never, Off = Never;
+            public Func<IDictionary<string, string>, string> Problem = v => null;
+            public bool MessageStays;   // its message stays until the next Save, whatever's typed in it
         }
 
-        // a field that's off: the password when there's no encryption, the payment reference once
-        // a structured reference is filled in
-        public static bool Disabled(TemplateKind kind, string field, IDictionary<string, string> v) =>
-            (kind == TemplateKind.Wifi && field == "password" && Get(v, "encryption").ToLowerInvariant() == "nopass") ||
-            (kind == TemplateKind.Epc && field == "remittanceText" && Get(v, "remittanceReference").Length > 0);
+        static bool Never(IDictionary<string, string> v) => false;
+        static bool Always(IDictionary<string, string> v) => true;
+        static bool Secured(IDictionary<string, string> v) => Get(v, "encryption") != "nopass";
+        static bool VersionOne(IDictionary<string, string> v) => Get(v, "version") == "001";
+        static string Unspaced(string value) => Regex.Replace(value, Js.Space + "+", "");
+
+        // a field marked * that Save asks for when it's empty
+        static Rule Needed(TemplateKind kind, string field, string says) =>
+            new Rule { Kind = kind, Field = field, Starred = Always, Problem = v => Get(v, field).Length == 0 ? says : null };
+
+        // in the order Save lists what's wrong
+        static readonly Rule[] Rules =
+        {
+            Needed(TemplateKind.Text, "text", "Type the text for the code."),
+            Needed(TemplateKind.Url, "url", "Type the web address."),
+            Needed(TemplateKind.Email, "address", "Type the email address."),
+            Needed(TemplateKind.Phone, "phone", "Type the phone number."),
+            Needed(TemplateKind.Sms, "phone", "Type the phone number."),
+            Needed(TemplateKind.Wifi, "ssid", "Type the network's name."),
+            new Rule
+            {
+                Kind = TemplateKind.Wifi, Field = "password", Starred = Secured, Off = v => !Secured(v), MessageStays = true,
+                Problem = v => Secured(v) && Get(v, "password").Length == 0 ? "Type the password, or choose No encryption." : null,
+            },
+            // a coordinate that isn't a number (read from a geo: text) shows as nothing in the website's
+            // number field, and its Save would write an empty code: asked for here
+            new Rule { Kind = TemplateKind.Location, Field = "latitude", Starred = Always, Problem = v => double.IsNaN(Js.ParseFloat(Get(v, "latitude"))) ? "Type the latitude as a number." : null },
+            new Rule { Kind = TemplateKind.Location, Field = "longitude", Starred = Always, Problem = v => double.IsNaN(Js.ParseFloat(Get(v, "longitude"))) ? "Type the longitude as a number." : null },
+            Needed(TemplateKind.Event, "title", "Give the event a title."),
+            Needed(TemplateKind.Event, "startTime", "Choose when it starts."),
+            Needed(TemplateKind.Event, "endTime", "Choose when it ends."),
+            new Rule { Kind = TemplateKind.Gs1DigitalLink, Field = "gtin", Starred = Always, Problem = v => Templates.GtinProblem(Get(v, "gtin")) },
+            // a payment is checked as its lines are written: a name or BIC of spaces alone would make an
+            // empty line, or no code at all, in the website's Save
+            new Rule { Kind = TemplateKind.Epc, Field = "name", Starred = Always, Problem = v => Templates.EpcLine(Get(v, "name")).Length == 0 ? "Type the beneficiary's name." : null },
+            new Rule
+            {
+                Kind = TemplateKind.Epc, Field = "iban", Starred = Always,
+                Problem = v => Unspaced(Get(v, "iban")).Length == 0 ? "Type the IBAN." : Templates.ValidIban(Get(v, "iban")) ? null : IbanCheck,
+            },
+            new Rule
+            {
+                Kind = TemplateKind.Epc, Field = "bic", Starred = VersionOne,
+                Problem = v => VersionOne(v) && Unspaced(Get(v, "bic")).Length == 0 ? "Version 1 needs the BIC: type it, or choose version 2." : null,
+            },
+            new Rule { Kind = TemplateKind.Epc, Field = "amount", Problem = v => AmountOk(Get(v, "amount")) ? null : AmountCheck },
+            new Rule { Kind = TemplateKind.Epc, Field = "remittanceText", Off = v => Get(v, "remittanceReference").Length > 0 },
+        };
+
+        static Rule RuleFor(TemplateKind kind, string field) => Rules.FirstOrDefault(r => r.Kind == kind && r.Field == field);
+
+        // a required field is marked with an asterisk
+        public static bool Required(TemplateKind kind, string field, IDictionary<string, string> v) => RuleFor(kind, field)?.Starred(v) ?? false;
+
+        public static bool Disabled(TemplateKind kind, string field, IDictionary<string, string> v) => RuleFor(kind, field)?.Off(v) ?? false;
 
         // the line under a field that changes with it: a WPA3-only warning, the check of a GTIN or an IBAN
         public static string LiveNote(TemplateKind kind, string field, IDictionary<string, string> v)
@@ -216,54 +263,13 @@ namespace B0r3dQR.Design
 
         public const string IbanCheck = "This IBAN's check digits don't match. Check it for a typo.";
 
-        // What's missing or wrong when Save is clicked, field by field, in the website's words.
-        public static List<KeyValuePair<string, string>> Problems(TemplateKind kind, IDictionary<string, string> v)
-        {
-            var problems = new List<KeyValuePair<string, string>>();
-            void Flag(string field, string message) => problems.Add(new KeyValuePair<string, string>(field, message));
-            void Need(string field, string message)
-            {
-                if (Get(v, field).Length == 0) Flag(field, message);
-            }
-            switch (kind)
-            {
-                case TemplateKind.Text: Need("text", "Text is required"); break;
-                case TemplateKind.Url: Need("url", "URL is required"); break;
-                case TemplateKind.Email: Need("address", "Email address is required"); break;
-                case TemplateKind.Phone:
-                case TemplateKind.Sms: Need("phone", "Phone number is required"); break;
-                case TemplateKind.Wifi:
-                    Need("ssid", "Wireless SSID is required");
-                    if (Get(v, "encryption").ToLowerInvariant() != "nopass") Need("password", "Password is required when encryption is enabled");
-                    break;
-                case TemplateKind.Location:
-                    // a coordinate that isn't a number (read from a geo: text) shows as nothing in the
-                    // website's number field, and its Save would write an empty code: asked for here
-                    foreach (string axis in new[] { "latitude", "longitude" })
-                        if (double.IsNaN(Js.ParseFloat(Get(v, axis)))) Flag(axis, axis == "latitude" ? "Latitude is required" : "Longitude is required");
-                    break;
-                case TemplateKind.Event:
-                    Need("title", "Event title is required");
-                    Need("startTime", "Start time is required");
-                    Need("endTime", "End time is required");
-                    break;
-                case TemplateKind.Gs1DigitalLink:
-                    string gtin = Templates.GtinProblem(Get(v, "gtin"));
-                    if (gtin != null) Flag("gtin", gtin);
-                    break;
-                case TemplateKind.Epc:
-                    // checked as the payment's lines are written: a name or BIC of spaces alone
-                    // would make an empty line, or no code at all, in the website's Save
-                    if (Templates.EpcLine(Get(v, "name")).Length == 0) Flag("name", "Beneficiary name is required");
-                    string iban = Regex.Replace(Get(v, "iban"), Js.Space + "+", "");
-                    if (iban.Length == 0) Flag("iban", "IBAN is required");
-                    else if (!Templates.ValidIban(iban)) Flag("iban", IbanCheck);
-                    if (Get(v, "version") == "001" && Regex.Replace(Get(v, "bic"), Js.Space + "+", "").Length == 0) Flag("bic", "BIC is required for EPC QR version 1");
-                    if (!AmountOk(Get(v, "amount"))) Flag("amount", AmountCheck);
-                    break;
-            }
-            return problems;
-        }
+        // What's missing or wrong when Save is clicked, field by field: what the website checks, in
+        // b0r3d QR's words.
+        public static List<KeyValuePair<string, string>> Problems(TemplateKind kind, IDictionary<string, string> v) =>
+            Rules.Where(r => r.Kind == kind)
+                 .Select(r => new KeyValuePair<string, string>(r.Field, r.Problem(v)))
+                 .Where(p => p.Value != null)
+                 .ToList();
 
         public const string AmountCheck = "Enter the amount like 25.00 or 25,00, from 0.01 to 999999999.99, or leave it empty.";
 
@@ -279,49 +285,55 @@ namespace B0r3dQR.Design
             return m.Success && m.Groups[1].Length + m.Groups[2].Length > 0 && Js.ParseFloat(a.Replace(',', '.')) >= 0.01;
         }
 
-        // the fields whose message goes away once they're filled in again (the website's watchers)
-        public static bool ClearsWhenFilled(TemplateKind kind, string field) =>
-            !(kind == TemplateKind.Wifi && field == "password");
+        // whether a field's message goes once something is typed in it (all but the Wi-Fi password's)
+        public static bool ClearsWhenFilled(TemplateKind kind, string field) => !(RuleFor(kind, field)?.MessageStays ?? false);
 
         // the checks of what's typed (an IBAN's check digits, an amount) go as soon as the field changes
         public static bool ClearsWhenChanged(string message) => message == IbanCheck || message == AmountCheck;
 
-        // what "Use example" fills in, for the template on show
-        public static Dictionary<string, string> Example(TemplateKind kind, DateTime now)
+        // What "Use example" puts in the template on show, field by field in the form's own order. A
+        // field given "" is emptied; one that isn't listed keeps what's in it (a contact's version, say).
+        public static Dictionary<string, string> Example(TemplateKind kind, DateTime now) =>
+            ExampleOf(kind, now).ToDictionary(pair => pair.Field, pair => pair.Value, StringComparer.Ordinal);
+
+        static (string Field, string Value)[] ExampleOf(TemplateKind kind, DateTime now)
         {
-            var v = new Dictionary<string, string>(StringComparer.Ordinal);
             string Local(DateTime t) => t.ToString("yyyy-MM-dd'T'HH:mm", CultureInfo.InvariantCulture);
             switch (kind)
             {
-                case TemplateKind.Url: v["url"] = "https://b0r3d.org"; break;
+                case TemplateKind.Url: return new[] { ("url", "https://b0r3d.org") };
                 case TemplateKind.Email:
-                    v["address"] = "test@example.com"; v["subject"] = "QR Code Test"; v["body"] = "This is a test email from b0r3d QR!";
-                    v["cc"] = "cc@example.com"; v["bcc"] = "bcc@example.com";
-                    break;
-                case TemplateKind.Phone: v["phone"] = "+19876543210"; break;
-                case TemplateKind.Sms: v["phone"] = "+19876543210"; v["message"] = "Hello from b0r3d QR!"; break;
-                case TemplateKind.Wifi: v["ssid"] = "MyWiFiNetwork"; v["encryption"] = "WPA"; v["password"] = "Password123"; v["hidden"] = "false"; break;
+                    return new[]
+                    {
+                        ("address", "rukus@example.com"), ("cc", "staff@example.com"), ("bcc", "vet@example.com"),
+                        ("subject", "My bowl"), ("body", "It's empty again. Please see to it."),
+                    };
+                case TemplateKind.Phone: return new[] { ("phone", "+1-202-555-0100") };
+                case TemplateKind.Sms: return new[] { ("phone", "+1-202-555-0100"), ("message", "Dinner at six? Rukus says yes.") };
+                case TemplateKind.Wifi: return new[] { ("encryption", "WPA"), ("ssid", "b0r3d guest"), ("password", "naps-all-day"), ("hidden", "false") };
                 case TemplateKind.VCard:
-                    v["firstName"] = "Jane"; v["lastName"] = "Smith"; v["org"] = "Example Inc."; v["position"] = "Developer";
-                    v["phoneWork"] = "+1-555-000-1111"; v["phonePrivate"] = ""; v["phoneMobile"] = "+1-555-222-3333";
-                    v["email"] = "jane.smith@example.com"; v["website"] = "https://example.com"; v["street"] = "456 Example Ave";
-                    v["city"] = "Othertown"; v["state"] = "NY"; v["zipcode"] = "10001"; v["country"] = "USA";
-                    break;
-                case TemplateKind.Location: v["latitude"] = "37.7749"; v["longitude"] = "-122.4194"; break;
+                    // the contact in the batch example (assets/batch/batch-example-contacts.csv), with whole phone numbers
+                    return new[]
+                    {
+                        ("firstName", "Rukus"), ("lastName", "Cat"), ("org", "b0r3d.org"), ("position", "Chief napper"),
+                        ("phoneWork", "+1 202 555 0100"), ("phonePrivate", ""), ("phoneMobile", "+1 202 555 0199"),
+                        ("email", "rukus@example.com"), ("website", "https://b0r3d.org"), ("street", "1 Loaf Lane"),
+                        ("zipcode", "12345"), ("city", "Breadville"), ("state", "CA"), ("country", "USA"),
+                    };
+                case TemplateKind.Location: return new[] { ("latitude", "48.8584"), ("longitude", "2.2945") };   // the Eiffel Tower
                 case TemplateKind.Event:
-                    v["title"] = "Project Sync"; v["location"] = "Online"; v["startTime"] = Local(now); v["endTime"] = Local(now.AddHours(1));
-                    break;
+                    return new[] { ("title", "Nap time"), ("location", "The sunny windowsill"), ("startTime", Local(now)), ("endTime", Local(now.AddHours(1))) };
                 case TemplateKind.Gs1DigitalLink:
                     // GS1's own example number, so the example can't point at a real product
-                    v["domain"] = ""; v["gtin"] = "09506000134352"; v["lot"] = "ABC123"; v["serial"] = ""; v["expiry"] = "2027-12-31";
-                    break;
+                    return new[] { ("gtin", "09506000134352"), ("lot", "ABC123"), ("serial", ""), ("expiry", "2027-12-31"), ("domain", "") };
                 case TemplateKind.Epc:
-                    v["name"] = "Jane Smith"; v["iban"] = "DE89370400440532013000"; v["bic"] = "DEUTDEFF"; v["amount"] = "25.00"; v["purpose"] = "";
-                    v["remittanceReference"] = ""; v["remittanceText"] = "Invoice 12345"; v["originatorInfo"] = ""; v["version"] = "002";
-                    break;
-                default: v["text"] = "Have a wonderful day!"; break;
+                    return new[]
+                    {
+                        ("version", "002"), ("name", "Rukus Cat"), ("iban", "DE89 3704 0044 0532 0130 00"), ("bic", "COBADEFFXXX"),
+                        ("amount", "12.50"), ("purpose", ""), ("remittanceText", "Cat food"), ("remittanceReference", ""), ("originatorInfo", ""),
+                    };
+                default: return new[] { ("text", "Rukus was here.") };
             }
-            return v;
         }
 
         // The form's fields filled from a text the website read as this template: what's missing

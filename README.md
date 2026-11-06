@@ -79,7 +79,7 @@ the website draws it, but for an SVG's patterns, masks, filters and markers, whi
 Emoji in its text are in colour, as in a caption. One too big or too deeply nested to draw
 safely is refused, with the reason.
 
-A data template's form, here a contact card with the website's example in it:
+A data template's form, here a contact card with its example in it:
 
 ![The contact card form: first and last name, organization, phones, email, website and address, two fields to a row](docs/images/template-vcard-light.png)
 
@@ -160,7 +160,7 @@ there are in a picture:
   website's aiming frame. The first code it sees goes to the Scan tab and the camera turns off
   at once; Esc or **Cancel** turns it off without one. With more than one camera, choose which
   from the list. Windows has to let desktop apps use the camera:
-  Settings > Privacy & security > Camera.
+  Settings > Privacy & security > Camera (on Windows 10, Settings > Privacy > Camera).
 - **Open picture…** (Ctrl+O), Ctrl+V with a picture copied (or **Paste picture**,
   Ctrl+Shift+V), or drop pictures anywhere on the window: PNG, JPEG, BMP, GIF and TIFF
   (every page), and WebP or HEIC where Windows can open them. For a PDF, open it and scan

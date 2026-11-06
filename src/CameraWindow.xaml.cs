@@ -15,7 +15,7 @@ namespace B0r3dQR
     // Scan → Scan with the camera, as the website's camera scanner: "Starting the camera…", then what
     // it sees with a frame to aim with, read a few times a second until a code turns up. That code goes
     // to the Scan tab, the camera stops and the window closes. A list of the cameras when there's more
-    // than one; the website's messages when a camera can't be read; Cancel (Esc) stops it all.
+    // than one; a message saying why when a camera can't be read; Cancel (Esc) stops it all.
     public partial class CameraWindow : Window
     {
         readonly CameraScan scan;

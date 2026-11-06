@@ -57,11 +57,11 @@ namespace B0r3dQR.Tests
         {
             List<string> Says(TemplateKind kind, Dictionary<string, string> v) => TemplateForms.Problems(kind, v).Select(p => p.Key + ": " + p.Value).ToList();
             var wifi = new Dictionary<string, string> { ["encryption"] = "WPA" };
-            Check(Says(TemplateKind.Wifi, wifi).SequenceEqual(new[] { "ssid: Wireless SSID is required", "password: Password is required when encryption is enabled" }), "Wi-Fi: " + string.Join(" | ", Says(TemplateKind.Wifi, wifi)));
+            Check(Says(TemplateKind.Wifi, wifi).SequenceEqual(new[] { "ssid: Type the network's name.", "password: Type the password, or choose No encryption." }), "Wi-Fi: " + string.Join(" | ", Says(TemplateKind.Wifi, wifi)));
             wifi["encryption"] = "nopass";
             Check(Says(TemplateKind.Wifi, wifi).Count == 1 && !TemplateForms.Required(TemplateKind.Wifi, "password", wifi) && TemplateForms.Disabled(TemplateKind.Wifi, "password", wifi), "an open network needs no password, and its box is off");
             var epc = new Dictionary<string, string> { ["iban"] = "DE89370400440532013001", ["version"] = "001" };
-            Check(Says(TemplateKind.Epc, epc).SequenceEqual(new[] { "name: Beneficiary name is required", "iban: " + TemplateForms.IbanCheck, "bic: BIC is required for EPC QR version 1" }), "EPC: " + string.Join(" | ", Says(TemplateKind.Epc, epc)));
+            Check(Says(TemplateKind.Epc, epc).SequenceEqual(new[] { "name: Type the beneficiary's name.", "iban: " + TemplateForms.IbanCheck, "bic: Version 1 needs the BIC: type it, or choose version 2." }), "EPC: " + string.Join(" | ", Says(TemplateKind.Epc, epc)));
             Check(TemplateForms.LiveNote(TemplateKind.Epc, "iban", new Dictionary<string, string> { ["iban"] = "DE89 3704 0044 053" }) == TemplateForms.IbanCheck &&
                   TemplateForms.LiveNote(TemplateKind.Epc, "iban", new Dictionary<string, string> { ["iban"] = "DE89 3704" }) == null, "an IBAN is checked as it's typed, from 15 characters");
             Check(Says(TemplateKind.Gs1DigitalLink, new Dictionary<string, string>()).SequenceEqual(new[] { "gtin: Enter the product number (GTIN)." }), "GS1 with no number");
@@ -69,7 +69,7 @@ namespace B0r3dQR.Tests
 
             // a payment: what its lines are written from, and an amount that's asked about rather than guessed
             var pay = new Dictionary<string, string> { ["name"] = " ", ["iban"] = "DE89370400440532013000", ["version"] = "001", ["bic"] = "  " };
-            Check(Says(TemplateKind.Epc, pay).SequenceEqual(new[] { "name: Beneficiary name is required", "bic: BIC is required for EPC QR version 1" }),
+            Check(Says(TemplateKind.Epc, pay).SequenceEqual(new[] { "name: Type the beneficiary's name.", "bic: Version 1 needs the BIC: type it, or choose version 2." }),
                 "a name or BIC of spaces alone is asked for, so Save can't write a broken code or none: " + string.Join(" | ", Says(TemplateKind.Epc, pay)));
             foreach (string bad in new[] { "1.234,56", "1,234.56", "1 000", "€25", "0", "0.001", "1000000000", ".", "-5", "1e3" })
                 Check(!TemplateForms.AmountOk(bad), "the amount " + Show(bad) + " should be asked about, not guessed");
@@ -105,9 +105,9 @@ namespace B0r3dQR.Tests
                   Js.NumberToString(0.1 + 0.2) == "0.30000000000000004" && Js.NumberToString(123e-20) == "1.23e-18", "numbers written the JavaScript way");
 
             var now = new DateTime(2026, 11, 1, 14, 30, 0);
-            Check(Templates.Make(TemplateKind.Wifi, TemplateForms.Example(TemplateKind.Wifi, now)) == "WIFI:T:WPA;S:MyWiFiNetwork;P:Password123;;" &&
+            Check(Templates.Make(TemplateKind.Wifi, TemplateForms.Example(TemplateKind.Wifi, now)) == "WIFI:T:WPA;S:b0r3d guest;P:naps-all-day;;" &&
                   Templates.Make(TemplateKind.Gs1DigitalLink, TemplateForms.Example(TemplateKind.Gs1DigitalLink, now)) == "https://id.gs1.org/01/09506000134352/10/ABC123?17=271231" &&
-                  TemplateForms.Example(TemplateKind.Event, now)["endTime"] == "2026-11-01T15:30", "the website's examples");
+                  TemplateForms.Example(TemplateKind.Event, now)["endTime"] == "2026-11-01T15:30", "the examples");
             foreach (TemplateKind kind in TemplateForms.Types)
                 Check(TemplateForms.Problems(kind, TemplateForms.Example(kind, now)).Count == 0, TemplateForms.Label(kind) + "'s example should be complete");
             Check(TemplateForms.Menu.Select(TemplateForms.Label).SequenceEqual(new[] { "Text", "URL", "WiFi", "vCard", "Email", "Phone", "SMS", "Location", "Event", "EPC QR (SEPA Payment)", "Product (GS1 Digital Link)" }),
@@ -134,7 +134,7 @@ namespace B0r3dQR.Tests
 
             TemplateWindow url = window.TemplateFor(TemplateKind.Url);
             LayOut(url.Root, 600, 680);
-            Check(((TextBox)url.Input("url")).Text == "" && !url.Save() && url.ProblemText("url") == "URL is required", "an empty URL can't be saved, and says why");
+            Check(((TextBox)url.Input("url")).Text == "" && !url.Save() && url.ProblemText("url") == "Type the web address.", "an empty URL can't be saved, and says why");
             ((TextBox)url.Input("url")).Text = "b0r3d.org";
             Check(url.ProblemText("url") == "", "the message goes once the field is filled in");
             Check(url.Save() && url.Result == "https://b0r3d.org", "a URL without https:// gets it, as on the website");
@@ -150,7 +150,7 @@ namespace B0r3dQR.Tests
             Check(mail.Save() && mail.Result == "mailto:rukus@example.com?body=line%201%0Aline%202", "a message's line breaks are written as the website writes them: " + Show(mail.Result));
 
             TemplateWindow meeting = window.TemplateFor(TemplateKind.Event);
-            Check(!meeting.Save() && meeting.ProblemText("title") == "Event title is required", "an empty event can't be saved");
+            Check(!meeting.Save() && meeting.ProblemText("title") == "Give the event a title.", "an empty event can't be saved");
             meeting.ExampleButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
             Check(meeting.ProblemText("title") == "" && meeting.ProblemText("startTime") == "" && meeting.ProblemText("endTime") == "", "Use example takes the messages off the fields it fills in");
 
@@ -165,14 +165,14 @@ namespace B0r3dQR.Tests
                   Grid.GetRow(Cell("org")) == Grid.GetRow(Cell("firstName")) + 1 && Grid.GetColumn(Cell("org")) == 0, "a contact's fields go two to a row");
 
             TemplateWindow place = window.TemplateFor(TemplateKind.Location);
-            ((TextBox)place.Input("latitude")).Text = "40.70";
-            ((TextBox)place.Input("longitude")).Text = "-74.0060";
-            Check(place.Save() && place.Result == "geo:40.7,-74.006", "typed numbers are written the way the website's number fields give them: " + Show(place.Result));
+            ((TextBox)place.Input("latitude")).Text = "51.4770";
+            ((TextBox)place.Input("longitude")).Text = "-0.0050";
+            Check(place.Save() && place.Result == "geo:51.477,-0.005", "typed numbers are written the way the website's number fields give them: " + Show(place.Result));
 
             TemplateWindow example = window.TemplateFor(TemplateKind.Epc);
             example.ExampleButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            Check(((TextBox)example.Input("name")).Text == "Jane Smith" && example.Save() && example.Result.StartsWith("BCD\n002\n1\nSCT\nDEUTDEFF\nJane Smith\nDE89370400440532013000\nEUR25.00", StringComparison.Ordinal),
-                "Use example fills in the website's example: " + Show(example.Result));
+            Check(((TextBox)example.Input("name")).Text == "Rukus Cat" && example.Save() && example.Result.StartsWith("BCD\n002\n1\nSCT\nCOBADEFFXXX\nRukus Cat\nDE89370400440532013000\nEUR12.50", StringComparison.Ordinal),
+                "Use example fills in the example: " + Show(example.Result));
             Check(((TextBox)example.Input("remittanceText")).IsEnabled, "the payment reference is on while there's no structured one");
             ((TextBox)example.Input("remittanceReference")).Text = "RF18";
             Check(!((TextBox)example.Input("remittanceText")).IsEnabled, "a structured reference turns the payment reference off");

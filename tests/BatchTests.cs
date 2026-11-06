@@ -51,9 +51,9 @@ namespace B0r3dQR.Tests
                 if (Csv.Read(c.Bytes) != c.Text) wrong.Add("the bytes " + BitConverter.ToString(c.Bytes) + " read as " + Show(Csv.Read(c.Bytes)) + ", the website's " + Show(c.Text));
             Check(wrong.Count == 0, wrong.Count + " differences:\n      " + string.Join("\n      ", wrong.Take(12)));
 
-            // the text export's names (TextExportModal.vue): the file name, else qr-<n from 0>, _1, _2 for one taken
+            // the text export's names: the file name, else qr-<n from 0>, _1, _2 for one taken
             var named = new List<BatchRow> { new BatchRow { Data = "a" }, new BatchRow { Data = "b", FileName = "x y" }, new BatchRow { Data = "c", FileName = "x y" }, new BatchRow { Data = "d", FileName = "x_y" } };
-            Check(BatchRows.TextNames(named, new[] { 0, 1, 2, 3 }, ".txt").SequenceEqual(new[] { "qr-0", "x_y", "x_y_1", "x_y_2" }), "the text names: " + string.Join(", ", BatchRows.TextNames(named, new[] { 0, 1, 2, 3 }, ".txt")));
+            Check(BatchRows.TextNames(named, new[] { 0, 1, 2, 3 }).SequenceEqual(new[] { "qr-0", "x_y", "x_y_1", "x_y_2" }), "the text names: " + string.Join(", ", BatchRows.TextNames(named, new[] { 0, 1, 2, 3 })));
             // two names the same only once made safe: the second isn't lost (the website's zip keeps one of them)
             var clash = new List<BatchRow> { new BatchRow { Data = "1", FileName = "a b" }, new BatchRow { Data = "2", FileName = "a_b" } };
             Check(BatchRows.QrNames(clash).SequenceEqual(new[] { "a_b", "a_b-1" }), "names alike once safe: " + string.Join(", ", BatchRows.QrNames(clash)));

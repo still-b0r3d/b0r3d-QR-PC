@@ -115,7 +115,6 @@ namespace B0r3dQR.Tests
             "http://www.w3.org/2000/svg",     // SVG's namespace name in saved files, never fetched
             "http://www.w3.org/1999/xlink",   // SVG's link namespace name (for a logo's href), never fetched
             "https://id.gs1.org",             // GS1's resolver, written into GS1 Digital Link codes as the website does, never opened
-            "https://example.com",            // the website's placeholder and example in the data templates' forms, never opened
             "pack://application:,,,/b0r3dQR;component/",   // the exe's own resources, where the caption fonts are (WebFonts.Inside):
                                                             // an application pack address only reads from inside the running program
         };

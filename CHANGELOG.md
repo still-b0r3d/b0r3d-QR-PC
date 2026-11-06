@@ -28,13 +28,22 @@ The last of what qr.b0r3d.org does: SVG logos, its caption fonts and the camera.
 - Scan with the camera (Scan tab, Scan menu, Ctrl+Shift+A): your webcam's picture with the
   website's aiming frame, read a few times a second at the website's size. The first code found
   goes to the Scan tab and the camera turns off at once. A list of cameras when there's more
-  than one, and the website's messages when there's no camera, it's in use, or Windows doesn't
-  allow it (with where to allow it). Closing the window or choosing another camera turns the
+  than one, and a message when there's no camera, it's in use, or Windows doesn't allow it
+  (with where to allow it). Closing the window or choosing another camera turns the
   camera off at once, even on a busy PC. Nothing the camera sees is saved.
 - Batch export: a row whose file fails to be made is listed with why in the summary, and the
   other rows are still made; a zip that's stopped or fails never leaves its temporary file.
 - The Windows DLLs b0r3d QR calls are only ever loaded from System32, never from the folder
   the exe is in.
+- New wording for the data templates' help lines, placeholders, examples (Use example) and
+  missing-field messages, the camera's messages (which now say where to allow the camera on
+  Windows 10 too) and the note on a logo's error correction; the website words them its own
+  way. What each template checks and writes is the same.
+- Written anew: Batch export's CSV reader, its rows and its file names for QR codes and text;
+  the data templates' writing, and telling which template a text is; and the layout of a
+  logo's room, a frame and its caption. Everything comes out as before: checked against 45 of
+  the website's own CSV readings and 118 of its template cases, and against the previous
+  build on millions of random CSV files, texts and template fields, and thousands of designs.
 
 ## 0.7 (not released yet)
 
@@ -110,8 +119,8 @@ The fourth stage: data templates and recent codes, as qr.b0r3d.org has them.
   that writes the code's text the website's way, byte for byte (checked against 116 cases run
   through the website's own code). The list under Data shows which template the text is;
   choosing one, or Edit…, opens its form filled from the text already there, so a code made
-  elsewhere opens without losing anything the form shows. The website's messages for missing
-  fields, live checks of IBANs and product numbers, and its examples (Use example). What's
+  elsewhere opens without losing anything the form shows. Messages for missing fields, live
+  checks of IBANs and product numbers, and an example for each form (Use example). What's
   typed in each form is kept while the program runs. Where the website's Save could write a
   wrong code or none over the text (an amount like 1.234,56, a coordinate that isn't a number,
   a name or BIC of spaces alone), the form asks instead.

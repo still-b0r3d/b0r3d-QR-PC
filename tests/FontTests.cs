@@ -29,9 +29,9 @@ namespace B0r3dQR.Tests
         static readonly (string Css, string Text, double Gap, string Why)[] ShapingGaps =
         {
             ("'Merriweather', serif", "Wi-Fi: b0r3d_guest 0123456789 & more!", 2.763, "WPF never kerns a letter with a hyphen-minus (Merriweather kerns i- and -F)"),
-            ("'Pacifico', cursive", "Сканиране за повече информация", 0.547, "WPF uses no kerning in Cyrillic from a file with none under cyrl (Pacifico's is under DFLT, which HarfBuzz falls back to)"),
-            ("'Pacifico', cursive", "Шукати за додатковою інформацією", 0.931, "the same: Pacifico's Cyrillic kerning"),
-            ("'Pacifico', cursive", "Скенирајте за више информација", 0.933, "the same: Pacifico's Cyrillic kerning"),
+            ("'Merriweather', serif", "Wi-Fi for guests", 2.767, "the same: Merriweather's i- and -F"),
+            ("'Pacifico', cursive", "Съешь же ещё этих мягких французских булок", 0.56, "WPF uses no kerning in Cyrillic from a file with none under cyrl (Pacifico's is under DFLT, which HarfBuzz falls back to)"),
+            ("'Pacifico', cursive", "Чуєш їх, доцю, га? Кумедна ж ти", 0.4915, "the same: Pacifico's Cyrillic kerning"),
             ("'Poppins', sans-serif", "a᫁b", 8.997, "a mark no font has is drawn as the font's empty box, which HarfBuzz gives no width in a font without glyph classes like Poppins (the box is classed as the mark it stands for) and WPF draws at its width"),
             ("'Poppins', sans-serif", "á᫁b", 8.997, "the same: Poppins's empty box for a mark"),
             ("'Poppins', sans-serif", "a᪰b", 8.997, "the same: Poppins's empty box for a mark"),

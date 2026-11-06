@@ -253,8 +253,8 @@ namespace B0r3dQR.Camera
             }
         }
 
-        // what went wrong, in the website's words (anything Windows threw that isn't one of the
-        // camera's own troubles: "Could not start QR code scanner", with what it said)
+        // what went wrong (anything Windows threw that isn't one of the camera's own troubles:
+        // "The camera didn't start.", with what it said)
         static CameraException Why(Exception x) => x as CameraException ?? new CameraException(Trouble.Failed, x.Message);
 
         void LetGo(ref IFrameSource source)

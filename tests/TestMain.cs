@@ -103,9 +103,9 @@ namespace B0r3dQR.Tests
                 Run("barcodes: Data Matrix, Aztec and PDF417 modules as zint made them for the website, for 252 codes", BarcodeMatricesLikeTheWebsite);
                 Run("barcodes: every type scans back as itself and is made again into the same barcode", BarcodesScanAndMakeAgain);
                 Run("barcodes: PNG, SVG and PDF in the website's colours and sizes, read back", BarcodeFilesLikeTheWebsite);
-                Run("batch: the website's CSV rules, rows and file names, for 35 of its files", BatchFilesLikeTheWebsite);
+                Run("batch: the website's CSV rules, rows and file names, for 45 of its files", BatchFilesLikeTheWebsite);
                 Run("templates: every template writes the website's text, byte for byte (68 of its own)", TemplatesWriteLikeTheWebsite);
-                Run("templates: texts read back into the website's template and fields (48 of its own)", TemplatesReadLikeTheWebsite);
+                Run("templates: texts read back into the website's template and fields (50 of its own)", TemplatesReadLikeTheWebsite);
                 Run("templates: encodeURIComponent, URLSearchParams, parseFloat, toFixed and trim as in a browser", JavaScriptPiecesLikeABrowser);
                 Run("templates: the forms' fields, messages, examples and number fields as on the website", TemplateFormsLikeTheWebsite);
                 Run("recent codes: what the list says, 20 kept, the same text replaced, big pictures left out, a damaged file left alone", RecentCodesLikeTheWebsite);
@@ -195,11 +195,11 @@ namespace B0r3dQR.Tests
                 Run("make again: the scanned text exactly; GS1 data in round brackets; no GS1 QR codes", MakeAgainKeepsTheText);
                 Run("make again: a scanned barcode as its own type with its text exactly, then QR codes again", BarcodeMadeAgain);
                 Run("camera: Windows' cameras listed, none started, named to choose by; front ones mirrored", CamerasListedNotStarted);
-                Run("camera: Windows' answers in the website's words; the kind of picture asked of a camera", CameraTroublesInTheWebsitesWords);
+                Run("camera: what each of Windows' answers says; the kind of picture asked of a camera", CameraTroubleWords);
                 Run("camera: pictures read at the website's size (1280 on the longer side), each grey the average of its pixels", CameraPicturesShrunkForReading);
                 Run("camera: the first code read goes to the Scan tab, the camera let go of on its own thread", CameraReadsTheFirstCode);
                 Run("camera: no code: the pictures shown, a few looks a second; closing lets the camera go", CameraWithoutACode);
-                Run("camera: each kind of trouble in the website's words, the camera let go of at once", CameraTroublesShowTheirMessage);
+                Run("camera: each kind of trouble says what it is, the camera let go of at once", CameraTroublesShowTheirMessage);
                 Run("camera: two cameras: a list, the first let go of before the second starts; one in use or odd, then the other", CameraSwitching);
                 Run("camera: one waiting for a picture is stopped at once by closing the window or choosing another, from the thread pool", CameraStoppedWhileWaiting);
                 Run("camera: one still starting when its window closed is let go of once started; a window opened again waits for it, not \"in use\"", CameraStillStartingWhenClosed);

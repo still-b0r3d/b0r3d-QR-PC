@@ -11,10 +11,10 @@ namespace B0r3dQR.Design
     // The website's data templates, in the order its list shows them.
     enum TemplateKind { Text, Url, Email, Phone, Sms, Wifi, VCard, Location, Event, Epc, Gs1DigitalLink }
 
-    // What the website's data templates write (its src/utils/dataEncoding.ts), and which template a
-    // text is, with the template's fields filled from it so that writing it again gives back the
-    // same text. Fields go by the website's own names ("ssid", "password"...); "hidden" is "true" or
-    // "false". Times in events are local to `zone` (the PC's own time zone unless a test says).
+    // What the website's data templates write, and which template a text is, with the template's
+    // fields filled from it so that writing it again gives back the same text. Fields go by the
+    // website's own names ("ssid", "password"...); "hidden" is "true" or "false". Times in events
+    // are local to `zone` (the PC's own time zone unless a test says).
     static class Templates
     {
         // the website's names for them, as its files and tests use
@@ -33,23 +33,15 @@ namespace B0r3dQR.Design
 
         // ---------- escaping ----------
 
-        static string Escape(string v, string chars)
-        {
-            if (string.IsNullOrEmpty(v)) return "";
-            var s = new StringBuilder(v.Length + 8);
-            foreach (char c in v)
-            {
-                if (chars.IndexOf(c) >= 0) s.Append('\\');
-                s.Append(c);
-            }
-            return s.ToString();
-        }
+        // vCard text (RFC 6350 3.4): a backslash before each \ , and ;
+        static string VCardText(string value) => Regex.Replace(value, @"[\\,;]", @"\$&");
 
-        public static string EscapeVCard(string v) => Escape(v, "\\,;");
+        // a Wi-Fi code's name or password: a backslash before each \ ; , : " and '
+        static string WifiText(string value) => Regex.Replace(value, @"[\\;,:""']", @"\$&");
 
-        public static string EscapeWifi(string v) => Escape(v, "\\;,:\"'");
-
-        public static string EscapeICal(string v) => Regex.Replace(Escape(v, "\\,;"), "\r\n|\r|\n", "\\n");
+        // iCalendar text (RFC 5545 3.3.11): a backslash before each \ , and ;, and every line break
+        // (CR LF, CR or LF) written as \n
+        static string ICalText(string value) => Regex.Replace(value, "\r\n|[\r\n]|[\\\\,;]", m => m.Value[0] == '\r' || m.Value[0] == '\n' ? "\\n" : "\\" + m.Value);
 
         // \, \; \: \\ as the character, \n or \N as a line break
         public static string UnescapeText(string v) => Regex.Replace(v, @"\\([\\,;:nN])", m => m.Groups[1].Value == "n" || m.Groups[1].Value == "N" ? "\n" : m.Groups[1].Value);
@@ -80,8 +72,8 @@ namespace B0r3dQR.Design
             return parts;
         }
 
-        // one line of a payment code: line breaks become spaces, and the ends are trimmed
-        public static string EpcLine(string v) => string.IsNullOrEmpty(v) ? "" : Js.Trim(Regex.Replace(v, "\r\n|\r|\n", " "));
+        // a payment code's line: each line break (CR LF, CR or LF) a space, then no space at either end
+        public static string EpcLine(string value) => Js.Trim(Regex.Replace(value ?? "", "\r\n|[\r\n]", " "));
 
         // ---------- writing ----------
 
@@ -92,52 +84,51 @@ namespace B0r3dQR.Design
         {
             switch (kind)
             {
-                case TemplateKind.Url:
-                {
-                    string url = Field(f, "url");
-                    if (url.Length == 0) return "";
-                    return url.StartsWith("http://", StringComparison.Ordinal) || url.StartsWith("https://", StringComparison.Ordinal) ? url : "https://" + url;
-                }
-                case TemplateKind.Email:
-                {
-                    string address = Field(f, "address");
-                    if (address.Length == 0) return "";
-                    var parts = new List<string>();
-                    foreach (string name in new[] { "subject", "body", "cc", "bcc" })
-                        if (Field(f, name).Length > 0) parts.Add(name + "=" + Js.EncodeUriComponent(Field(f, name)));
-                    return "mailto:" + address + (parts.Count > 0 ? "?" + string.Join("&", parts) : "");
-                }
-                case TemplateKind.Phone:
-                    return Field(f, "phone").Length > 0 ? "tel:" + Field(f, "phone") : "";
-                case TemplateKind.Sms:
-                    return Field(f, "phone").Length > 0 ? "SMSTO:" + Field(f, "phone") + ":" + Field(f, "message") : "";
-                case TemplateKind.Wifi:
-                {
-                    if (Field(f, "ssid").Length == 0) return "";
-                    string ssid = EscapeWifi(Field(f, "ssid")), encryption = Field(f, "encryption");
-                    string hidden = Field(f, "hidden") == "true" ? "H:true;" : "";
-                    return encryption == "nopass"
-                        ? "WIFI:T:nopass;S:" + ssid + ";" + hidden + ";"
-                        : "WIFI:T:" + encryption + ";S:" + ssid + ";P:" + EscapeWifi(Field(f, "password")) + ";" + hidden + ";";
-                }
-                case TemplateKind.VCard:
-                    return VCard(f);
-                case TemplateKind.Location:
-                {
-                    string latitude = Field(f, "latitude"), longitude = Field(f, "longitude");
-                    if (double.IsNaN(Js.ParseFloat(latitude)) || double.IsNaN(Js.ParseFloat(longitude))) return "";
-                    return "geo:" + latitude + "," + longitude;
-                }
-                case TemplateKind.Event:
-                    return Event(f, zone ?? TimeZoneInfo.Local, utcNow ?? DateTime.UtcNow, uid ?? NewUid());
-                case TemplateKind.Epc:
-                    return Epc(f);
-                case TemplateKind.Gs1DigitalLink:
-                    return Gs1DigitalLink(f);
-                default:
-                    return Field(f, "text");
+                case TemplateKind.Url: return Link(Field(f, "url"));
+                case TemplateKind.Email: return Mail(f);
+                case TemplateKind.Phone: return Field(f, "phone").Length == 0 ? "" : "tel:" + Field(f, "phone");
+                case TemplateKind.Sms: return Field(f, "phone").Length == 0 ? "" : "SMSTO:" + Field(f, "phone") + ":" + Field(f, "message");
+                case TemplateKind.Wifi: return Wifi(f);
+                case TemplateKind.VCard: return VCard(f);
+                case TemplateKind.Location: return Geo(Field(f, "latitude"), Field(f, "longitude"));
+                case TemplateKind.Event: return Event(f, zone ?? TimeZoneInfo.Local, utcNow ?? DateTime.UtcNow, uid ?? NewUid());
+                case TemplateKind.Epc: return Epc(f);
+                case TemplateKind.Gs1DigitalLink: return Gs1DigitalLink(f);
+                default: return Field(f, "text");
             }
         }
+
+        // a web address, made a secure one when it doesn't say http:// or https:// (in small letters)
+        static string Link(string url) => url.Length == 0 ? "" : Regex.IsMatch(url, "^https?://") ? url : "https://" + url;
+
+        // mailto:<address> (RFC 6068), with the subject, body, cc and bcc that are filled in, in that
+        // order, each encoded as a URI component
+        static string Mail(IDictionary<string, string> f)
+        {
+            string address = Field(f, "address");
+            if (address.Length == 0) return "";
+            string query = string.Join("&", new[] { "subject", "body", "cc", "bcc" }
+                .Where(name => Field(f, name).Length > 0)
+                .Select(name => name + "=" + Js.EncodeUriComponent(Field(f, name))));
+            return "mailto:" + address + (query.Length == 0 ? "" : "?" + query);
+        }
+
+        // The Wi-Fi code phones join from (the format ZXing set down): WIFI:, then T:<security>,
+        // S:<name>, P:<password> (not for an open network) and H:true for a hidden one, each ended
+        // by a semicolon, and one more semicolon to close it.
+        static string Wifi(IDictionary<string, string> f)
+        {
+            if (Field(f, "ssid").Length == 0) return "";
+            string security = Field(f, "encryption");
+            var parts = new List<string> { "T:" + security, "S:" + WifiText(Field(f, "ssid")) };
+            if (security != "nopass") parts.Add("P:" + WifiText(Field(f, "password")));
+            if (Field(f, "hidden") == "true") parts.Add("H:true");
+            return "WIFI:" + string.Join(";", parts) + ";;";
+        }
+
+        // geo:<latitude>,<longitude> (RFC 5870), as they were typed; nothing unless both read as numbers
+        static string Geo(string latitude, string longitude) =>
+            double.IsNaN(Js.ParseFloat(latitude)) || double.IsNaN(Js.ParseFloat(longitude)) ? "" : "geo:" + latitude + "," + longitude;
 
         // vCard 2.1, 3.0 (the default) or 4.0, from "2", "3" or "4" or any way of writing them
         public static string VCardVersion(string version)
@@ -146,73 +137,74 @@ namespace B0r3dQR.Design
             return v == "2" || v == "2.1" ? "2" : v == "4" || v == "4.0" ? "4" : "3";
         }
 
+        // How each of a contact's properties is spelled in vCard 2.1, 3.0 and 4.0, the lines in the
+        // order they're written. A 4.0 phone's value is a tel: URI.
+        static readonly (string Field, string[] Spelled)[] ContactLines =
+        {
+            ("phoneWork", new[] { "TEL;WORK;VOICE", "TEL;TYPE=WORK,VOICE", "TEL;TYPE=work,voice;VALUE=uri" }),
+            ("phonePrivate", new[] { "TEL;HOME;VOICE", "TEL;TYPE=HOME,VOICE", "TEL;TYPE=home,voice;VALUE=uri" }),
+            ("phoneMobile", new[] { "TEL;CELL;VOICE", "TEL;TYPE=CELL,VOICE", "TEL;TYPE=cell,voice;VALUE=uri" }),
+            ("email", new[] { "EMAIL;INTERNET", "EMAIL", "EMAIL;TYPE=work" }),
+            ("website", new[] { "URL", "URL", "URL;TYPE=work" }),
+        };
+
+        static readonly string[] AdrSpelled = { "ADR;WORK", "ADR;TYPE=WORK", "ADR;TYPE=work" };
+
+        // A contact card (vCard 2.1, RFC 2426's 3.0 or RFC 6350's 4.0), its lines joined by LF: the
+        // name (N, and FN as first and last name; a card with only a company has FN from that), ORG,
+        // TITLE, the phones, EMAIL, URL and ADR, each only when it has something in it, its value as
+        // vCard text. A 2.1 line whose value isn't all printable ASCII says it's UTF-8.
         static string VCard(IDictionary<string, string> f)
         {
-            var lines = new List<string> { "BEGIN:VCARD" };
             string version = VCardVersion(Field(f, "version"));
-            lines.Add("VERSION:" + (version == "2" ? "2.1" : version == "4" ? "4.0" : "3.0"));
-            // vCard 2.1 reads text as ASCII unless a line says otherwise
-            void Push(string property, string value) =>
-                lines.Add(property + (version == "2" && Regex.IsMatch(value, "[^\\x20-\\x7e]") ? ";CHARSET=UTF-8" : "") + ":" + value);
-            void Tel(string value, string v2, string v4, string v3)
+            int spelling = version == "2" ? 0 : version == "3" ? 1 : 2;
+            var card = new StringBuilder("BEGIN:VCARD\nVERSION:").Append(new[] { "2.1", "3.0", "4.0" }[spelling]);
+            void Line(string property, string value)
             {
-                if (value.Length == 0) return;
-                if (version == "2") Push(v2, EscapeVCard(value));
-                else if (version == "4") lines.Add(v4 + EscapeVCard(value));
-                else lines.Add(v3 + EscapeVCard(value));
+                card.Append('\n').Append(property);
+                if (spelling == 0 && Regex.IsMatch(value, "[^\\x20-\\x7e]")) card.Append(";CHARSET=UTF-8");
+                card.Append(':').Append(value);
             }
 
-            string first = EscapeVCard(Field(f, "firstName")), last = EscapeVCard(Field(f, "lastName")), org = Field(f, "org");
+            string first = VCardText(Field(f, "firstName")), last = VCardText(Field(f, "lastName")), company = Field(f, "org");
             if (first.Length > 0 || last.Length > 0)
             {
-                Push("N", last + ";" + first + ";;;");
-                Push("FN", Js.Trim(first + " " + last));
+                Line("N", last + ";" + first + ";;;");
+                Line("FN", Js.Trim(first + " " + last));
             }
-            else if (org.Length > 0) Push("FN", EscapeVCard(org));   // a company's card is named after the company
-            if (org.Length > 0) Push("ORG", EscapeVCard(org));
-            if (Field(f, "position").Length > 0) Push("TITLE", EscapeVCard(Field(f, "position")));
-            Tel(Field(f, "phoneWork"), "TEL;WORK;VOICE", "TEL;TYPE=work,voice;VALUE=uri:tel:", "TEL;TYPE=WORK,VOICE:");
-            Tel(Field(f, "phonePrivate"), "TEL;HOME;VOICE", "TEL;TYPE=home,voice;VALUE=uri:tel:", "TEL;TYPE=HOME,VOICE:");
-            Tel(Field(f, "phoneMobile"), "TEL;CELL;VOICE", "TEL;TYPE=cell,voice;VALUE=uri:tel:", "TEL;TYPE=CELL,VOICE:");
-            string email = Field(f, "email");
-            if (email.Length > 0)
+            else if (company.Length > 0) Line("FN", VCardText(company));
+            if (company.Length > 0) Line("ORG", VCardText(company));
+            if (Field(f, "position").Length > 0) Line("TITLE", VCardText(Field(f, "position")));
+            foreach (var (field, spelled) in ContactLines)
             {
-                if (version == "2") Push("EMAIL;INTERNET", EscapeVCard(email));
-                else if (version == "4") lines.Add("EMAIL;TYPE=work:" + EscapeVCard(email));
-                else lines.Add("EMAIL:" + EscapeVCard(email));
+                string value = Field(f, field);
+                if (value.Length == 0) continue;
+                bool uri = spelling == 2 && field.StartsWith("phone", StringComparison.Ordinal);
+                Line(spelled[spelling], (uri ? "tel:" : "") + VCardText(value));
             }
-            string website = Field(f, "website");
-            if (website.Length > 0)
-            {
-                if (version == "4") lines.Add("URL;TYPE=work:" + EscapeVCard(website));
-                else Push("URL", EscapeVCard(website));
-            }
-            string[] address = { "street", "city", "state", "zipcode", "country" };
-            string[] parts = address.Select(name => EscapeVCard(Field(f, name))).ToArray();
-            if (parts.Any(p => p.Length > 0))
-            {
-                string adr = string.Join(";", parts);
-                if (version == "2") Push("ADR;WORK", ";;" + adr);
-                else if (version == "4") lines.Add("ADR;TYPE=work:;;" + adr);
-                else lines.Add("ADR;TYPE=WORK:;;" + adr);
-            }
-            lines.Add("END:VCARD");
-            return string.Join("\n", lines);
+            string[] address = new[] { "street", "city", "state", "zipcode", "country" }.Select(name => VCardText(Field(f, name))).ToArray();
+            if (address.Any(part => part.Length > 0)) Line(AdrSpelled[spelling], ";;" + string.Join(";", address));
+            return card.Append("\nEND:VCARD").ToString();
         }
 
+        // A calendar event (RFC 5545): one VEVENT in a VCALENDAR, with its title and place as
+        // iCalendar text, its start and end in UTC (each only when it's a time), then the time it was
+        // made and an id of its own, which calendars want in every event.
         static string Event(IDictionary<string, string> f, TimeZoneInfo zone, DateTime utcNow, string uid)
         {
-            var lines = new List<string> { "BEGIN:VEVENT" };
-            if (Field(f, "title").Length > 0) lines.Add("SUMMARY:" + EscapeICal(Field(f, "title")));
-            if (Field(f, "location").Length > 0) lines.Add("LOCATION:" + EscapeICal(Field(f, "location")));
-            string start = Field(f, "startTime").Length > 0 ? ICalTime(Field(f, "startTime"), zone) : "";
-            string end = Field(f, "endTime").Length > 0 ? ICalTime(Field(f, "endTime"), zone) : "";
-            if (start.Length > 0) lines.Add("DTSTART:" + start);
-            if (end.Length > 0) lines.Add("DTEND:" + end);
-            lines.Add("DTSTAMP:" + UtcStamp(utcNow));   // calendars need both of these in every event
+            var lines = new List<string> { "BEGIN:VCALENDAR", "VERSION:2.0", "BEGIN:VEVENT" };
+            foreach (var (property, field) in new[] { ("SUMMARY", "title"), ("LOCATION", "location") })
+                if (Field(f, field).Length > 0) lines.Add(property + ":" + ICalText(Field(f, field)));
+            foreach (var (property, field) in new[] { ("DTSTART", "startTime"), ("DTEND", "endTime") })
+            {
+                string when = ICalTime(Field(f, field), zone);   // "" for nothing, or what isn't a time
+                if (when.Length > 0) lines.Add(property + ":" + when);
+            }
+            lines.Add("DTSTAMP:" + UtcStamp(utcNow));
             lines.Add("UID:" + uid + "@qr.b0r3d.org");
             lines.Add("END:VEVENT");
-            return "BEGIN:VCALENDAR\nVERSION:2.0\n" + string.Join("\n", lines) + "\nEND:VCALENDAR";
+            lines.Add("END:VCALENDAR");
+            return string.Join("\n", lines);
         }
 
         // 18 characters: nine random bytes, each in base 36 and two long, as the website makes them
@@ -266,32 +258,43 @@ namespace B0r3dQR.Design
             return TimeZoneInfo.ConvertTimeToUtc(local, zone);
         }
 
+        // A SEPA credit transfer as banks' apps read it (EPC069-12), one field a line: BCD, the
+        // version (001, or 002 which may leave out the BIC), 1 for UTF-8, SCT, the BIC, the payee,
+        // the IBAN, the amount, the purpose, then either the structured reference or the text, then
+        // a note. The BIC and IBAN go without spaces and in capitals; the payee, purpose (also in
+        // capitals), reference, text and note are each one line, cut to the length the standard
+        // allows. Empty lines after the IBAN that nothing follows are left off. Nothing is written
+        // without a payee and an IBAN, or for version 001 without a BIC.
         static string Epc(IDictionary<string, string> f)
         {
-            if (Field(f, "name").Length == 0 || Field(f, "iban").Length == 0) return "";
-            string version = Field(f, "version") == "001" ? "001" : "002";
-            string bic = Regex.Replace(Field(f, "bic"), Js.Space + "+", "").ToUpperInvariant();
-            if (version == "001" && bic.Length == 0) return "";   // version 001 needs the BIC
-            string name = Cut(EpcLine(Field(f, "name")), 70);
-            string iban = Regex.Replace(Field(f, "iban"), Js.Space + "+", "").ToUpperInvariant();
-            string amount = "";
-            string typed = Field(f, "amount");
-            if (typed.Length > 0)
+            bool versionOne = Field(f, "version") == "001";
+            string bic = Unspaced(Field(f, "bic")).ToUpperInvariant();
+            if (Field(f, "name").Length == 0 || Field(f, "iban").Length == 0 || versionOne && bic.Length == 0) return "";
+            string Part(string field, int most) => Upto(EpcLine(Field(f, field)), most);
+            string reference = Part("remittanceReference", 35);
+            string[] lines =
             {
-                int comma = typed.IndexOf(',');
-                double value = Js.ParseFloat(comma < 0 ? typed : typed.Substring(0, comma) + "." + typed.Substring(comma + 1));
-                if (!double.IsNaN(value) && value > 0) amount = "EUR" + Js.ToFixed2(value);
-            }
-            string purpose = Cut(EpcLine(Field(f, "purpose")), 4).ToUpperInvariant();
-            string reference = Cut(EpcLine(Field(f, "remittanceReference")), 35);
-            string text = reference.Length > 0 ? "" : Cut(EpcLine(Field(f, "remittanceText")), 140);   // one or the other
-            string originator = Cut(EpcLine(Field(f, "originatorInfo")), 70);
-            var lines = new List<string> { "BCD", version, "1", "SCT", bic, name, iban, amount, purpose, reference, text, originator };
-            while (lines.Count > 7 && lines[lines.Count - 1].Length == 0) lines.RemoveAt(lines.Count - 1);   // the IBAN line stays
-            return string.Join("\n", lines);
+                "BCD", versionOne ? "001" : "002", "1", "SCT", bic, Part("name", 70), Unspaced(Field(f, "iban")).ToUpperInvariant(),
+                EuroAmount(Field(f, "amount")), Part("purpose", 4).ToUpperInvariant(), reference,
+                reference.Length > 0 ? "" : Part("remittanceText", 140), Part("originatorInfo", 70),
+            };
+            int count = lines.Length;
+            while (count > 7 && lines[count - 1].Length == 0) count--;
+            return string.Join("\n", lines, 0, count);
         }
 
-        static string Cut(string s, int length) => s.Length <= length ? s : s.Substring(0, length);
+        // "EUR" and an amount above zero with two decimals, read with a decimal point or a comma
+        // (the first comma is one); "" for none, or nothing that reads as one
+        static string EuroAmount(string typed)
+        {
+            int comma = typed.IndexOf(',');
+            double value = Js.ParseFloat(comma < 0 ? typed : typed.Remove(comma, 1).Insert(comma, "."));
+            return !double.IsNaN(value) && value > 0 ? "EUR" + Js.ToFixed2(value) : "";
+        }
+
+        static string Unspaced(string value) => Regex.Replace(value, Js.Space + "+", "");
+
+        static string Upto(string s, int most) => s.Length <= most ? s : s.Substring(0, most);
 
         // An IBAN with the right check digits (ISO 13616, mod 97); spaces and case don't matter.
         public static bool ValidIban(string value)
@@ -355,92 +358,100 @@ namespace B0r3dQR.Design
         public static TemplateKind Detect(string data, out Dictionary<string, string> fields, TimeZoneInfo zone = null)
         {
             fields = new Dictionary<string, string>(StringComparer.Ordinal);
-            zone = zone ?? TimeZoneInfo.Local;
-            if (string.IsNullOrEmpty(data))
+            string text = data ?? "";
+            TemplateKind kind = KindOf(text);
+            switch (kind)
             {
-                fields["text"] = data ?? "";
-                return TemplateKind.Text;
+                case TemplateKind.Epc: ReadPayment(text, fields); break;
+                case TemplateKind.VCard: fields = ReadVCard(text); break;
+                case TemplateKind.Gs1DigitalLink: ReadGs1(text, fields); break;
+                case TemplateKind.Url: fields["url"] = text; break;
+                case TemplateKind.Email: ReadMail(text, fields); break;
+                case TemplateKind.Phone: fields["phone"] = text.Substring("tel:".Length); break;
+                case TemplateKind.Sms: ReadSms(text, fields); break;
+                case TemplateKind.Wifi: ReadWifi(text, fields); break;
+                case TemplateKind.Location: ReadGeo(text, fields); break;
+                case TemplateKind.Event: ReadEvent(text, fields, zone ?? TimeZoneInfo.Local); break;
+                default: fields["text"] = text; break;
             }
-            if (Regex.IsMatch(data, "^BCD\r?\n"))
-            {
-                string[] lines = data.Replace("\r", "").Split('\n');
-                string Line(int n) => n < lines.Length ? lines[n] : "";
-                fields["version"] = Line(1) == "001" ? "001" : "002";
-                fields["bic"] = Line(4);
-                fields["name"] = Line(5);
-                fields["iban"] = Line(6);
-                fields["amount"] = Line(7).StartsWith("EUR", StringComparison.Ordinal) ? Line(7).Substring(3) : "";
-                fields["purpose"] = Line(8);
-                fields["remittanceReference"] = Line(9);
-                fields["remittanceText"] = Line(10);
-                fields["originatorInfo"] = Line(11);
-                return TemplateKind.Epc;
-            }
-            if (Regex.IsMatch(data, "^" + Js.Space + "*BEGIN:VCARD", I))
-            {
-                fields = ReadVCard(data);
-                return TemplateKind.VCard;
-            }
-            Match gs1 = Gs1Link.Match(data);
-            if (gs1.Success && GtinProblem(gs1.Groups[2].Value) == null)
-            {
-                string Decode(Group g) => !g.Success ? "" : Js.DecodeUriComponent(g.Value) ?? g.Value;
-                string date = gs1.Groups[5].Success ? gs1.Groups[5].Value : "";
-                fields["domain"] = gs1.Groups[1].Value;
-                fields["gtin"] = gs1.Groups[2].Value;
-                fields["lot"] = Decode(gs1.Groups[3]);
-                fields["serial"] = Decode(gs1.Groups[4]);
-                fields["expiry"] = date.Length > 0 ? "20" + date.Substring(0, 2) + "-" + date.Substring(2, 2) + "-" + date.Substring(4) : "";
-                return TemplateKind.Gs1DigitalLink;
-            }
-            if (Regex.IsMatch(data, "^https?:/{2}", I))
-            {
-                fields["url"] = data;
-                return TemplateKind.Url;
-            }
-            if (Regex.IsMatch(data, "^mailto:", I))
-            {
-                string[] parts = data.Substring(7).Split('?');
-                fields["address"] = parts[0];
-                if (parts.Length > 1 && parts[1].Length > 0)
-                {
-                    string query = string.Join("?", parts.Skip(1));
-                    foreach (string name in new[] { "subject", "body", "cc", "bcc" }) fields[name] = Js.SearchParam(query, name) ?? "";
-                }
-                return TemplateKind.Email;
-            }
-            if (Regex.IsMatch(data, "^tel:", I))
-            {
-                fields["phone"] = data.Substring(4);
-                return TemplateKind.Phone;
-            }
-            if (Regex.IsMatch(data, "^(SMSTO|sms):", I))
-            {
-                ReadSms(data, fields);
-                return TemplateKind.Sms;
-            }
-            if (Regex.IsMatch(data, "^WIFI:", I))
-            {
-                ReadWifi(data, fields);
-                return TemplateKind.Wifi;
-            }
-            if (Regex.IsMatch(data, "^geo:", I))
-            {
-                string[] coords = Regex.Split(data.Substring(4), "[;?]")[0].Split(',');
-                if (coords.Length >= 2)
-                {
-                    fields["latitude"] = Js.Trim(coords[0]);
-                    fields["longitude"] = Js.Trim(coords[1]);
-                }
-                return TemplateKind.Location;
-            }
-            if (Regex.IsMatch(data, "^" + Js.Space + "*BEGIN:(VCALENDAR|VEVENT)", I))
-            {
-                ReadEvent(data, fields, zone);
-                return TemplateKind.Event;
-            }
-            fields["text"] = data;
+            return kind;
+        }
+
+        // How a text starts, in capitals or small letters, for each kind it can be, tried in this
+        // order after a payment, a contact card and a GS1 Digital Link (see KindOf).
+        static readonly (string Start, TemplateKind Kind)[] Starts =
+        {
+            ("^https?:/{2}", TemplateKind.Url), ("^mailto:", TemplateKind.Email), ("^tel:", TemplateKind.Phone),
+            ("^(SMSTO|sms):", TemplateKind.Sms), ("^WIFI:", TemplateKind.Wifi), ("^geo:", TemplateKind.Location),
+            ("^" + Js.Space + "*BEGIN:(VCALENDAR|VEVENT)", TemplateKind.Event),
+        };
+
+        // Which kind a text is, as the website decides it: a payment when it starts BCD and a line
+        // break (in capitals), a contact card when it starts BEGIN:VCARD (after any white space), a
+        // GS1 Digital Link when it's one this template writes with a right check digit, then by how
+        // it starts (Starts); anything else, and nothing at all, is text.
+        static TemplateKind KindOf(string text)
+        {
+            if (text.Length == 0) return TemplateKind.Text;
+            if (Regex.IsMatch(text, "^BCD\r?\n")) return TemplateKind.Epc;
+            if (Regex.IsMatch(text, "^" + Js.Space + "*BEGIN:VCARD", I)) return TemplateKind.VCard;
+            Match gs1 = Gs1Link.Match(text);
+            if (gs1.Success && GtinProblem(gs1.Groups[2].Value) == null) return TemplateKind.Gs1DigitalLink;
+            foreach (var (start, kind) in Starts)
+                if (Regex.IsMatch(text, start, I)) return kind;
             return TemplateKind.Text;
+        }
+
+        // A payment's fields from its lines (CRs left out): the version from the second line, then
+        // from the fifth the BIC, the payee, the IBAN, the amount (what follows its EUR), the purpose,
+        // the reference, the text and the note. A missing line is an empty field.
+        static readonly string[] PaymentFields = { "bic", "name", "iban", "amount", "purpose", "remittanceReference", "remittanceText", "originatorInfo" };
+
+        static void ReadPayment(string text, Dictionary<string, string> fields)
+        {
+            string[] lines = text.Replace("\r", "").Split('\n');
+            string LineAt(int n) => n < lines.Length ? lines[n] : "";
+            fields["version"] = LineAt(1) == "001" ? "001" : "002";
+            for (int i = 0; i < PaymentFields.Length; i++) fields[PaymentFields[i]] = LineAt(4 + i);
+            string amount = fields["amount"];
+            fields["amount"] = amount.StartsWith("EUR", StringComparison.Ordinal) ? amount.Substring(3) : "";
+        }
+
+        static void ReadGs1(string text, Dictionary<string, string> fields)
+        {
+            Match gs1 = Gs1Link.Match(text);
+            string Decode(Group g) => !g.Success ? "" : Js.DecodeUriComponent(g.Value) ?? g.Value;
+            string date = gs1.Groups[5].Success ? gs1.Groups[5].Value : "";
+            fields["domain"] = gs1.Groups[1].Value;
+            fields["gtin"] = gs1.Groups[2].Value;
+            fields["lot"] = Decode(gs1.Groups[3]);
+            fields["serial"] = Decode(gs1.Groups[4]);
+            fields["expiry"] = date.Length > 0 ? "20" + date.Substring(0, 2) + "-" + date.Substring(2, 2) + "-" + date.Substring(4) : "";
+        }
+
+        // mailto:<address>?<query>: the address is everything up to the first ?. The subject, body,
+        // cc and bcc are read from what follows it, unless that's nothing or starts with another ?,
+        // when none of them is set.
+        static void ReadMail(string text, Dictionary<string, string> fields)
+        {
+            string rest = text.Substring("mailto:".Length);
+            int question = rest.IndexOf('?');
+            fields["address"] = question < 0 ? rest : rest.Substring(0, question);
+            string query = question < 0 ? "" : rest.Substring(question + 1);
+            if (query.Length == 0 || query[0] == '?') return;
+            foreach (string name in new[] { "subject", "body", "cc", "bcc" }) fields[name] = Js.SearchParam(query, name) ?? "";
+        }
+
+        // geo:<latitude>,<longitude>, anything from a ; or ? on left off (RFC 5870's parameters), each
+        // without spaces round it; with fewer than two, no fields at all
+        static void ReadGeo(string text, Dictionary<string, string> fields)
+        {
+            string place = text.Substring("geo:".Length);
+            int end = place.IndexOfAny(new[] { ';', '?' });
+            string[] coordinates = (end < 0 ? place : place.Substring(0, end)).Split(',');
+            if (coordinates.Length < 2) return;
+            fields["latitude"] = Js.Trim(coordinates[0]);
+            fields["longitude"] = Js.Trim(coordinates[1]);
         }
 
         static void ReadSms(string data, Dictionary<string, string> fields)
@@ -566,25 +577,28 @@ namespace B0r3dQR.Design
             if (!Has(parsed, "firstName") && !Has(parsed, "lastName") && fn != null)
             {
                 string name = TextValue(fn);
-                // a company's card is named after the company: it isn't a person
+                // a company's card is named after the company: it isn't a person. A person's name
+                // alone gives its first word as the first name and the rest, if any, as the last.
                 if (org == null || string.Join(", ", Components(org)) != name)
                 {
-                    string[] parts = name.Split(' ');
-                    parsed["firstName"] = parts[0];
-                    if (parts.Length > 1) parsed["lastName"] = string.Join(" ", parts.Skip(1));
+                    int space = name.IndexOf(' ');
+                    parsed["firstName"] = space < 0 ? name : name.Substring(0, space);
+                    if (space >= 0) parsed["lastName"] = name.Substring(space + 1);
                 }
             }
             if (org != null) parsed["org"] = string.Join(", ", Components(org).Where(p => p.Length > 0));
             ContentLine title = First("TITLE");
             if (title != null) parsed["position"] = TextValue(title);
+            // each phone goes in by its type (work, home, cell or mobile), the first of each; one with
+            // no type is the mobile, but only when no phone has gone in before it
+            string[] phones = { "phoneWork", "phonePrivate", "phoneMobile" };
             foreach (ContentLine line in lines.Where(l => l.Name == "TEL"))
             {
                 string phone = Regex.Replace(TextValue(line), "^tel:", "", I);
                 string key = Regex.IsMatch(line.Params, @"\bWORK\b", RegexOptions.ECMAScript) ? "phoneWork"
                     : Regex.IsMatch(line.Params, @"\bHOME\b", RegexOptions.ECMAScript) ? "phonePrivate"
                     : Regex.IsMatch(line.Params, @"\b(CELL|MOBILE)\b", RegexOptions.ECMAScript) ? "phoneMobile"
-                    : !Has(parsed, "phoneWork") && !Has(parsed, "phonePrivate") && !Has(parsed, "phoneMobile") ? "phoneMobile"
-                    : null;
+                    : phones.Any(p => Has(parsed, p)) ? null : "phoneMobile";
                 if (key != null && !Has(parsed, key)) parsed[key] = phone;
             }
             ContentLine email = First("EMAIL"), url = First("URL"), adr = First("ADR");

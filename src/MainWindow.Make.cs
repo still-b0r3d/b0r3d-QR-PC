@@ -731,7 +731,7 @@ namespace B0r3dQR
             QrLevel? suggested = Checks.Suggested(design.Data);
             string hint = name + ": about " + percent + "% of the code can be dirty, scratched or covered and it still scans. Higher levels make the code denser.";
             if (suggested.HasValue) hint += suggested.Value == design.Level ? " Suggested for this much text." : " Suggested for this much text: " + Checks.LevelName(suggested.Value) + ".";
-            if (art != null && art.LevelRaised) hint += " A logo needs more error correction to stay scannable, so High (25%) is used.";
+            if (art != null && art.LevelRaised) hint += " A logo covers part of the code, so High (25%) is used.";
             LevelHint.Text = hint;
         }
 

@@ -178,7 +178,7 @@
                                             <TextBlock Style="{StaticResource Label}" Margin="0,0,0,4" Text="Data templates" />
                                             <DockPanel Margin="0,0,0,10">
                                                 <Button x:Name="EditTemplateButton" DockPanel.Dock="Right" Content="Edit…" Click="OnEditTemplate" Margin="8,0,0,0"
-                                                        ToolTip="Edit data template" AutomationProperties.Name="Open data type generator" />
+                                                        ToolTip="Edit data template" AutomationProperties.Name="Edit data template" />
                                                 <Grid>
                                                     <ComboBox x:Name="TemplateBox" SelectionChanged="OnTemplate" DropDownOpened="OnTemplateOpened" DropDownClosed="OnTemplateClosed"
                                                               AutomationProperties.Name="Data templates" />

@@ -305,10 +305,11 @@ namespace B0r3dQR
             BatchRow row = item.Row;
             if (row.Contact != null)
             {
+                // a contact, from the fields its vCard was written from
                 Field("Name", (Get(row.Contact, "firstName") + " " + Get(row.Contact, "lastName")).Trim());
-                Field("Company", string.Join(" · ", new[] { Get(row.Contact, "org"), Get(row.Contact, "position") }.Where(s => s.Length > 0)));
+                Field("Company", Joined(row.Contact, "org", "position"));
                 Field("Email", Get(row.Contact, "email"));
-                Field("Phone", string.Join(" · ", new[] { "phonework", "phonemobile", "phoneprivate" }.Select(f => Get(row.Contact, f)).Where(s => s.Length > 0)));
+                Field("Phone", Joined(row.Contact, "phoneWork", "phoneMobile", "phonePrivate"));
             }
             else Field("Data", row.Data, true);
             if (kind.Barcode == null && kind.Frame && kind.Format != BatchFormat.Text) Field("Frame text", row.FrameText.Length > 0 ? row.FrameText : QrFrame.DefaultText + " (the default)");
@@ -324,6 +325,9 @@ namespace B0r3dQR
         }
 
         static string Get(Dictionary<string, string> fields, string name) => fields.TryGetValue(name, out string value) ? value : "";
+
+        // the fields of those names that aren't empty, in that order, joined by " · "
+        static string Joined(Dictionary<string, string> fields, params string[] names) => string.Join(" · ", names.Select(name => Get(fields, name)).Where(value => value.Length > 0));
 
         // the row's code drawn small, as its file will show it
         BitmapSource Thumbnail(BatchItem item)

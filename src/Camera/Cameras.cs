@@ -16,23 +16,25 @@ namespace B0r3dQR.Camera
     {
         public readonly Trouble Trouble;
 
-        // `detail`: Windows' side of it, shown smaller under the website's words (or null)
+        // `detail`: Windows' side of it, shown smaller under the message (or null)
         public CameraException(Trouble trouble, string detail) : base(detail ?? "")
         {
             Trouble = trouble;
         }
 
-        // the website's message, with Windows' own place to allow the camera
+        // what went wrong, for the camera window (a denied camera with Windows' own place to allow it)
         public string Words
         {
             get
             {
                 switch (Trouble)
                 {
-                    case Trouble.NoCamera: return "No camera found on this device";
-                    case Trouble.Denied: return "Camera access denied. Please allow camera access in Windows: Settings > Privacy & security > Camera, and turn on \"Let desktop apps access your camera\".";
-                    case Trouble.InUse: return "Camera is already in use by another application";
-                    default: return "Could not start QR code scanner";
+                    case Trouble.NoCamera: return "b0r3d QR can't find a camera on this PC.";
+                    case Trouble.Denied:
+                        return "Windows isn't letting b0r3d QR use the camera. To allow it: Settings > Privacy & security > Camera, then turn on \"Camera access\" " +
+                               "and \"Let desktop apps access your camera\". On Windows 10: Settings > Privacy > Camera, \"Allow desktop apps to access your camera\".";
+                    case Trouble.InUse: return "Another app is using the camera. Close it, then try again.";
+                    default: return "The camera didn't start.";
                 }
             }
         }
@@ -210,7 +212,7 @@ namespace B0r3dQR.Camera
             if (hr != 0) throw Problem(hr, doing);
         }
 
-        // What Windows' answer means here, in the website's words; Windows' code is kept for the detail
+        // What Windows' answer means here; Windows' code is kept for the detail
         // line (the codes are mferror.h's and winerror.h's)
         internal static CameraException Problem(int hr, string doing)
         {

@@ -221,7 +221,7 @@ namespace B0r3dQR.Tests
             }
             catch (CameraException x) when (x.Message.Contains("media features"))
             {
-                Check(x.Trouble == Trouble.Failed && x.Words == "Could not start QR code scanner", "no Media Foundation: " + x.Trouble + " / " + x.Words);
+                Check(x.Trouble == Trouble.Failed && x.Words == "The camera didn't start.", "no Media Foundation: " + x.Trouble + " / " + x.Words);
                 throw new SkipException("Windows' media features (Media Foundation) aren't on this machine");
             }
             finally
@@ -240,18 +240,19 @@ namespace B0r3dQR.Tests
             Check(!new CameraInfo { Name = "Integrated Webcam" }.Mirrored && !new CameraInfo { Name = "Surface Camera Rear" }.Mirrored, "only a front camera is mirrored");
         }
 
-        // Windows' answers in the website's words, and the kind of picture asked of a camera
-        static void CameraTroublesInTheWebsitesWords()
+        // what each of Windows' answers says, and the kind of picture asked of a camera
+        static void CameraTroubleWords()
         {
             var words = new Dictionary<Trouble, string>
             {
-                { Trouble.NoCamera, "No camera found on this device" },
-                { Trouble.InUse, "Camera is already in use by another application" },
-                { Trouble.Failed, "Could not start QR code scanner" },
+                { Trouble.NoCamera, "b0r3d QR can't find a camera on this PC." },
+                { Trouble.InUse, "Another app is using the camera. Close it, then try again." },
+                { Trouble.Failed, "The camera didn't start." },
             };
             foreach (var pair in words) Check(new CameraException(pair.Key, null).Words == pair.Value, pair.Key + " says \"" + new CameraException(pair.Key, null).Words + "\"");
             string denied = new CameraException(Trouble.Denied, null).Words;
-            Check(denied.StartsWith("Camera access denied. Please allow camera access", StringComparison.Ordinal) && denied.Contains("Settings > Privacy & security > Camera") && denied.Contains("Let desktop apps access your camera"),
+            Check(denied.StartsWith("Windows isn't letting b0r3d QR use the camera.", StringComparison.Ordinal) && denied.Contains("Settings > Privacy & security > Camera") && denied.Contains("Let desktop apps access your camera") &&
+                  denied.Contains("Settings > Privacy > Camera") && denied.Contains("Allow desktop apps to access your camera"),
                 "access denied should say where Windows allows it: " + denied);
 
             var codes = new Dictionary<uint, Trouble>
@@ -290,9 +291,9 @@ namespace B0r3dQR.Tests
             Check(Order(K(0, 0, 0, 0)).Length == 1, "a kind with no size still gets a try");
         }
 
-        // The pictures read for a code, at the website's size: canvas.width = Math.round(videoWidth *
-        // Math.min(1, 1280 / Math.max(videoWidth, videoHeight))), and the same for the height (its
-        // QRCodeCameraScanner.vue). Each grey is the average of the pixels it covers.
+        // The pictures read for a code, at the website's size: no side longer than 1280 px (a bigger
+        // picture shrunk to fit, both sides by the same factor and rounded, a smaller one as it is).
+        // Each grey is the average of the pixels it covers.
         static void CameraPicturesShrunkForReading()
         {
             foreach (var (w, h, rw, rh) in new[] { (640, 480, 640, 480), (1280, 720, 1280, 720), (1920, 1080, 1280, 720), (2560, 1440, 1280, 720), (3840, 2160, 1280, 720),
@@ -403,7 +404,7 @@ namespace B0r3dQR.Tests
             Check(front.Disposed && front.All[0].Closed == 1, "the front camera wasn't let go of");
         }
 
-        // each kind of trouble: the website's message (with Windows' side under it), no picture, the
+        // each kind of trouble: its message (with Windows' side under it), no picture, the
         // camera let go of at once; and the window stays open until it's closed
         static void CameraTroublesShowTheirMessage()
         {
@@ -478,20 +479,20 @@ namespace B0r3dQR.Tests
             var two = new FakeCameras(busy, spare);
             CameraWindow other = StartCamera(two);
             WaitForCamera(other, () => other.Problem != null, 5000);
-            Check(other.Problem?.Trouble == Camera.Trouble.InUse && other.ProblemText.Text == "Camera is already in use by another application", "the camera in use: " + other.ProblemText.Text);
+            Check(other.Problem?.Trouble == Camera.Trouble.InUse && other.ProblemText.Text == "Another app is using the camera. Close it, then try again.", "the camera in use: " + other.ProblemText.Text);
             other.CameraBox.SelectedIndex = 1;
             WaitForCamera(other, () => other.IsClosed && other.CameraLetGo);
             Check(other.Code?.Text == "SPARE" && other.Code.Source == "USB camera", "after the camera in use, the other one's code: " + Show(other.Code?.Text));
             Check(two.Said == "find, open Desk camera, open USB camera, close USB camera, dispose" && spare.Closed == 1, "the cameras were asked: " + two.Said);
 
-            // one that trips over something Windows threw that isn't a known trouble: said in the website's
-            // words with what Windows said, and the other camera can still be chosen
+            // one that trips over something Windows threw that isn't a known trouble: said as a camera that
+            // didn't start, with what Windows said, and the other camera can still be chosen
             var odd = new FakeCamera { Name = "Odd camera", OpenTrouble = new COMException("The device is not ready.", unchecked((int)0x80070015)) };
             var fine = new FakeCamera { Name = "USB camera", Blanks = 1, Code = "FINE" };
             var three = new FakeCameras(odd, fine);
             CameraWindow third = StartCamera(three);
             WaitForCamera(third, () => third.Problem != null, 5000);
-            Check(third.ProblemText.Text == "Could not start QR code scanner" && third.DetailText.Text == "The device is not ready.", "the odd camera: " + third.ProblemText.Text + " / " + third.DetailText.Text);
+            Check(third.ProblemText.Text == "The camera didn't start." && third.DetailText.Text == "The device is not ready.", "the odd camera: " + third.ProblemText.Text + " / " + third.DetailText.Text);
             third.CameraBox.SelectedIndex = 1;
             WaitForCamera(third, () => third.IsClosed && third.CameraLetGo);
             Check(third.Code?.Text == "FINE" && three.Said == "find, open Odd camera, open USB camera, close USB camera, dispose", "after the odd camera, the other one's code: " + Show(third.Code?.Text) + " (" + three.Said + ")");

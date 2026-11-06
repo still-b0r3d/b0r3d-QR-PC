@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -14,80 +15,104 @@ namespace B0r3dQR.Batch
         public string FrameText = "";   // QR: the frame's caption for this row ("" for the design's own)
         public string FileName = "";    // the file name the CSV gives it ("" for none)
         public string Font = "";        // QR: the caption's font for this row ("" for the design's own)
-        public Dictionary<string, string> Contact;   // QR: a contact's fields, for showing the row
+        public Dictionary<string, string> Contact;   // QR: a contact's fields (the vCard template's names), for showing the row
     }
 
-    // What the website makes of a batch CSV (src/utils/csv.ts and csvBatchProcessing.ts) and the file names it gives
-    // the codes in the batch's zip (QRCodeCreate.vue, BarcodeCreate.vue and TextExportModal.vue).
     static class BatchRows
     {
-        static readonly string[] ContactFields =
+        // ---------- reading ----------
+
+        // the vCard template's fields for a contact, and the column each one is read from
+        static readonly (string Field, string Column)[] ContactColumns =
         {
-            "org", "position", "phonework", "phoneprivate", "phonemobile", "email", "website", "street", "zipcode",
-            "city", "state", "country", "version", "frameText",
+            ("firstName", "firstname"), ("lastName", "lastname"), ("org", "org"), ("position", "position"),
+            ("phoneWork", "phonework"), ("phonePrivate", "phoneprivate"), ("phoneMobile", "phonemobile"), ("email", "email"),
+            ("website", "website"), ("street", "street"), ("zipcode", "zipcode"), ("city", "city"), ("state", "state"),
+            ("country", "country"),
         };
 
-        // The QR page's batch (parseCSV, validateCSVData, processCsvDataForBatch): the first row is always the
-        // header. A header with firstName and lastName makes a file of contacts, each written as a vCard (3.0 unless
-        // a version column says otherwise); otherwise each row is the text, then a frame caption, then a file name,
-        // by position, and a frameFontFamily column is found by its name. Null when the website says "Invalid CSV":
-        // no rows, or a row without its text (or a contact without both names).
+        // The QR page's batch, as the website reads it: a header row naming the columns, then a code a row; null
+        // where the website says "Invalid CSV" (see IsUsable). A file whose header has firstName and lastName columns
+        // is a file of contacts, each row made into a vCard. Any other is a file of links or texts, read by place
+        // whatever its header says: the code's text, then the caption, then the file name. In both, a row's value in
+        // a frameFontFamily column is its caption's font, and a caption in any row puts the frame on.
         public static List<BatchRow> ReadQr(string content, out bool hasFrameText)
         {
             hasFrameText = false;
-            List<string> lines = Csv.SplitRows(content);
-            if (lines.Count == 0) return null;
-            string header = lines[0].ToLowerInvariant();
-            char delimiter = Csv.Delimiter(header);
-            List<string> headers = Csv.SplitLine(header, delimiter).Select(h => h.ToLowerInvariant()).ToList();
-            bool contacts = Csv.IsContacts(header, delimiter);
-            int fontAt = headers.IndexOf("framefontfamily");
+            List<List<string>> records = Csv.Parse(content).Records;
+            if (records.Count == 0) return null;
+            var columns = new Columns(records[0]);
+            bool contacts = columns.Has("firstname") && columns.Has("lastname");
+            if (!IsUsable(records, columns, contacts)) return null;
             var rows = new List<BatchRow>();
-            for (int i = 1; i < lines.Count; i++)
+            for (int i = 1; i < records.Count; i++)
             {
-                List<string> values = Csv.SplitLine(lines[i], delimiter);
-                string At(int index) => index >= 0 && index < values.Count ? values[index] : null;
-                var row = new BatchRow { Row = i + 1 };
-                if (contacts)
-                {
-                    string first = At(headers.IndexOf("firstname")) ?? "", last = At(headers.IndexOf("lastname")) ?? "";
-                    if (first.Length == 0 || last.Length == 0) return null;
-                    var fields = new Dictionary<string, string> { ["firstName"] = first, ["lastName"] = last };
-                    foreach (string field in ContactFields)
-                    {
-                        string value = At(headers.IndexOf(field.ToLowerInvariant()));
-                        if (!string.IsNullOrEmpty(value)) fields[field] = value;
-                    }
-                    row.Contact = fields;
-                    row.Data = Templates.Make(TemplateKind.VCard, new Dictionary<string, string>
-                    {
-                        ["firstName"] = first, ["lastName"] = last,
-                        ["org"] = Get(fields, "org"), ["position"] = Get(fields, "position"),
-                        ["phoneWork"] = Get(fields, "phonework"), ["phonePrivate"] = Get(fields, "phoneprivate"), ["phoneMobile"] = Get(fields, "phonemobile"),
-                        ["email"] = Get(fields, "email"), ["website"] = Get(fields, "website"),
-                        ["street"] = Get(fields, "street"), ["zipcode"] = Get(fields, "zipcode"), ["city"] = Get(fields, "city"),
-                        ["state"] = Get(fields, "state"), ["country"] = Get(fields, "country"),
-                        ["version"] = Get(fields, "version").Length > 0 ? Get(fields, "version") : "3.0",
-                    });
-                    row.FrameText = Get(fields, "frameText");
-                    row.FileName = At(headers.IndexOf("filename")) ?? "";
-                }
+                List<string> values = records[i];
+                var row = new BatchRow { Row = i + 1, Font = columns.Get(values, "framefontfamily") };
+                if (contacts) ReadContact(row, values, columns);
                 else
                 {
-                    row.Data = At(0) ?? "";
-                    if (Js.Trim(row.Data).Length == 0) return null;
-                    row.FrameText = At(1) ?? "";
-                    row.FileName = At(2) ?? "";
+                    row.Data = At(values, 0);
+                    row.FrameText = At(values, 1);
+                    row.FileName = At(values, 2);
                 }
-                row.Font = At(fontAt) ?? "";
                 rows.Add(row);
             }
-            if (rows.Count == 0) return null;
-            hasFrameText = rows.Any(r => Js.Trim(r.FrameText).Length > 0);
+            hasFrameText = rows.Any(row => Js.Trim(row.FrameText).Length > 0);
             return rows;
         }
 
-        static string Get(Dictionary<string, string> fields, string name) => fields.TryGetValue(name, out string value) ? value : "";
+        // Whether the website takes a QR batch's records: it needs a row after the header, and every row needs its
+        // code's text (in a file of contacts, a first name and a last name). One row without makes it all invalid.
+        static bool IsUsable(List<List<string>> records, Columns columns, bool contacts)
+        {
+            if (records.Count < 2) return false;
+            for (int i = 1; i < records.Count; i++)
+            {
+                List<string> values = records[i];
+                bool usable = contacts ? columns.Get(values, "firstname").Length > 0 && columns.Get(values, "lastname").Length > 0
+                                       : Js.Trim(At(values, 0)).Length > 0;
+                if (!usable) return false;
+            }
+            return true;
+        }
+
+        // a contact's row: the vCard the vCard template writes from its columns (version 3.0 unless it says), and
+        // its caption and file name from the frameText and fileName columns
+        static void ReadContact(BatchRow row, List<string> values, Columns columns)
+        {
+            var fields = new Dictionary<string, string>();
+            foreach (var (field, column) in ContactColumns) fields[field] = columns.Get(values, column);
+            string version = columns.Get(values, "version");
+            fields["version"] = version.Length > 0 ? version : "3.0";
+            row.Data = Templates.Make(TemplateKind.VCard, fields);
+            row.FrameText = columns.Get(values, "frametext");
+            row.FileName = columns.Get(values, "filename");
+            row.Contact = fields;
+        }
+
+        // a row's value at a place, "" past its end
+        static string At(List<string> values, int place) => place < values.Count ? values[place] : "";
+
+        // A header's columns, looked up by name: each of its values in lower case, at the first place it comes.
+        sealed class Columns
+        {
+            readonly Dictionary<string, int> places = new Dictionary<string, int>();
+
+            public Columns(List<string> header)
+            {
+                for (int i = 0; i < header.Count; i++)
+                {
+                    string name = header[i].ToLowerInvariant();
+                    if (!places.ContainsKey(name)) places.Add(name, i);
+                }
+            }
+
+            public bool Has(string name) => places.ContainsKey(name);
+
+            // a row's value in the column of that name: "" when there's no such column, or the row stops before it
+            public string Get(List<string> values, string name) => places.TryGetValue(name, out int place) ? At(values, place) : "";
+        }
 
         static readonly string[] DataColumns = { "data", "code", "barcode", "value", "text", "url" };
         static readonly string[] FileNameColumns = { "filename", "file name", "file", "name" };
@@ -99,19 +124,18 @@ namespace B0r3dQR.Batch
         public static List<BatchRow> ReadBarcodes(string content)
         {
             string text = content.Length > 0 && content[0] == (char)0xFEFF ? content.Substring(1) : content;
-            List<string> lines = Csv.SplitRows(text);
+            List<List<string>> records = Csv.Parse(text).Records;
             var rows = new List<BatchRow>();
-            if (lines.Count == 0) return rows;
-            char delimiter = Csv.Delimiter(lines[0]);
-            List<string> first = Csv.SplitLine(lines[0], delimiter).Select(cell => cell.ToLowerInvariant()).ToList();
+            if (records.Count == 0) return rows;
+            List<string> first = records[0].Select(cell => cell.ToLowerInvariant()).ToList();
             int dataColumn = first.FindIndex(cell => DataColumns.Contains(cell));
             int fileColumn = first.FindIndex(cell => FileNameColumns.Contains(cell));
             bool hasHeader = dataColumn >= 0 || fileColumn >= 0;
             int dataAt = dataColumn >= 0 ? dataColumn : fileColumn == 0 ? 1 : 0;
             int fileAt = hasHeader ? fileColumn : 1;
-            for (int i = hasHeader ? 1 : 0; i < lines.Count; i++)
+            for (int i = hasHeader ? 1 : 0; i < records.Count; i++)
             {
-                List<string> values = Csv.SplitLine(lines[i], delimiter);
+                List<string> values = records[i];
                 string data = dataAt < values.Count ? values[dataAt] : "";
                 if (Js.Trim(data).Length == 0) continue;
                 rows.Add(new BatchRow { Row = i + 1, Data = data, FileName = fileAt >= 0 && fileAt < values.Count ? values[fileAt] : "" });
@@ -119,61 +143,83 @@ namespace B0r3dQR.Batch
             return rows;
         }
 
-        // the characters the website keeps in a file name; any other becomes _
-        public static string Safe(string name) => Regex.Replace(name, "[^a-zA-Z0-9_-]", "_");
+        // ---------- the files' names ----------
 
-        // The QR page's file names (generateBatchExportFilename, then made safe): the CSV's file name, else the frame
-        // caption, else one from the text (a contact's name; a link's last word-like part, else its site; or the text
-        // itself), with "-<its place>" when the name was taken. The website's zip keeps one of two files whose names
-        // only became the same when made safe; here the second gets "-<its place>" too, and so on.
+        // A name made safe for a file: every character other than A-Z, a-z, 0-9, _ and - made _ (each UTF-16 unit, so
+        // an emoji, which is two, becomes __)
+        public static string Safe(string name)
+        {
+            var safe = new StringBuilder(name.Length);
+            foreach (char c in name) safe.Append(IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_');
+            return safe.ToString();
+        }
+
+        static bool IsLetterOrDigit(char c) => (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
+
+        // The QR page's file names, one a row in order, as the website names them. A row's name is its file name, else
+        // its caption, else one from its code's text (NameFromText); when an earlier row came to the same name, the
+        // row's index (from 0) goes on the end ("same-1"); then it's made safe. Last, b0r3d QR's own step: a safe name
+        // an earlier row was given already gets the index too, then -3, -4 and so on until it's new (the website's
+        // zip keeps only one of two files of the same name).
         public static List<string> QrNames(IList<BatchRow> rows)
         {
-            var used = new HashSet<string>();
-            var safeUsed = new HashSet<string>();
+            var named = new HashSet<string>();   // the names the rows came to, before they were made safe
+            var given = new HashSet<string>();   // the names given
             var names = new List<string>();
-            for (int index = 0; index < rows.Count; index++)
+            for (int i = 0; i < rows.Count; i++)
             {
-                string name = Name(rows[index].Data, rows[index].FrameText, rows[index].FileName, index);
-                if (used.Contains(name)) name = name + "-" + index;
-                used.Add(name);
-                string safe = Safe(name), unique = safe;
-                for (int n = 2; safeUsed.Contains(unique); n++) unique = safe + "-" + index + (n > 2 ? "-" + n : "");
-                safeUsed.Add(unique);
-                names.Add(unique);
+                BatchRow row = rows[i];
+                string name = !string.IsNullOrEmpty(row.FileName) ? row.FileName
+                    : !string.IsNullOrEmpty(row.FrameText) ? row.FrameText
+                    : NameFromText(row.Data ?? "", i);
+                if (named.Contains(name)) name += "-" + i;
+                named.Add(name);
+                // the website's name made safe; then b0r3d QR's own step, for a safe name that's been given already
+                string safe = Safe(name), file = safe;
+                if (given.Contains(file)) file = safe + "-" + i;
+                for (int n = 3; given.Contains(file); n++) file = safe + "-" + i + "-" + n;
+                given.Add(file);
+                names.Add(file);
             }
             return names;
         }
 
-        static readonly Regex WordLike = new Regex("^[a-zA-Z0-9_]+\\z");
-
-        static string Name(string data, string frameText, string fileName, int index)
+        // A name from a code's text, for a row with no file name or caption. A vCard is named after the name on it
+        // (VCardName). Text with more than one / in it is named after its last part, if that's a word (A-Z, a-z, 0-9
+        // and _ only), else the part before it if that is, else its site (SiteName), else "qr_code_" and the row's
+        // index. Any other text is its own name, trimmed.
+        static string NameFromText(string text, int index)
         {
-            if (!string.IsNullOrEmpty(fileName)) return fileName;
-            if (!string.IsNullOrEmpty(frameText)) return frameText;
-            if (data.StartsWith("BEGIN:VCARD", System.StringComparison.Ordinal))
-            {
-                Match fn = Regex.Match(data, "FN:([^\r\n]+)");
-                return fn.Success ? SpacesTo(Js.Trim(fn.Groups[1].Value), "_") : "";
-            }
-            string[] parts = data.Split('/');
-            if (parts.Length <= 2) return Js.Trim(data);
-            string last = parts[parts.Length - 1], secondLast = parts[parts.Length - 2];
-            if (WordLike.IsMatch(last)) return last;
-            if (secondLast.Length > 0 && WordLike.IsMatch(secondLast)) return secondLast;
-            Match site = Regex.Match(data, "https?://([^/]+)");
-            return site.Success ? Regex.Replace(site.Groups[1].Value, "[^a-zA-Z0-9]", "_") : "qr_code_" + index;
+            if (text.StartsWith("BEGIN:VCARD", StringComparison.Ordinal)) return VCardName(text);
+            string[] parts = text.Split('/');
+            if (parts.Length <= 2) return Js.Trim(text);
+            if (IsWord(parts[parts.Length - 1])) return parts[parts.Length - 1];
+            if (IsWord(parts[parts.Length - 2])) return parts[parts.Length - 2];
+            return SiteName(text) ?? "qr_code_" + index;
         }
 
-        // every run of JavaScript's white space as one `with`
-        static string SpacesTo(string text, string with)
+        static bool IsWord(string part) => part.Length > 0 && part.All(c => IsLetterOrDigit(c) || c == '_');
+
+        // A vCard's name: what follows its first "FN:" that has something other than a line end after it, up to the
+        // end of that line, trimmed, with every run of white space in it made one _. "" when there's none (as in a
+        // vCard 2.1 whose name is written FN;CHARSET=UTF-8:).
+        static string VCardName(string card)
         {
-            var result = new StringBuilder(text.Length);
-            for (int i = 0; i < text.Length; i++)
+            for (int at = card.IndexOf("FN:", StringComparison.Ordinal); at >= 0; at = card.IndexOf("FN:", at + 1, StringComparison.Ordinal))
             {
-                if (!Js.IsSpace(text[i])) result.Append(text[i]);
-                else if (i == 0 || !Js.IsSpace(text[i - 1])) result.Append(with);
+                int from = at + 3, to = from;
+                while (to < card.Length && card[to] != '\r' && card[to] != '\n') to++;
+                if (to > from) return Regex.Replace(Js.Trim(card.Substring(from, to - from)), Js.Space + "+", "_");
             }
-            return result.ToString();
+            return "";
+        }
+
+        // A link's site, as a name: what follows the first http:// or https:// that has anything but a / after it, up
+        // to the next / or the end, with every character other than A-Z, a-z and 0-9 made _; null when there's none.
+        static string SiteName(string text)
+        {
+            Match site = Regex.Match(text, "https?://([^/]+)");
+            return site.Success ? Regex.Replace(site.Groups[1].Value, "[^A-Za-z0-9]", "_") : null;
         }
 
         // The barcode page's file names: the CSV's file name, else the code's text, made safe, with _2, _3 and so on
@@ -192,17 +238,17 @@ namespace B0r3dQR.Batch
             return names;
         }
 
-        // The text export's file names (TextExportModal.vue) for the rows it makes, at `places` among all the rows: the
-        // CSV's file name, else qr-<its place from 0>, made safe, with _1, _2 and so on for a name already taken
-        public static List<string> TextNames(IList<BatchRow> rows, IList<int> places, string extension)
+        // The text export's file names, for the rows it makes, in order (places[k] being rows[k]'s place among all
+        // the batch's rows, from 0): the CSV's file name, else "qr-" and the place, made safe. A name given already
+        // gets _1, or if that's taken too _2, and so on.
+        public static List<string> TextNames(IList<BatchRow> rows, IList<int> places)
         {
-            var used = new HashSet<string>();
             var names = new List<string>();
-            for (int i = 0; i < rows.Count; i++)
+            var given = new HashSet<string>();
+            for (int k = 0; k < rows.Count; k++)
             {
-                string safe = Safe(string.IsNullOrEmpty(rows[i].FileName) ? "qr-" + places[i] : rows[i].FileName), name = safe;
-                for (int n = 1; used.Contains(name + extension); n++) name = safe + "_" + n;
-                used.Add(name + extension);
+                string wanted = Safe(string.IsNullOrEmpty(rows[k].FileName) ? "qr-" + places[k] : rows[k].FileName), name = wanted;
+                for (int n = 1; !given.Add(name); n++) name = wanted + "_" + n;
                 names.Add(name);
             }
             return names;
