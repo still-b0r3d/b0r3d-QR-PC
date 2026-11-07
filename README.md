@@ -10,8 +10,10 @@ Version 0.8, for Windows 10 and 11: one exe of about 4 MB, nothing to install. M
 
 ![The Make tab: a QR code in the b0r3d Cup style, in a frame with the caption "Scan for more info", and a line saying it scans](docs/images/design-light.png)
 
-**Not released yet.** 0.8 has everything planned for the first release, 1.0, which comes once
-it's been tried out in full.
+**An early release.** This is version 0.8, the first one released, with everything planned for
+1.0: making codes in the website's designs, fonts and logos, the 13 other barcodes, the data
+templates, reading codes off pictures, folders, the screen and a webcam, batch export and
+printing. 1.0 comes after a full test run on a real PC.
 
 ## Getting it
 

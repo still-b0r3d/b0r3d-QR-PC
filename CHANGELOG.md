@@ -1,6 +1,9 @@
 # Changelog
 
-## 0.8 (not released yet)
+What changed in each version of b0r3d QR for Windows, the newest first. The versions before 1.0
+are its stages, built one after the other; 0.8 is the first one released.
+
+## 0.8 (released 6 November 2026)
 
 The last of what qr.b0r3d.org does: SVG logos, its caption fonts and the camera.
 
