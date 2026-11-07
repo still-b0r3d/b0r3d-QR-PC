@@ -19,7 +19,7 @@ using Reader = B0r3dQR.Scan.Reader;
 
 namespace B0r3dQR.Tests
 {
-    // The camera. No test ever starts a real camera (this PC's webcam is the owner's to turn on): Windows'
+    // The camera. No test ever starts a real camera (only whoever uses this PC turns its webcam on): Windows'
     // cameras are only listed; Media Foundation's reader is tried on video files written here, which go
     // through the same code a camera's pictures do; and the camera window reads pretend cameras through
     // its real read loop: a code turning up, none, each kind of trouble, two cameras to switch between.

@@ -5,7 +5,8 @@ namespace B0r3dQR.Qr
     // code point but the surrogates was tested with /\p{M}/u, /\p{Mc}/u, /\p{Cf}/u and /\p{Cn}/u, as Pictographs and
     // Pictures were taken from its emoji data. .NET Framework 4.8's own categories (CharUnicodeInfo) are Unicode 8's:
     // 582 of today's marks aren't marks to it (most it calls unassigned, U+1AC1, a mark since Unicode 14, among them),
-    // and Windows' text layout knows many of them as marks.
+    // and Windows' text layout knows many of them as marks. The data is the Unicode Character Database's (© Unicode,
+    // Inc., under the Unicode License V3; see THIRD-PARTY-NOTICES.txt).
     static partial class Unicode
     {
         // the marks (Mn, Mc and Me): 327 ranges

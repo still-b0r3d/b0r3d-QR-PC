@@ -97,6 +97,30 @@ namespace B0r3dQR.Tests
             Check(window.CheckResult == "ok", "the opened design should scan: " + window.CheckLine.Text);
         }
 
+        // A caption with CRs from a design file, against the website's text box (WebsiteCaptions.Box): kept as the
+        // file has it until the box is edited, the box showing each line break once, whatever kind; once something
+        // is typed, every line break is LF, as a browser's text box gives it.
+        static void CaptionBoxLikeTheWebsite()
+        {
+            MainWindow window = NewMain();
+            string path = Path.Combine(Work, DesignFile.FileName);
+            foreach (var (start, shown, kept, typed) in WebsiteCaptions.Box)
+            {
+                QrDesign saved = Sample("https://b0r3d.org/caption");
+                saved.Frame = Presets.ApplyFrame("Default Frame", null);
+                saved.Frame.Text = start;
+                File.WriteAllText(path, DesignFile.Write(saved));
+                window.OpenDesignFile(path);
+                WaitForCheck(window);
+                Check(window.CurrentDesign.Frame?.Text == kept && window.Art.CaptionLines.SequenceEqual(QrArt.Wrap(kept, 200)),
+                    "a design's caption " + Show(start) + " should stay " + Show(kept) + " until it's edited, not " + Show(window.CurrentDesign.Frame?.Text));
+                Check(window.CaptionBox.Text == shown.Replace("\n", "\r\n"), "the caption box should show " + Show(shown) + " (each line break once), not " + Show(window.CaptionBox.Text));
+                window.CaptionBox.CaretIndex = window.CaptionBox.Text.Length;
+                window.CaptionBox.SelectedText = "X";
+                Check(window.CurrentDesign.Frame.Text == typed, "with an X typed at the end the caption should be " + Show(typed) + ", as the website's, not " + Show(window.CurrentDesign.Frame.Text));
+            }
+        }
+
         // the design is kept for next time, never its text
         static void DesignKeptWithoutText()
         {

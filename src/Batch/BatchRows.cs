@@ -94,7 +94,8 @@ namespace B0r3dQR.Batch
         // a row's value at a place, "" past its end
         static string At(List<string> values, int place) => place < values.Count ? values[place] : "";
 
-        // A header's columns, looked up by name: each of its values in lower case, at the first place it comes.
+        // A header's columns, looked up by name: each of its values in small letters (JavaScript's, so the Kelvin
+        // sign is a k), at the first place it comes.
         sealed class Columns
         {
             readonly Dictionary<string, int> places = new Dictionary<string, int>();
@@ -103,7 +104,7 @@ namespace B0r3dQR.Batch
             {
                 for (int i = 0; i < header.Count; i++)
                 {
-                    string name = header[i].ToLowerInvariant();
+                    string name = Js.ToLowerCase(header[i]);
                     if (!places.ContainsKey(name)) places.Add(name, i);
                 }
             }
@@ -127,7 +128,7 @@ namespace B0r3dQR.Batch
             List<List<string>> records = Csv.Parse(text).Records;
             var rows = new List<BatchRow>();
             if (records.Count == 0) return rows;
-            List<string> first = records[0].Select(cell => cell.ToLowerInvariant()).ToList();
+            List<string> first = records[0].Select(Js.ToLowerCase).ToList();
             int dataColumn = first.FindIndex(cell => DataColumns.Contains(cell));
             int fileColumn = first.FindIndex(cell => FileNameColumns.Contains(cell));
             bool hasHeader = dataColumn >= 0 || fileColumn >= 0;
@@ -156,11 +157,16 @@ namespace B0r3dQR.Batch
 
         static bool IsLetterOrDigit(char c) => (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z') || (c >= '0' && c <= '9');
 
+        // b0r3d QR's own step for a safe name that Windows keeps for a device (CON, PRN, AUX, NUL, COM1 to COM9, LPT1
+        // to LPT9, in any capitals): it gets _ on the end, as Windows 10 makes no file called CON.png. Into a zip too,
+        // so the zip unpacks on Windows. (The website keeps the name.)
+        static string NotADevice(string safe) => Exports.IsReserved(safe) ? safe + "_" : safe;
+
         // The QR page's file names, one a row in order, as the website names them. A row's name is its file name, else
         // its caption, else one from its code's text (NameFromText); when an earlier row came to the same name, the
-        // row's index (from 0) goes on the end ("same-1"); then it's made safe. Last, b0r3d QR's own step: a safe name
-        // an earlier row was given already gets the index too, then -3, -4 and so on until it's new (the website's
-        // zip keeps only one of two files of the same name).
+        // row's index (from 0) goes on the end ("same-1"); then it's made safe. Last, b0r3d QR's own steps: a device's
+        // name gets _ (NotADevice), and a safe name an earlier row was given already gets the index too, then -3, -4
+        // and so on until it's new (the website's zip keeps only one of two files of the same name).
         public static List<string> QrNames(IList<BatchRow> rows)
         {
             var named = new HashSet<string>();   // the names the rows came to, before they were made safe
@@ -174,8 +180,9 @@ namespace B0r3dQR.Batch
                     : NameFromText(row.Data ?? "", i);
                 if (named.Contains(name)) name += "-" + i;
                 named.Add(name);
-                // the website's name made safe; then b0r3d QR's own step, for a safe name that's been given already
-                string safe = Safe(name), file = safe;
+                // the website's name made safe; then b0r3d QR's own steps, for a device's name and for a safe name
+                // that's been given already
+                string safe = NotADevice(Safe(name)), file = safe;
                 if (given.Contains(file)) file = safe + "-" + i;
                 for (int n = 3; given.Contains(file); n++) file = safe + "-" + i + "-" + n;
                 given.Add(file);
@@ -222,15 +229,15 @@ namespace B0r3dQR.Batch
             return site.Success ? Regex.Replace(site.Groups[1].Value, "[^A-Za-z0-9]", "_") : null;
         }
 
-        // The barcode page's file names: the CSV's file name, else the code's text, made safe, with _2, _3 and so on
-        // for a name already taken
+        // The barcode page's file names: the CSV's file name, else the code's text, made safe (and not a device's),
+        // with _2, _3 and so on for a name already taken
         public static List<string> BarcodeNames(IList<BatchRow> rows)
         {
             var used = new HashSet<string>();
             var names = new List<string>();
             foreach (BatchRow row in rows)
             {
-                string safe = Safe(string.IsNullOrEmpty(row.FileName) ? row.Data : row.FileName), name = safe;
+                string safe = NotADevice(Safe(string.IsNullOrEmpty(row.FileName) ? row.Data : row.FileName)), name = safe;
                 for (int n = 2; used.Contains(name); n++) name = safe + "_" + n;
                 used.Add(name);
                 names.Add(name);
@@ -239,15 +246,15 @@ namespace B0r3dQR.Batch
         }
 
         // The text export's file names, for the rows it makes, in order (places[k] being rows[k]'s place among all
-        // the batch's rows, from 0): the CSV's file name, else "qr-" and the place, made safe. A name given already
-        // gets _1, or if that's taken too _2, and so on.
+        // the batch's rows, from 0): the CSV's file name, else "qr-" and the place, made safe (and not a device's). A
+        // name given already gets _1, or if that's taken too _2, and so on.
         public static List<string> TextNames(IList<BatchRow> rows, IList<int> places)
         {
             var names = new List<string>();
             var given = new HashSet<string>();
             for (int k = 0; k < rows.Count; k++)
             {
-                string wanted = Safe(string.IsNullOrEmpty(rows[k].FileName) ? "qr-" + places[k] : rows[k].FileName), name = wanted;
+                string wanted = NotADevice(Safe(string.IsNullOrEmpty(rows[k].FileName) ? "qr-" + places[k] : rows[k].FileName)), name = wanted;
                 for (int n = 1; !given.Add(name); n++) name = wanted + "_" + n;
                 names.Add(name);
             }

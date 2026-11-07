@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Text.RegularExpressions;
 using B0r3dQR.Design;
 
@@ -131,31 +130,6 @@ namespace B0r3dQR.Barcodes
 
         static bool AllDigits(string text) => Regex.IsMatch(text, @"^[0-9]+\z");
 
-        // JavaScript's toUpperCase for what can pass Code 39's check: special casings that give capital
-        // letters (ß, the ligatures ﬀ to ﬆ), then the one-to-one ones
-        static string JsUpper(string text)
-        {
-            var upper = new StringBuilder(text.Length);
-            foreach (char c in text)
-            {
-                switch ((int)c)
-                {
-                    case 0xDF: upper.Append("SS"); break;
-                    case 0xFB00: upper.Append("FF"); break;
-                    case 0xFB01: upper.Append("FI"); break;
-                    case 0xFB02: upper.Append("FL"); break;
-                    case 0xFB03: upper.Append("FFI"); break;
-                    case 0xFB04: upper.Append("FFL"); break;
-                    case 0xFB05:
-                    case 0xFB06: upper.Append("ST"); break;
-                    case 0x131: upper.Append('I'); break;   // dotless i and long s, which .NET leaves as they are
-                    case 0x17F: upper.Append('S'); break;
-                    default: upper.Append(char.ToUpperInvariant(c)); break;
-                }
-            }
-            return upper.ToString();
-        }
-
         static string Same(string text) => text;
 
         static Func<string, string> AnyText(string label) => text => text.Length > 0 ? null : "Enter the text for the " + label + ".";
@@ -246,7 +220,7 @@ namespace B0r3dQR.Barcodes
                 Type = BarcodeType.Isbn, Id = "isbn", Label = "ISBN", Group = "Product barcodes", ReadFormat = ZXing.BarcodeFormat.EAN_13, Linear = true,
                 Hint = "An ISBN-10 or ISBN-13; hyphens are fine. Leave off the check digit and it's added; type it and it's checked.",
                 Example = "978-0-306-40615-7",
-                Prepare = text => StripSeparators(text).ToUpperInvariant(),
+                Prepare = text => Js.ToUpperCase(StripSeparators(text)),
                 Check = text =>
                 {
                     if (text.Length == 0) return "Enter a 10- or 13-digit ISBN.";
@@ -311,7 +285,7 @@ namespace B0r3dQR.Barcodes
             {
                 Type = BarcodeType.Code39, Id = "code39", Label = "Code 39", Group = "Shipping and inventory", ReadFormat = ZXing.BarcodeFormat.CODE_39, Linear = true,
                 Hint = "Capital letters, digits, spaces and - . $ / + %. Common on ID badges and older systems.", Example = "B0R3D-39",
-                Prepare = JsUpper,
+                Prepare = Js.ToUpperCase,   // ß and the ligatures become capitals it can hold (SS, FI...)
                 Check = text =>
                 {
                     if (text.Length == 0) return "Enter the text for the barcode.";

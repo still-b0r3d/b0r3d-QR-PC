@@ -143,7 +143,7 @@ namespace B0r3dQR.Design
                 string raw = eq >= 0 ? pair.Substring(0, eq) : pair, name;
                 try { name = Uri.UnescapeDataString(raw.Replace('+', ' ')); }
                 catch (UriFormatException) { name = raw; }
-                string lower = name.ToLowerInvariant();
+                string lower = Js.ToLowerCase(name);
                 if (lower.StartsWith("utm_", StringComparison.Ordinal) || TrackingList.Contains(lower) || (siTracks && lower == "si"))
                 {
                     if (!names.Contains(name)) names.Add(name);

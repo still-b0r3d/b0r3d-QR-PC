@@ -160,6 +160,92 @@ namespace B0r3dQR.Tests
             }
         }
 
+        // Captions with CRs (from a design file saved elsewhere, or a batch CSV saved with CR LF line breaks) against
+        // the website's own SVG files for them and Chromium's drawing of those files (WebsiteCaptions): the picture's
+        // size; the caption's lines in b0r3d QR's SVG, each one's text character for character, CRs and all, and its x
+        // and dy (b0r3d QR writes the website's numbers to 4 places); and the drawing the preview, PNG, JPG and PDF
+        // are made from, where a browser draws the file's CRs as spaces: what's left on each line, where its first
+        // character starts and on which baseline. Then the pictures' size, which the website takes from its preview,
+        // where a CR is a space too.
+        static void CaptionsWithCRsLikeTheWebsite()
+        {
+            var wrong = new List<string>();
+            double furthest = 0;
+            foreach (var c in WebsiteCaptions.Files)
+            {
+                var d = new QrDesign
+                {
+                    Data = "https://b0r3d.org",
+                    Frame = new QrFrame { Text = c.Text, Position = c.Position, CaptionWidth = c.CaptionWidth, FontFamily = c.Font.Length > 0 ? c.Font : null, BorderWidth = "2px", BorderRadius = "8px", Padding = "16px" },
+                };
+                var art = new QrArt(d);
+                string name = c.Position + " " + Show(c.Text) + (c.Font.Length > 0 ? " in " + c.Font : "");
+                if (art.W != c.Width || art.H != c.Height)
+                {
+                    wrong.Add(name + ": " + art.W + " × " + art.H + ", the website's " + c.Width + " × " + c.Height);
+                    continue;
+                }
+                string svg = art.ToSvg();
+                Match text = Regex.Match(svg, "<text x=\"([^\"]*)\" y=\"([^\"]*)\"[^>]*>(.*?)</text>", RegexOptions.Singleline);
+                MatchCollection spans = Regex.Matches(text.Groups[3].Value, "<tspan x=\"([^\"]*)\" dy=\"([^\"]*)\">(.*?)</tspan>", RegexOptions.Singleline);
+                bool same = text.Success && text.Groups[1].Value == QrArt.N(c.TextX) && text.Groups[2].Value == QrArt.N(c.TextY) && spans.Count == c.Lines.Length;
+                for (int i = 0; same && i < spans.Count; i++)
+                    same = spans[i].Groups[1].Value == QrArt.N(c.LineX[i]) && spans[i].Groups[2].Value == QrArt.N(c.LineDy[i]) && spans[i].Groups[3].Value == c.Lines[i];
+                if (!same)
+                {
+                    wrong.Add(name + ": the SVG's caption is " + Show(text.Groups[0].Value) + ", the website's lines " + string.Join(" | ", c.Lines.Select(Show)));
+                    continue;
+                }
+                // the drawing: every line Chromium draws something of, at its place, and nothing else
+                List<string> drawn = QrArt.DrawnLines(art.CaptionLines);
+                List<GlyphRun> runs = GlyphRunsIn(art);
+                int lines = 0;
+                for (int i = 0; i < c.Lines.Length; i++)
+                {
+                    if (drawn[i].Length != c.Characters[i])
+                    {
+                        wrong.Add(name + ": line " + (i + 1) + " draws " + Show(drawn[i]) + ", Chromium " + c.Characters[i] + " characters");
+                        continue;
+                    }
+                    if (c.Characters[i] == 0) continue;
+                    lines++;
+                    List<GlyphRun> on = runs.Where(r => Math.Abs(r.BaselineOrigin.Y - c.StartY[i]) < 0.001).ToList();
+                    if (on.Count == 0)
+                    {
+                        if (drawn[i].Trim().Length > 0) wrong.Add(name + ": nothing drawn on line " + (i + 1) + "'s baseline, " + c.StartY[i]);
+                        continue;
+                    }
+                    // a line is centred, so its start may be off by half as much as its width may be off from
+                    // Chromium's (0.5 px, as FontTests allows); a space more or less moves it about 2.5 px
+                    double gap = on.Min(r => r.BaselineOrigin.X) - c.StartX[i];
+                    furthest = Math.Max(furthest, Math.Abs(gap));
+                    if (Math.Abs(gap) > 0.25) wrong.Add(name + ": line " + (i + 1) + " starts at " + on.Min(r => r.BaselineOrigin.X) + ", Chromium's " + c.StartX[i]);
+                }
+                if (runs.Any(r => !c.StartY.Any(y => Math.Abs(r.BaselineOrigin.Y - y) < 0.001))) wrong.Add(name + ": a line drawn where Chromium draws none");
+            }
+            Console.WriteLine("      " + WebsiteCaptions.Files.Length + " of the website's SVG files; the drawing's lines within " + furthest.ToString("0.####", System.Globalization.CultureInfo.InvariantCulture) + " px of Chromium's");
+            Check(wrong.Count == 0, wrong.Count + " wrong: " + string.Join("; ", wrong.Take(8)));
+
+            // The website saves PNG, JPG and PDF at the size that covers its preview, at the SVG's own shape. A CR
+            // ending a line keeps it from taking more room there, a caption of CRs alone takes none, and a line that
+            // only fits without its CR makes the SVG a line taller but not the preview.
+            QrExport.Size Saved(string caption) => QrExport.PictureSize(new QrArt(new QrDesign
+            {
+                Data = "https://b0r3d.org",
+                Frame = new QrFrame { Text = caption, BorderWidth = "2px", Padding = "16px" },
+            }), null, false);
+            string Pixels(string caption)
+            {
+                QrExport.Size s = Saved(caption);
+                return s.Width + " × " + s.Height;
+            }
+            Check(Pixels("Scan me\r") == Pixels("Scan me") && Pixels("Scan me\r\nI dare you") == Pixels("Scan me\nI dare you"),
+                "a CR at the end of a line should change nothing in the pictures' size: " + Pixels("Scan me\r") + ", " + Pixels("Scan me\r\nI dare you"));
+            Check(Pixels("\r") == "236 × 273", "a caption of a CR alone should save at the website's 236 × 273 (its preview has no caption line), not " + Pixels("\r"));
+            Check(Pixels("abcdefgh ijklmnopq\r\nx") == "236 × 316", "a line that only fits without its CR should save at the website's 236 × 316 (three lines in the SVG, two in its preview), not " +
+                Pixels("abcdefgh ijklmnopq\r\nx"));
+        }
+
         // print size: the website's numbers
         static void PrintSizeLikeTheWebsite()
         {
@@ -426,6 +512,15 @@ namespace B0r3dQR.Tests
             Check(clean == "https://b0r3d.org/p?a=1&b=%20x#frag" && names.SequenceEqual(new[] { "utm_medium", "gclid" }), "tracking removed: " + clean);
             Check(Checks.TrackingNames("https://youtu.be/x?si=abc", out string yt).Count == 1 && yt == "https://youtu.be/x" && Checks.TrackingNames("https://b0r3d.org/?si=1", out string _).Count == 0,
                 "si is tracking on YouTube, not elsewhere");
+            // and the website's own findings (WebsiteLinkChecks.cs), names in small letters as toLowerCase makes them
+            var links = new List<string>();
+            foreach (var t in WebsiteTrackingChecks)
+            {
+                List<string> found = Checks.TrackingNames(t.Text, out string without);
+                if (!found.SequenceEqual(t.Tracking) || without != t.Clean)
+                    links.Add(Show(t.Text) + ": [" + string.Join(", ", found) + "] " + Show(without) + " (the website: [" + string.Join(", ", t.Tracking) + "] " + Show(t.Clean) + ")");
+            }
+            Check(links.Count == 0, links.Count + " of " + WebsiteTrackingChecks.Length + " links' tracking differs from the website's: " + string.Join(" | ", links.Take(3)));
             List<Checks.DataCheck> all = Checks.DataChecks("  b0r3d.org ");
             Check(all.Count == 2 && all[0].Fixed == "b0r3d.org" && all[1].Fixed == "https://b0r3d.org", "spaces around a bare address: " + string.Join(" | ", all.Select(c => c.Button)));
             Check(Checks.DataChecks("  https://b0r3d.org/?utm_source=qr ").Any(c => c.Button == "Remove them" && c.Fixed == "https://b0r3d.org/"), "tracking in a link with spaces around it should be found, as the website trims first");

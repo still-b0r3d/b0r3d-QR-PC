@@ -64,6 +64,9 @@ namespace B0r3dQR.Tests
             Check(Says(TemplateKind.Epc, epc).SequenceEqual(new[] { "name: Type the beneficiary's name.", "iban: " + TemplateForms.IbanCheck, "bic: Version 1 needs the BIC: type it, or choose version 2." }), "EPC: " + string.Join(" | ", Says(TemplateKind.Epc, epc)));
             Check(TemplateForms.LiveNote(TemplateKind.Epc, "iban", new Dictionary<string, string> { ["iban"] = "DE89 3704 0044 053" }) == TemplateForms.IbanCheck &&
                   TemplateForms.LiveNote(TemplateKind.Epc, "iban", new Dictionary<string, string> { ["iban"] = "DE89 3704" }) == null, "an IBAN is checked as it's typed, from 15 characters");
+            // the IBANs the website's form takes (WebsiteTemplates.cs), in capitals as toUpperCase makes them
+            List<string> ibans = WebsiteIbanChecks.Where(c => Templates.ValidIban(c.Iban) != c.Valid).Select(c => Show(c.Iban) + (c.Valid ? " (the website takes it)" : " (the website doesn't)")).ToList();
+            Check(ibans.Count == 0, ibans.Count + " of " + WebsiteIbanChecks.Length + " IBANs are checked differently from the website: " + string.Join(" | ", ibans));
             Check(Says(TemplateKind.Gs1DigitalLink, new Dictionary<string, string>()).SequenceEqual(new[] { "gtin: Enter the product number (GTIN)." }), "GS1 with no number");
             Check(Says(TemplateKind.Event, new Dictionary<string, string>()).Count == 3 && Says(TemplateKind.VCard, new Dictionary<string, string>()).Count == 0, "an event needs its title and times; a contact needs nothing");
 

@@ -27,6 +27,11 @@ namespace B0r3dQR
         // for the tests: the paper, instead of the default printer's
         internal Size? PaperOverride;
         internal FixedDocument Document => document;
+
+        // Windows' Print dialog; the tests stand in for it (as a print service that isn't answering) and hear what the
+        // window would say in a message box
+        internal Func<PrintDialog, bool?> AskPrinter = dialog => dialog.ShowDialog();
+        internal Action<string> Warned;
         internal bool Shrunk { get; private set; }
 
         // `code` alone or as copies; `sizeNote` says what decides its size
@@ -51,7 +56,8 @@ namespace B0r3dQR
             Loaded += (s, e) => Lay();
         }
 
-        // the paper of the default printer (A4, or Letter where the country uses it, when there's no printer)
+        // the paper of the default printer (A4, or Letter where the country uses it, when there's no printer; the
+        // Print dialog gives a blank ticket itself when the print service isn't answering)
         Size Paper()
         {
             if (PaperOverride.HasValue) return PaperOverride.Value;
@@ -61,11 +67,27 @@ namespace B0r3dQR
                 fallback = printer == null;
                 return printer ?? Fallback;
             }
-            catch (Exception x) when (x is PrintQueueException || x is InvalidOperationException || x is System.ComponentModel.Win32Exception)
+            catch (Exception x) when (PrinterTrouble(x))
             {
                 fallback = true;
                 return Fallback;
             }
+        }
+
+        // What Windows' printing throws when it can't go on: a printer's or the print service's trouble (the Print
+        // Spooler stopped, say), a printer that's gone, an error from Windows
+        static bool PrinterTrouble(Exception x) => x is PrintSystemException || x is InvalidOperationException || x is System.ComponentModel.Win32Exception;
+
+        // why printing went wrong, in words: the print service not answering is explained; anything else is in Windows'
+        // own words
+        static string Why(Exception x) => x is PrintServerException
+            ? "Windows' print service isn't answering. If the Print Spooler service is stopped, start it (or restart the PC), then try again."
+            : x.Message;
+
+        void Warn(string message)
+        {
+            if (Warned != null) Warned(message);
+            else MessageBox.Show(this, message, Program.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
         }
 
         bool fallback;        // no printer said what paper it has
@@ -182,25 +204,26 @@ namespace B0r3dQR
             bool? chosen;
             try
             {
-                chosen = dialog.ShowDialog();
+                chosen = AskPrinter(dialog);
             }
-            catch (Exception x) when (x is PrintQueueException || x is InvalidOperationException || x is System.ComponentModel.Win32Exception)
+            catch (Exception x) when (PrinterTrouble(x))
             {
-                MessageBox.Show(this, "Windows' Print dialog didn't open:\n\n" + x.Message, Program.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+                // the print service not answering shows once Print is clicked in the dialog, as it reaches the printer
+                Warn(x is PrintServerException ? "Couldn't print:\n\n" + Why(x) : "Windows' Print dialog didn't open:\n\n" + x.Message);
                 return;
             }
             if (chosen != true) return;
-            Lay(PaperOf(dialog.PrintTicket) ?? options.Page);
             try
             {
+                Lay(PaperOf(dialog.PrintTicket) ?? options.Page);
                 dialog.PrintDocument(document.DocumentPaginator, batch ? "b0r3d QR batch" : "b0r3d QR code");
                 StatusLine.Text = LongText.Cap("Sent to " + dialog.PrintQueue.FullName + ": " + (document.Pages.Count == 1 ? "1 page." : document.Pages.Count.ToString("N0") + " pages."));
                 if (System.Windows.Automation.Peers.AutomationPeer.ListenerExists(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged))
                     System.Windows.Automation.Peers.UIElementAutomationPeer.CreatePeerForElement(StatusLine)?.RaiseAutomationEvent(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged);
             }
-            catch (Exception x) when (x is PrintQueueException || x is PrintingCanceledException || x is InvalidOperationException || x is System.ComponentModel.Win32Exception)
+            catch (Exception x) when (PrinterTrouble(x))   // a cancelled print job (PrintingCanceledException) too
             {
-                MessageBox.Show(this, "Couldn't print:\n\n" + x.Message, Program.Name, MessageBoxButton.OK, MessageBoxImage.Warning);
+                Warn("Couldn't print:\n\n" + Why(x));
             }
         }
 

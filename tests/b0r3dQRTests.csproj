@@ -15,6 +15,9 @@
     <ProjectReference Include="..\src\b0r3dQR.csproj" />
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
+    <!-- printing's own types, to stand in for a print service that isn't answering -->
+    <Reference Include="ReachFramework" />
+    <Reference Include="System.Printing" />
     <!-- reads the exe's own metadata for the "never goes online" test -->
     <PackageReference Include="System.Reflection.Metadata" Version="10.0.0" />
   </ItemGroup>

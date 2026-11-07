@@ -304,7 +304,7 @@ namespace B0r3dQR.Tests
 
         // A paste of `text` as Ctrl+V makes one, or a drop: through the box's own editor and its paste event, in one
         // change, the caret then after what went in (TextEditorCopyPaste.Paste); from a data object of its own, never the
-        // clipboard, which is the owner's
+        // clipboard, which belongs to whoever uses this PC
         static void RealPaste(TextBox box, string text, bool drop = false)
         {
             object editor = typeof(TextBoxBase).GetProperty("TextEditor", BindingFlags.Instance | BindingFlags.NonPublic).GetValue(box);

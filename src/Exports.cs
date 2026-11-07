@@ -98,8 +98,8 @@ namespace B0r3dQR
             return "";
         }
 
-        // names Windows keeps for devices, even with an extension (CON.png is no file)
-        static bool IsReserved(string name)
+        // names Windows keeps for devices, even with an extension (CON.png is no file on Windows 10)
+        internal static bool IsReserved(string name)
         {
             string stem = name.Split('.')[0].ToUpperInvariant();
             if (stem == "CON" || stem == "PRN" || stem == "AUX" || stem == "NUL") return true;
@@ -115,21 +115,7 @@ namespace B0r3dQR
             try
             {
                 File.WriteAllBytes(tmp, bytes);
-                if (!File.Exists(full))
-                {
-                    File.Move(tmp, full);
-                    return;
-                }
-                try
-                {
-                    File.Replace(tmp, full, null);
-                }
-                catch (IOException)
-                {
-                    // some USB sticks' file systems can't swap files: copy over instead
-                    File.Copy(tmp, full, true);
-                    File.Delete(tmp);
-                }
+                IntoPlace(tmp, full);
             }
             catch
             {
@@ -137,6 +123,53 @@ namespace B0r3dQR
                 throw;
             }
         }
+
+        // A whole temporary file into its place (a batch's zip goes in this way too): moved there, or
+        // swapped for the file there already. Some USB sticks' file systems can't swap files; there the
+        // old file is moved to a name of its own, the new one into its place, and then the old one
+        // deleted. Moves on one drive need no room of their own, so a nearly full stick can't lose
+        // either file, and if the new one can't go in, the old one goes back. A read-only file is
+        // left as it is, as Windows leaves it when it can swap.
+        internal static void IntoPlace(string temporary, string full)
+        {
+            if (!File.Exists(full))
+            {
+                Move(temporary, full);
+                return;
+            }
+            try
+            {
+                Swap(temporary, full);
+                return;
+            }
+            catch (IOException)
+            {
+            }
+            if (!File.Exists(full))
+            {
+                Move(temporary, full);   // the swap failed half-way, with the old file gone
+                return;
+            }
+            if ((File.GetAttributes(full) & FileAttributes.ReadOnly) != 0) throw new UnauthorizedAccessException("Access to the path '" + full + "' is denied.");
+            string old = Path.Combine(Path.GetDirectoryName(full), "." + Path.GetFileName(full) + "." + Guid.NewGuid().ToString("N").Substring(0, 8) + ".old");
+            Move(full, old);
+            try
+            {
+                Move(temporary, full);
+            }
+            catch
+            {
+                Move(old, full);
+                throw;
+            }
+            try { File.Delete(old); }
+            catch (Exception e) when (e is IOException || e is UnauthorizedAccessException) { }   // the new file is in; the old one stays beside it
+        }
+
+        // Windows swapping a file for another, and moving one; the tests make them fail, as swapping
+        // does on some USB sticks
+        internal static Action<string, string> Swap = (temporary, full) => File.Replace(temporary, full, null);
+        internal static Action<string, string> Move = File.Move;
 
         // What Copy and drag hand to other programs: the picture (for Word, Paint and email), the
         // PNG file's bytes (for programs that take PNG), and when dragging, a PNG file to drop into

@@ -39,6 +39,9 @@ namespace B0r3dQR.Tests
             ("vCard names, odd ones", "url\n\"BEGIN:VCARD\nFN:Ann\u2028Lee\nEND:VCARD\"\n\"BEGIN:VCARD\nFN:   \nFN:x\"", true, new[] { "BEGIN:VCARD\nFN:Ann\u2028Lee\nEND:VCARD", "BEGIN:VCARD\nFN:   \nFN:x" }, new[] { "", "" }, new[] { "", "" }, new[] { "", "" }, false, new[] { "Ann_Lee", "" }),
             ("a row of tabs", "url\tframeText\n\t\t\nx\ty", true, new[] { "x" }, new[] { "y" }, new[] { "" }, new[] { "" }, true, new[] { "y" }),
             ("CRs in quotes", "url,frameText\n\"a\rb\",x\n\"c\"\r\"d\",y\rz", true, new[] { "ab", "c\"d" }, new[] { "x", "y\rz" }, new[] { "", "" }, new[] { "", "" }, true, new[] { "x", "y_z" }),
+            ("contacts with a Kelvin sign in a header", "firstName,lastName,phoneWor\u212a\nAnn,Lee,555", true, new[] { "BEGIN:VCARD\nVERSION:3.0\nN:Lee;Ann;;;\nFN:Ann Lee\nTEL;TYPE=WORK,VOICE:555\nEND:VCARD" }, new[] { "" }, new[] { "" }, new[] { "" }, false, new[] { "Ann_Lee" }),
+            ("contacts in capitals", "FIRSTNAME,LASTNAME,PHONEWORK,FRAMETEXT\nAnn,Lee,555,Hi", true, new[] { "BEGIN:VCARD\nVERSION:3.0\nN:Lee;Ann;;;\nFN:Ann Lee\nTEL;TYPE=WORK,VOICE:555\nEND:VCARD" }, new[] { "Hi" }, new[] { "" }, new[] { "" }, true, new[] { "Hi" }),
+            ("a capital I with a dot in a header", "f\u0130rstName,lastName\nAnn,Lee", true, new[] { "Ann" }, new[] { "Lee" }, new[] { "" }, new[] { "" }, true, new[] { "Lee" }),
         };
 
         static readonly (string Name, string Csv, (int Row, string Data, string FileName)[] Items, string[] ExportNames)[] WebsiteBarcodeBatches =
@@ -58,6 +61,8 @@ namespace B0r3dQR.Tests
             ("tabs", "data\tfilename\none\tn1\ntwo\t", new (int, string, string)[] { (2, "one", "n1"), (3, "two", null) }, new[] { "n1", "two" }),
             ("quotes", "data,fileName\n\"a,b\",q\n\"x \"\"y\"\"\",z", new (int, string, string)[] { (2, "a,b", "q"), (3, "x \"y\"", "z") }, new[] { "q", "z" }),
             ("empty", "", new (int, string, string)[] {  }, new string[0]),
+            ("a capital I with a dot in a header", "f\u0130le,data\n1,a", new (int, string, string)[] { (2, "a", null) }, new[] { "a" }),
+            ("a dotless i in a header", "F\u0131LE,DATA\n1,a", new (int, string, string)[] { (2, "a", null) }, new[] { "a" }),
         };
 
         static readonly (byte[] Bytes, string Text)[] WebsiteCsvDecoding =

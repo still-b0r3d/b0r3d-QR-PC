@@ -580,12 +580,9 @@ namespace B0r3dQR
                     Say(StatusLine);
                     return;
                 }
-                // whole, into its place (a zip there already is replaced: its name was chosen in the Save dialog)
-                await Task.Run(() =>
-                {
-                    if (File.Exists(zipPath)) File.Replace(temporary, zipPath, null);
-                    else File.Move(temporary, zipPath);
-                });
+                // whole, into its place (a zip there already is replaced: its name was chosen in the Save dialog), as
+                // every file b0r3d QR saves goes in, on USB sticks that can't swap files too
+                await Task.Run(() => Exports.IntoPlace(temporary, zipPath));
                 // each file back out of the zip as it is on the disk
                 StatusLine.Text = "Reading the files back…";
                 using (ZipArchive zip = await Task.Run(() => ZipFile.OpenRead(zipPath)))

@@ -2,8 +2,9 @@ namespace B0r3dQR.Tests
 {
     // GENERATED TEST DATA. Made by qr.b0r3d.org's own data templates (src/utils/dataEncoding.ts in
     // the website repo at 2e50f87), run in Central time by a script outside this repo: what each
-    // template writes from its fields (an event's DTSTAMP and UID lines masked as "*"), and what
-    // the website reads back from texts (its template and fields, true and false as text).
+    // template writes from its fields (an event's DTSTAMP and UID lines masked as "*"), what
+    // the website reads back from texts (its template and fields, true and false as text), and
+    // which IBANs its payment form takes (isValidIban).
     static partial class TestMain
     {
         static readonly (string Kind, string Fields, string Text)[] WebsiteTemplateTexts =
@@ -76,6 +77,12 @@ namespace B0r3dQR.Tests
             ("gs1dl", "{\"gtin\":\"9506-0001 34352\",\"domain\":\"HTTP://X.COM//\"}", "HTTP://X.COM/01/09506000134352"),
             ("gs1dl", "{\"gtin\":\"96385074\",\"expiry\":\"2027-1-1\"}", "https://id.gs1.org/01/00000096385074"),
             ("gs1dl", "{\"gtin\":\"\"}", ""),
+            ("epc", "{\"name\":\"X\",\"iban\":\"DE89370400440532013000\",\"purpose\":\"\u00dfABC\"}", "BCD\n002\n1\nSCT\n\nX\nDE89370400440532013000\n\nSSABC"),
+            ("epc", "{\"name\":\"X\",\"iban\":\"DE89370400440532013000\",\"purpose\":\"\ufb01x\"}", "BCD\n002\n1\nSCT\n\nX\nDE89370400440532013000\n\nFIX"),
+            ("epc", "{\"name\":\"X\",\"iban\":\"DE89370400440532013000\",\"purpose\":\"\u0131\u017fab\"}", "BCD\n002\n1\nSCT\n\nX\nDE89370400440532013000\n\nISAB"),
+            ("epc", "{\"name\":\"X\",\"iban\":\"DE89370400440532013000\",\"purpose\":\"\u10d0\u0149\"}", "BCD\n002\n1\nSCT\n\nX\nDE89370400440532013000\n\n\u1c90\u02bcN"),
+            ("epc", "{\"name\":\"X\",\"iban\":\"gb82 we\u017ft 1234 5698 7654 32\",\"bic\":\"cobade\u017ffxxx\",\"version\":\"001\"}", "BCD\n001\n1\nSCT\nCOBADESFXXX\nX\nGB82WEST12345698765432"),
+            ("epc", "{\"name\":\"X\",\"iban\":\"DE89 3704 \ufb01 0044\",\"bic\":\"\u00dfx\"}", "BCD\n002\n1\nSCT\nSSX\nX\nDE893704FI0044"),
         };
 
         static readonly (string Text, string Kind, string Fields)[] WebsiteTemplateReads =
@@ -130,6 +137,28 @@ namespace B0r3dQR.Tests
             ("BEGIN:VEVENT\nDTSTART;TZID=Europe/Berlin:20261101T143000\nDTEND:2026-11-01\nEND:VEVENT", "event", "{\"startTime\":\"2026-11-01T14:30\",\"endTime\":\"\"}"),
             ("BEGIN:VEVENT\nDTSTART:20261108T080000Z\nDTEND:00990101T000000Z\nEND:VEVENT", "event", "{\"startTime\":\"2026-11-08T02:00\",\"endTime\":\"1998-12-31T18:00\"}"),
             ("just text with BEGIN:VCARD inside", "text", "{\"text\":\"just text with BEGIN:VCARD inside\"}"),
+            ("WIFI:\u017f:home;T:\u017fAE;P:pw;;", "wifi", "{\"ssid\":\"home\",\"encryption\":\"SAE\",\"password\":\"pw\",\"hidden\":\"false\"}"),
+            ("WIFI:S:x;T:\u00dfAE;;", "wifi", "{\"ssid\":\"x\",\"encryption\":\"nopass\",\"password\":\"\",\"hidden\":\"false\"}"),
+            ("wifi:s:x;t:wpa;h:TrUe;;", "wifi", "{\"ssid\":\"x\",\"encryption\":\"WPA\",\"password\":\"\",\"hidden\":\"true\"}"),
+            ("BEGIN:VCARD\nVER\u017fION:4.0\nN:Cat;Rukus;;;\nT\u0131TLE:Boss\nTEL;TYPE=WORK:1\nTEL;TYPE=MOB\u0131LE:555\nEMA\u0131L:a@b.c\nEND:VCARD", "vcard", "{\"version\":\"4\",\"lastName\":\"Cat\",\"firstName\":\"Rukus\",\"position\":\"Boss\",\"phoneWork\":\"1\",\"phoneMobile\":\"555\",\"email\":\"a@b.c\"}"),
+            ("BEGIN:VCARD\nVERSION:2.1\nN;CHARSET=UTF-8;ENCODING=QUOTED-PR\u0131NTABLE:=C3=91and=C3=BA;Zo=C3=AB;;;\nEND:VCARD", "vcard", "{\"version\":\"2\",\"lastName\":\"\u00d1and\u00fa\",\"firstName\":\"Zo\u00eb\"}"),
+            ("BEGIN:VEVENT\n\u017fUMMARY:Party\nDT\ufb06ART:20261101T193000Z\nLOCAT\u0131ON:Home\nEND:VEVENT", "event", "{\"title\":\"Party\",\"location\":\"Home\",\"startTime\":\"2026-11-01T13:30\"}"),
+            ("BEGIN:VCARD\nFN:Ann Lee\nADDRE\u00df:x\nitem1.\u017fORT:1\nEND:VCARD", "vcard", "{\"version\":\"3\",\"firstName\":\"Ann\",\"lastName\":\"Lee\"}"),
+        };
+
+        static readonly (string Iban, bool Valid)[] WebsiteIbanChecks =
+        {
+            ("DE89 3704 0044 0532 0130 00", true),
+            ("DE89 3704 0044 0532 0130 01", false),
+            ("GB82WEST12345698765432", true),
+            ("gb82 west 1234 5698 7654 32", true),
+            ("GB82WE\u017fT12345698765432", true),
+            ("GB82WE\ufb0612345698765432", true),
+            ("G\u013175NWBK000000007099453", true),
+            ("GB82WE\u00dfT12345698765432", false),
+            ("\u0130T60X0542811101000000123456", false),
+            ("\u0131t60x0542811101000000123456", true),
+            ("", false),
         };
     }
 }

@@ -10,9 +10,10 @@ namespace B0r3dQR.Design
     // The bits of JavaScript the website's data templates lean on, done the way a browser does
     // them, so the text they write and read is the website's to the byte: what counts as a space
     // (trim, and \s in its patterns), encodeURIComponent and decodeURIComponent, URLSearchParams,
-    // parseFloat and toFixed(2). .NET's own versions differ in small ways (Uri.EscapeDataString
-    // escapes ! * ' ( ), Trim takes U+0085 but not U+FEFF, Math.Round works on the rounded value).
-    static class Js
+    // parseFloat, toFixed(2), toUpperCase and toLowerCase. .NET's own versions differ in small ways
+    // (Uri.EscapeDataString escapes ! * ' ( ), Trim takes U+0085 but not U+FEFF, Math.Round works on
+    // the rounded value, ToUpperInvariant leaves ß as it is).
+    static partial class Js
     {
         // JavaScript's white space and line ends, for patterns (its \s)
         public const string Space = @"[\t\n\v\f\r \u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000\uFEFF]";
@@ -201,6 +202,115 @@ namespace B0r3dQR.Design
             }
             string text = scaled.ToString(CultureInfo.InvariantCulture).PadLeft(digits + 1, '0');
             return (x < 0 ? "-" : "") + (digits == 0 ? text : text.Substring(0, text.Length - digits) + "." + text.Substring(text.Length - digits));
+        }
+
+        // toUpperCase: each code point's capital, from tables made of the browser's own answers
+        // (JsCaseTables.cs), a few of them two or three letters (ß is SS, ﬁ is FI, ŉ is ʼN); half an
+        // emoji stays as it is
+        public static string ToUpperCase(string s) => ChangeCase(s, UpperRuns, UpperLonger, false);
+
+        // toLowerCase: each code point's small letter the same way (İ is i and a dot above), and a
+        // capital sigma at the end of a word ς rather than σ
+        public static string ToLowerCase(string s) => ChangeCase(s, LowerRuns, LowerLonger, true);
+
+        static string ChangeCase(string s, int[] runs, int[] longer, bool lower)
+        {
+            if (string.IsNullOrEmpty(s)) return s ?? "";
+            var result = new StringBuilder(s.Length);
+            for (int i = 0; i < s.Length; i++)
+            {
+                int c = s[i];
+                if (char.IsHighSurrogate(s[i]) && i + 1 < s.Length && char.IsLowSurrogate(s[i + 1]))
+                {
+                    c = char.ConvertToUtf32(s[i], s[i + 1]);
+                    i++;
+                }
+                if (lower && c == 0x3A3)
+                {
+                    result.Append(EndsAWord(s, i) ? (char)0x3C2 : (char)0x3C3);
+                    continue;
+                }
+                int row = Row(longer, c);
+                if (row < 0) AppendCodePoint(result, Changed(runs, c));
+                else for (int k = row + 1; k < row + 4 && longer[k] != 0; k++) AppendCodePoint(result, longer[k]);
+            }
+            return result.ToString();
+        }
+
+        // c changed by the run it's in (runs of four: the first and last code point, every one or every
+        // other one, and what's added to it), or c as it is
+        static int Changed(int[] runs, int c)
+        {
+            int low = 0, high = runs.Length / 4 - 1;
+            while (low <= high)
+            {
+                int middle = (low + high) / 2, at = 4 * middle;
+                if (c < runs[at]) high = middle - 1;
+                else if (c > runs[at + 1]) low = middle + 1;
+                else return (c - runs[at]) % runs[at + 2] == 0 ? c + runs[at + 3] : c;
+            }
+            return c;
+        }
+
+        // where c's row is among the longer results (rows of four: the code point, then what it gives,
+        // 0 for none), or -1
+        static int Row(int[] longer, int c)
+        {
+            int low = 0, high = longer.Length / 4 - 1;
+            while (low <= high)
+            {
+                int middle = (low + high) / 2, at = 4 * middle;
+                if (c < longer[at]) high = middle - 1;
+                else if (c > longer[at]) low = middle + 1;
+                else return at;
+            }
+            return -1;
+        }
+
+        static void AppendCodePoint(StringBuilder into, int c)
+        {
+            if (c < 0x10000) into.Append((char)c);
+            else into.Append((char)(0xD800 + ((c - 0x10000) >> 10))).Append((char)(0xDC00 + ((c - 0x10000) & 0x3FF)));
+        }
+
+        // Whether the capital sigma at `at` ends a word, as browsers have it (Unicode's Final_Sigma): the
+        // first code point before it that isn't case-ignorable is a cased letter, and the first one after
+        // it that isn't case-ignorable, if there is one, isn't a cased letter. Case-ignorable ones (marks,
+        // ' . : and the like) are passed over, the 268 that are cased letters too (U+0345, ʰ) among them.
+        static bool EndsAWord(string s, int at) => CasedNext(s, at, -1) && !CasedNext(s, at, 1);
+
+        static bool CasedNext(string s, int at, int way)
+        {
+            for (int i = at + way; i >= 0 && i < s.Length; i += way)
+            {
+                int c = s[i];
+                if (way > 0 && char.IsHighSurrogate(s[i]) && i + 1 < s.Length && char.IsLowSurrogate(s[i + 1]))
+                {
+                    c = char.ConvertToUtf32(s[i], s[i + 1]);
+                    i++;
+                }
+                else if (way < 0 && char.IsLowSurrogate(s[i]) && i > 0 && char.IsHighSurrogate(s[i - 1]))
+                {
+                    c = char.ConvertToUtf32(s[i - 1], s[i]);
+                    i--;
+                }
+                if (!In(CaseIgnorable, c)) return In(Cased, c);
+            }
+            return false;
+        }
+
+        // whether c is in one of the ranges (each a first and a last code point, in order)
+        static bool In(int[] ranges, int c)
+        {
+            int low = 0, high = ranges.Length / 2 - 1;
+            while (low <= high)
+            {
+                int middle = (low + high) / 2;
+                if (c < ranges[2 * middle]) high = middle - 1;
+                else if (c > ranges[2 * middle + 1]) low = middle + 1;
+                else return true;
+            }
+            return false;
         }
     }
 }

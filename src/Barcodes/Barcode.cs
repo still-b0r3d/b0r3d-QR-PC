@@ -275,7 +275,7 @@ namespace B0r3dQR.Barcodes
         static string Friendly(string message)
         {
             string text = Regex.Replace(Regex.Replace(message ?? "", "^Error [0-9]+:\\s*", ""), "\\s*\\(retval: [0-9]+\\)\\s*\\z", "").Trim();
-            return text.Length > 0 ? char.ToUpperInvariant(text[0]) + text.Substring(1) : "This text cannot be encoded.";
+            return text.Length > 0 ? Js.ToUpperCase(text.Substring(0, 1)) + text.Substring(1) : "This text cannot be encoded.";
         }
     }
 }

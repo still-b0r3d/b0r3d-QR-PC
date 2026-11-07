@@ -194,7 +194,8 @@ namespace B0r3dQR
             FramePanel.Visibility = f != null ? Visibility.Visible : Visibility.Collapsed;
             if (f == null) return;
             FramePresetBox.SelectedItem = Presets.FrameNames.FirstOrDefault(n => SameFrameLook(Presets.ApplyFrame(n, f), f));
-            if (CaptionBox.Text.Replace("\r\n", "\n") != f.Text) CaptionBox.Text = f.Text.Replace("\n", "\r\n");
+            string shown = AsEdited(f.Text).Replace("\n", "\r\n");   // each line break once, whatever kind the design has
+            if (CaptionBox.Text != shown && AsEdited(CaptionBox.Text) != f.Text) CaptionBox.Text = shown;
             (f.Position == "top" ? FrameTop : f.Position == "left" ? FrameLeft : f.Position == "right" ? FrameRight : FrameBottom).IsChecked = true;
             FrameWidthRow.Visibility = f.Beside ? Visibility.Visible : Visibility.Collapsed;
             FrameWidthBox.Value = f.CaptionWidth + 200;
@@ -335,10 +336,15 @@ namespace B0r3dQR
         void OnCaption(object sender, TextChangedEventArgs e)
         {
             if (Quiet || design.Frame == null) return;
-            design.Frame.Text = CaptionBox.Text.Replace("\r\n", "\n");
+            design.Frame.Text = AsEdited(CaptionBox.Text);
             typingPause.Stop();
             typingPause.Start();
         }
+
+        // A caption as a browser's text box gives it once it's edited: CR LF and a lone CR are each a
+        // line break (LF). Until its box is edited the website keeps a design's caption as the file
+        // has it, CRs and all, and so does b0r3d QR.
+        internal static string AsEdited(string text) => text.Replace("\r\n", "\n").Replace('\r', '\n');
 
         void OnFramePlace(object sender, RoutedEventArgs e)
         {

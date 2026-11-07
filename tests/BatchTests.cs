@@ -271,5 +271,111 @@ namespace B0r3dQR.Tests
                 "stopped: " + batch.StatusLine.Text + " · " + string.Join(", ", Directory.GetFiles(folder).Select(Path.GetFileName)));
             batch.Close();
         }
+
+        // Rows named as Windows names its devices (CON, aux, Com1…) get _ on their files' names in all three naming rules
+        // (Windows 10 makes no file called CON.png), and a batch of them into a folder makes every file
+        static void BatchDeviceNames()
+        {
+            string[] given = { "CON", "aux", "Com1", "lpt9", "NUL", "prn", "COM0", "CONSOLE", "CON" };
+            var rows = given.Select((name, i) => new BatchRow { Row = i + 2, Data = "https://b0r3d.org/" + i, FileName = name }).ToList();
+            string[] qr = BatchRows.QrNames(rows).ToArray(), barcodes = BatchRows.BarcodeNames(rows).ToArray(), text = BatchRows.TextNames(rows, Enumerable.Range(0, rows.Count).ToList()).ToArray();
+            Check(qr.SequenceEqual(new[] { "CON_", "aux_", "Com1_", "lpt9_", "NUL_", "prn_", "COM0", "CONSOLE", "CON-8" }), "QR names: " + string.Join(", ", qr));
+            Check(barcodes.SequenceEqual(new[] { "CON_", "aux_", "Com1_", "lpt9_", "NUL_", "prn_", "COM0", "CONSOLE", "CON__2" }), "barcode names: " + string.Join(", ", barcodes));
+            Check(text.SequenceEqual(new[] { "CON_", "aux_", "Com1_", "lpt9_", "NUL_", "prn_", "COM0", "CONSOLE", "CON__1" }), "text names: " + string.Join(", ", text));
+            // a name from the code's text, too
+            Check(BatchRows.QrNames(new List<BatchRow> { new BatchRow { Data = "nul" } }).Single() == "nul_", "a row whose text is nul: " + BatchRows.QrNames(new List<BatchRow> { new BatchRow { Data = "nul" } }).Single());
+
+            string folder = Path.Combine(Work, "batch-devices");
+            Fresh(folder);
+            MainWindow window = NewMain();
+            Type(window, "https://b0r3d.org");
+            BatchWindow batch = NewBatch(window, "url,fileName\nhttps://b0r3d.org/a,CON\nhttps://b0r3d.org/b,aux\nhttps://b0r3d.org/c,nul\n");
+            MakeBatch(batch, folder);
+            string[] files = Directory.GetFiles(folder).Select(Path.GetFileName).OrderBy(f => f, StringComparer.Ordinal).ToArray();
+            Check(batch.LastOutcome == "3 made, 0 skipped, 0 failed, 0 unread" && files.SequenceEqual(new[] { "CON_.png", "aux_.png", "nul_.png" }),
+                "into a folder: " + batch.LastOutcome + " · " + string.Join(", ", files) + " · " + batch.StatusLine.Text);
+            batch.Close();
+        }
+
+        // Saving over a file where Windows can't swap files (some USB sticks): the old file is moved out of the way, the
+        // new one in, and the old one deleted (moves need no room, so a nearly full stick loses nothing); when the new one
+        // can't go in, the old one goes back; a read-only file stays as it is. A batch's zip goes in the same way as every
+        // other file saved, and nothing temporary is left
+        static void SavingWhereFilesCantBeSwapped()
+        {
+            string folder = Path.Combine(Work, "no-swapping");
+            Fresh(folder);
+            Action<string, string> swap = Exports.Swap, move = Exports.Move;
+            int swaps = 0;
+            Exports.Swap = (temporary, full) =>
+            {
+                swaps++;
+                throw new IOException("The request is not supported.");
+            };
+            string Left() => string.Join(", ", Directory.GetFiles(folder).Select(Path.GetFileName).OrderBy(n => n, StringComparer.Ordinal));
+            try
+            {
+                string file = Path.Combine(folder, "code.png");
+                Exports.Write(file, new byte[] { 1, 2, 3 });
+                Exports.Write(file, new byte[] { 4, 5 });
+                Check(swaps == 1 && File.ReadAllBytes(file).SequenceEqual(new byte[] { 4, 5 }) && Left() == "code.png",
+                    "a file saved over another: " + swaps + " swaps, " + BitConverter.ToString(File.ReadAllBytes(file)) + " · " + Left());
+
+                // the new file can't go in once the old one's out of the way: the old one goes back
+                Exports.Move = (from, to) =>
+                {
+                    if (from.EndsWith(".tmp", StringComparison.Ordinal) && string.Equals(to, file, StringComparison.OrdinalIgnoreCase)) throw new IOException("The process cannot access the file because it is being used by another process.");
+                    move(from, to);
+                };
+                try
+                {
+                    Exports.Write(file, new byte[] { 6, 7, 8 });
+                    Check(false, "a save whose new file can't go in should fail, for the window to say so");
+                }
+                catch (IOException)
+                {
+                }
+                Exports.Move = move;
+                Check(File.ReadAllBytes(file).SequenceEqual(new byte[] { 4, 5 }) && Left() == "code.png", "after a new file that couldn't go in: " + BitConverter.ToString(File.ReadAllBytes(file)) + " · " + Left());
+
+                // a read-only file
+                File.SetAttributes(file, FileAttributes.ReadOnly);
+                try
+                {
+                    Exports.Write(file, new byte[] { 9 });
+                    Check(false, "a read-only file was saved over where files can't be swapped");
+                }
+                catch (UnauthorizedAccessException)
+                {
+                }
+                finally
+                {
+                    File.SetAttributes(file, FileAttributes.Normal);
+                }
+                Check(File.ReadAllBytes(file).SequenceEqual(new byte[] { 4, 5 }) && Left() == "code.png", "the read-only file: " + BitConverter.ToString(File.ReadAllBytes(file)) + " · " + Left());
+                swaps = 0;
+
+                MainWindow window = NewMain();
+                Type(window, "https://b0r3d.org");
+                BatchWindow batch = NewBatch(window, "url,fileName\nhttps://b0r3d.org/a,first\nhttps://b0r3d.org/b,second\n");
+                string zip = Path.Combine(folder, "codes.zip");
+                File.WriteAllText(zip, "an old zip");
+                MakeBatch(batch, zip, zip: true);
+                Check(swaps == 1, "the zip should go in as every file saved does: " + swaps + " swaps");
+                Check(batch.LastOutcome == "2 made, 0 skipped, 0 failed, 0 unread", "the zip saved over another: " + batch.LastOutcome + " · " + batch.StatusLine.Text);
+                using (ZipArchive archive = ZipFile.OpenRead(zip))
+                {
+                    string[] entries = archive.Entries.Select(e => e.FullName).OrderBy(n => n, StringComparer.Ordinal).ToArray();
+                    Check(entries.SequenceEqual(new[] { "first.png", "second.png" }), "in the zip: " + string.Join(", ", entries));
+                }
+                Check(Left() == "code.png, codes.zip", "something was left behind: " + Left());
+                batch.Close();
+            }
+            finally
+            {
+                Exports.Swap = swap;
+                Exports.Move = move;
+            }
+        }
     }
 }

@@ -44,6 +44,27 @@ The last of what qr.b0r3d.org does: SVG logos, its caption fonts and the camera.
   logo's room, a frame and its caption. Everything comes out as before: checked against 45 of
   the website's own CSV readings and 118 of its template cases, and against the previous
   build on millions of random CSV files, texts and template fields, and thousands of designs.
+- A caption with Windows line breaks (from a design file saved elsewhere, or a batch CSV
+  saved that way) is laid out, drawn and sized as on qr.b0r3d.org: its SVG keeps each break's
+  CR as the website's does, so a line that only just fits wraps a word sooner there too;
+  pictures and printing draw that CR as a space, as browsers draw the website's SVG; and the
+  caption box shows each line break once. Checked against 114 of the website's SVG files
+  drawn by Chromium and 210 more of its preview's layouts.
+- Capitals and small letters as JavaScript in a browser makes them, wherever b0r3d QR does
+  what the website does: a payment code's BIC, IBAN and purpose (ß becomes SS, a ligature
+  such as ﬁ becomes FI), the IBAN check, the names in Wi-Fi, contact and event codes, a batch
+  file's header and a link's tracking parameters (a Kelvin sign counts as a k there), and
+  Code 39's and ISBN's capitals. Checked against Chromium for every character.
+- Saving over a file on a USB stick that can't swap files: the old file is moved out of the
+  way, the new one put in its place and the old one deleted, so a nearly full stick can't lose
+  either, and if the new one can't go in, the old one goes back (it used to be copied over). A
+  batch's zip goes in the same way now; it used to fail there.
+- Printing: with Windows' print service stopped, Print says what's wrong instead of failing.
+- Batch export: a row named like a Windows device (CON, PRN, AUX, NUL, COM1 to COM9, LPT1 to
+  LPT9) gets _ on its file's name (CON_.png), into a folder or a zip: Windows 10 can't make a
+  file called CON.png.
+- THIRD-PARTY-NOTICES.txt has the Unicode License V3 now, for the character tables b0r3d QR
+  makes from Unicode's data.
 
 ## 0.7 (not released yet)
 

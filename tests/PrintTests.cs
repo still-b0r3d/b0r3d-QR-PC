@@ -209,5 +209,31 @@ namespace B0r3dQR.Tests
             Check(single.Document.Pages.Count == 1 && !PageOf(single.Document, 0).Children.OfType<TextBlock>().Any() && single.Shrunk, "a 40 × 12 mm label: one shrunk code, no room for a caption");
             one.Close();
         }
+
+        // Windows' print service not answering (its Print Spooler stopped): once Print is clicked in Windows' dialog,
+        // which then reaches for the printer, the window says what's wrong in plain words instead of failing
+        static void PrintingWithoutThePrintService()
+        {
+            MainWindow window = NewMain();
+            Type(window, "https://b0r3d.org/print");
+            PrintWindow print = window.PrintWindowFor();
+            print.PaperOverride = PrintSheet.A4;
+            LayOut(print.Root, 760, 720);
+            print.Lay();
+            var said = new List<string>();
+            print.Warned = said.Add;
+            // (its constructors that take words look them up as resource names, so the plain one)
+            print.AskPrinter = dialog => throw new System.Printing.PrintServerException();
+            print.PrintButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Check(said.Count == 1 && said[0].StartsWith("Couldn't print:", StringComparison.Ordinal) && said[0].Contains("Print Spooler"),
+                "Print with no print service: " + string.Join(" | ", said));
+            // a printer's own trouble keeps Windows' words
+            said.Clear();
+            print.AskPrinter = dialog => throw new System.Printing.PrintQueueException();
+            print.PrintButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
+            Check(said.Count == 1 && said[0].StartsWith("Windows' Print dialog didn't open:", StringComparison.Ordinal) && !said[0].Contains("Print Spooler"),
+                "Print with a printer's trouble: " + string.Join(" | ", said));
+            print.Close();
+        }
     }
 }

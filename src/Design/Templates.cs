@@ -268,14 +268,14 @@ namespace B0r3dQR.Design
         static string Epc(IDictionary<string, string> f)
         {
             bool versionOne = Field(f, "version") == "001";
-            string bic = Unspaced(Field(f, "bic")).ToUpperInvariant();
+            string bic = Js.ToUpperCase(Unspaced(Field(f, "bic")));
             if (Field(f, "name").Length == 0 || Field(f, "iban").Length == 0 || versionOne && bic.Length == 0) return "";
             string Part(string field, int most) => Upto(EpcLine(Field(f, field)), most);
             string reference = Part("remittanceReference", 35);
             string[] lines =
             {
-                "BCD", versionOne ? "001" : "002", "1", "SCT", bic, Part("name", 70), Unspaced(Field(f, "iban")).ToUpperInvariant(),
-                EuroAmount(Field(f, "amount")), Part("purpose", 4).ToUpperInvariant(), reference,
+                "BCD", versionOne ? "001" : "002", "1", "SCT", bic, Part("name", 70), Js.ToUpperCase(Unspaced(Field(f, "iban"))),
+                EuroAmount(Field(f, "amount")), Js.ToUpperCase(Part("purpose", 4)), reference,
                 reference.Length > 0 ? "" : Part("remittanceText", 140), Part("originatorInfo", 70),
             };
             int count = lines.Length;
@@ -299,7 +299,7 @@ namespace B0r3dQR.Design
         // An IBAN with the right check digits (ISO 13616, mod 97); spaces and case don't matter.
         public static bool ValidIban(string value)
         {
-            string iban = Regex.Replace(value ?? "", Js.Space + "+", "").ToUpperInvariant();
+            string iban = Js.ToUpperCase(Regex.Replace(value ?? "", Js.Space + "+", ""));
             if (!Regex.IsMatch(iban, @"^[A-Z]{2}[0-9]{2}[A-Z0-9]{11,30}\z")) return false;
             string rearranged = iban.Substring(4) + iban.Substring(0, 4);
             int remainder = 0;
@@ -482,7 +482,7 @@ namespace B0r3dQR.Design
             {
                 int colon = field.IndexOf(':');
                 if (colon <= 0) continue;
-                string key = Js.Trim(field.Substring(0, colon)).ToUpperInvariant();
+                string key = Js.ToUpperCase(Js.Trim(field.Substring(0, colon)));
                 string value = field.Substring(colon + 1);
                 // a value that could pass for hex may be in double quotes
                 if (value.Length >= 2 && value.StartsWith("\"", StringComparison.Ordinal) && value.EndsWith("\"", StringComparison.Ordinal) && !value.EndsWith("\\\"", StringComparison.Ordinal))
@@ -490,11 +490,11 @@ namespace B0r3dQR.Design
                 if (!found.ContainsKey(key)) found[key] = UnescapeWifi(value);
             }
             string Get(string key) => found.TryGetValue(key, out string v) ? v : "";
-            string type = Get("T").ToUpperInvariant();
+            string type = Js.ToUpperCase(Get("T"));
             fields["ssid"] = Get("S");
             fields["encryption"] = type == "WEP" ? "WEP" : type == "SAE" ? "SAE" : type.StartsWith("WPA", StringComparison.Ordinal) ? "WPA" : "nopass";
             fields["password"] = Get("P");
-            fields["hidden"] = Get("H").ToLowerInvariant() == "true" ? "true" : "false";
+            fields["hidden"] = Js.ToLowerCase(Get("H")) == "true" ? "true" : "false";
         }
 
         // ---------- vCard and iCalendar lines ----------
@@ -521,8 +521,8 @@ namespace B0r3dQR.Design
                 string[] head = line.Substring(0, colon).Split(';');
                 result.Add(new ContentLine
                 {
-                    Name = Js.Trim(head[0].Split('.').Last()).ToUpperInvariant(),
-                    Params = string.Join(";", head.Skip(1)).ToUpperInvariant(),
+                    Name = Js.ToUpperCase(Js.Trim(head[0].Split('.').Last())),
+                    Params = Js.ToUpperCase(string.Join(";", head.Skip(1))),
                     Value = line.Substring(colon + 1),
                 });
             }

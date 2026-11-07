@@ -260,18 +260,19 @@ namespace B0r3dQR.Qr
 
         // ---------- the caption ----------
 
-        // The caption's lines in the files, as the website lays them out: a line break always ends a
-        // line; otherwise words (cut at spaces, a run of spaces counting as one) go on a line for as
-        // long as it stays within the column, every character guessed at 0.6 of the font size. A
-        // word too long for the column gets a line to itself, and a paragraph with no words is an
-        // empty line. (b0r3d QR drops the CR of a CR LF break; the website keeps it at the end of
-        // the line, where it counts as a character, so a line that only just fits can wrap there.)
+        // The caption's lines in the files, as the website lays them out: a line break (LF) always
+        // ends a line; otherwise words (cut at spaces, a run of spaces counting as one) go on a line
+        // for as long as it stays within the column, every character guessed at 0.6 of the font size.
+        // A word too long for the column gets a line to itself, and a paragraph with no words is an
+        // empty line. A CR is a character like any other here, as on the website: a CR LF break
+        // leaves its CR at the end of the line, where it counts, so a line that only just fits
+        // without it wraps a word sooner; a lone CR is part of the word it's in.
         internal static List<string> Wrap(string text, double column)
         {
             double perCharacter = 0.6 * CaptionSize;
             var lines = new List<string>();
             var line = new StringBuilder();
-            foreach (string paragraph in text.Replace("\r\n", "\n").Split('\n'))
+            foreach (string paragraph in text.Split('\n'))
             {
                 foreach (string word in paragraph.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
                 {
@@ -292,24 +293,58 @@ namespace B0r3dQR.Qr
 
         public IReadOnlyList<string> CaptionLines => lines;
 
+        // What the website's SVG shows of each line once a browser reads it: the file's CRs come in
+        // as line breaks, and SVG text draws a line break, a tab and a space all as white space, a
+        // run of it as one space (across lines too) and none at the very start or end of the
+        // caption. A line left with nothing has no letter for its move down to act on, like an
+        // empty line. Without a CR a caption is drawn line by line as it is, as b0r3d QR always has
+        // (its lines have single spaces between words, and any tabs WPF draws its own way).
+        internal static List<string> DrawnLines(IReadOnlyList<string> lines)
+        {
+            var drawn = new List<string>(lines);
+            if (!lines.Any(l => l.IndexOf('\r') >= 0)) return drawn;
+            bool afterSpace = true;   // so white space at the start is left out
+            int last = -1;            // the last line with something on it
+            for (int i = 0; i < drawn.Count; i++)
+            {
+                var s = new StringBuilder(drawn[i].Length);
+                foreach (char c in drawn[i])
+                {
+                    bool space = c == ' ' || c == '\t' || c == '\r';
+                    if (space && afterSpace) continue;
+                    s.Append(space ? ' ' : c);
+                    afterSpace = space;
+                }
+                drawn[i] = s.ToString();
+                if (s.Length > 0) last = i;
+            }
+            if (last >= 0 && drawn[last].EndsWith(" ", StringComparison.Ordinal)) drawn[last] = drawn[last].Substring(0, drawn[last].Length - 1);
+            return drawn;
+        }
+
         // The lines the caption takes in the website's preview of the frame, which sizes its saved
         // pictures: the browser's own line breaking of the text at 18 px, in the caption's font, the
         // same one that draws it (the page's when it has none: Inter if it's installed, else
         // system-ui, Segoe UI; the website doesn't load its Inter web font for the page), in a column
         // of `column` px. Runs of spaces count as one and line breaks are kept (white-space:
         // pre-line), a word wider than the column keeps a line to itself, and a line break at the
-        // very end adds no line.
+        // very end adds no line. A CR is a space there: a CR LF is just a line break and a lone CR
+        // goes between words. A blank last line (white space with no line break after it) takes no
+        // room, so a caption of CRs alone takes none. One of spaces or tabs alone keeps the line
+        // b0r3d QR has always given it, though the website's preview probably gives it none too (not
+        // measured yet): a known difference, left as it was.
         internal static int PreviewLines(string text, string fontCss, double column)
         {
             CaptionFont font = !string.IsNullOrWhiteSpace(fontCss) ? CaptionFont.For(fontCss) : CaptionFont.Page;
             bool Fits(string line) => !(font.Text(line, CaptionSize, Brushes.Black, CultureInfo.InvariantCulture).Width > column);
-            List<string> paragraphs = text.Replace("\r\n", "\n").Split('\n').ToList();
-            if (paragraphs.Count > 1 && paragraphs[paragraphs.Count - 1].Trim(' ', '\t').Length == 0) paragraphs.RemoveAt(paragraphs.Count - 1);
+            List<string> paragraphs = text.Split('\n').ToList();
+            string end = paragraphs[paragraphs.Count - 1];
+            if (end.Trim(' ', '\t', '\r').Length == 0 && (paragraphs.Count > 1 || end.IndexOf('\r') >= 0)) paragraphs.RemoveAt(paragraphs.Count - 1);
             int lines = 0;
             foreach (string paragraph in paragraphs)
             {
                 lines++;   // every paragraph takes a line, an empty one too
-                string[] words = paragraph.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
+                string[] words = paragraph.Split(new[] { ' ', '\t', '\r' }, StringSplitOptions.RemoveEmptyEntries);
                 string line = words.Length > 0 ? words[0] : "";   // a line's first word is on it, however wide
                 for (int w = 1; w < words.Length; w++)
                 {
@@ -373,14 +408,16 @@ namespace B0r3dQR.Qr
                     CaptionFont font = CaptionFont.For(f.FontFamily);   // with none: Arial, the sans-serif the website's file names
                     Brush ink = Brush(f.TextColor);
                     double y = firstBaseline;
-                    for (int i = 0; i < lines.Count; i++)
+                    List<string> drawn = DrawnLines(lines);
+                    for (int i = 0; i < drawn.Count; i++)
                     {
                         // as browsers draw the website's SVG: each line after the first moves down a
                         // line, but an empty line has no letter for its move to act on, so it moves
-                        // nothing and its room is left at the bottom; emoji in their colours
-                        if (lines[i].Length == 0) continue;
+                        // nothing and its room is left at the bottom; a line is centred with any space
+                        // it ends in; emoji in their colours
+                        if (drawn[i].Length == 0) continue;
                         if (i > 0) y += LineHeight;
-                        FormattedText text = font.Text(lines[i], CaptionSize, ink, CultureInfo.CurrentUICulture);
+                        FormattedText text = font.Text(drawn[i], CaptionSize, ink, CultureInfo.CurrentUICulture);
                         ColourGlyphs.DrawText(dc, text, new Point(captionX - text.WidthIncludingTrailingWhitespace / 2, y - text.Baseline));
                     }
                 }
