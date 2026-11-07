@@ -606,7 +606,7 @@ namespace B0r3dQR
         }
 
         // The preview: the design drawn at the screen's own pixels, as big as fits, shown pixel for
-        // pixel, so it's sharp at any scaling (the 150 % TV included).
+        // pixel, so it's sharp at any scaling (150 % included).
         void RenderPreview()
         {
             if (MakingBarcode)

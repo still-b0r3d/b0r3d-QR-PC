@@ -15,7 +15,7 @@
       <supportedOS Id="{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}" />
     </application>
   </compatibility>
-  <!-- sharp on every screen: each screen's own scaling (a 150 % TV next to 100 % monitors) -->
+  <!-- sharp on every screen: each screen's own scaling (a screen at 150 % next to ones at 100 %) -->
   <application xmlns="urn:schemas-microsoft-com:asm.v3">
     <windowsSettings>
       <dpiAware xmlns="http://schemas.microsoft.com/SMI/2005/WindowsSettings">true/pm</dpiAware>

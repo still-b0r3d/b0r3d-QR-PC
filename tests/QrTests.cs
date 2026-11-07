@@ -53,7 +53,7 @@ namespace B0r3dQR.Tests
             Check(QrCode.Make(new string('7', 41), QrLevel.L).Version == 1, "41 digits at level L should be version 1");
             // 23 capitals and spaces fit version 1 at level L only as capitals (bytes: version 2)
             Check(QrCode.Make("HELLO WORLD HELLO WORLD", QrLevel.L).Version == 1, "23 capitals at level L should be version 1");
-            // a mix: version 3 compact, against version 4 all as bytes (checked when planning)
+            // a mix: version 3 compact, against version 4 all as bytes
             Check(QrCode.Make("ORDER 0123456789012345678901234567890123 for b0r3d.org", QrLevel.M).Version == 3, "the mixed sample should be version 3 at level M");
             // any other character: one UTF-8 byte part with no ECI marker, read back exactly
             foreach (string text in new[] { "café 12345678901234567890", "Привет 123" })

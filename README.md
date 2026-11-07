@@ -277,8 +277,9 @@ MIT + Commons Clause: free to use, change and share, but not to sell. See
 [qrcode-generator](https://github.com/kazuhikoarase/qrcode-generator) (MIT) and, with the UTF-8
 marker, zint, whose QR modes come from [Project Nayuki](https://www.nayuki.io/page/qr-code-generator-library)'s
 library (MIT). The caption fonts are the website's 18 from [Fontsource](https://fontsource.org),
-each under the SIL Open Font License 1.1, and its character tables are made from Unicode's
-data (Unicode License V3). Everyone's notices are in
+each under the SIL Open Font License 1.1; its character tables are made from Unicode's data
+(Unicode License V3), and the way it takes a caption's letters and accents from a font follows
+[HarfBuzz](https://harfbuzz.github.io) (Old MIT). Everyone's notices are in
 [THIRD-PARTY-NOTICES.txt](THIRD-PARTY-NOTICES.txt).
 
 QR Code is a registered trademark of DENSO WAVE INCORPORATED.

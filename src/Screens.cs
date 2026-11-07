@@ -7,8 +7,8 @@ using System.Windows.Media.Imaging;
 
 namespace B0r3dQR
 {
-    // The screens, in real pixels (b0r3d QR follows each screen's own scaling, so a 4K TV at 150 %
-    // is 3840 pixels across here), and pictures of them. A picture only ever lives in memory.
+    // The screens, in real pixels (b0r3d QR follows each screen's own scaling, so a 4K screen at
+    // 150 % is 3840 pixels across here), and pictures of them. A picture only ever lives in memory.
     static class Screens
     {
         public sealed class Screen

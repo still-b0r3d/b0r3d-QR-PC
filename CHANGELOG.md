@@ -64,7 +64,8 @@ The last of what qr.b0r3d.org does: SVG logos, its caption fonts and the camera.
   LPT9) gets _ on its file's name (CON_.png), into a folder or a zip: Windows 10 can't make a
   file called CON.png.
 - THIRD-PARTY-NOTICES.txt has the Unicode License V3 now, for the character tables b0r3d QR
-  makes from Unicode's data.
+  makes from Unicode's data, and HarfBuzz's notice, for the way a caption takes its letters and
+  accents from a font, which follows HarfBuzz's.
 
 ## 0.7 (not released yet)
 
@@ -78,8 +79,8 @@ The seventh stage: getting ready for the first release.
   1 codes".
 - The README says how to get b0r3d QR and past Windows' SmartScreen warning (More info, then
   Run anyway: it isn't code-signed), with pictures of every part of it, drawn offscreen.
-- The third-party notices (in THIRD-PARTY-NOTICES.txt and Help → About) now name everyone whose
-  work is in the exe: Barcode4J (behind ZXing's PDF417 and Data Matrix writers), zint's Data
+- The third-party notices (in THIRD-PARTY-NOTICES.txt and Help → About) name more of the code
+  b0r3d QR follows: Barcode4J (behind ZXing's PDF417 and Data Matrix writers), zint's Data
   Matrix and Reed-Solomon authors, Project Nayuki (behind zint's choice of QR modes), GS1's
   Barcode Syntax Dictionary (the GS1 field lengths), and qrcode-generator (whose mask scoring
   b0r3d QR's QR codes follow, as the website's do).

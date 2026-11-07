@@ -102,8 +102,9 @@ namespace B0r3dQR.Qr
             return spelt.ToString();
         }
 
-        // HarfBuzz's split of a character: its letter and last accent when the font has the accent, the letter as it
-        // is (first, for a lone character) or split again
+        // HarfBuzz's split of a character (its normaliser's decompose, written again in C#; see
+        // THIRD-PARTY-NOTICES.txt): its letter and last accent when the font has the accent, the letter as it is
+        // (first, for a lone character) or split again
         bool Split(int ab, bool shortest, List<(int Point, bool Glyph)> drawn)
         {
             if (!Unicode.Splits(ab, out int a, out int b) || (b != 0 && !Takes(b))) return false;
