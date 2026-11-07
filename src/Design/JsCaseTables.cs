@@ -5,10 +5,10 @@ namespace B0r3dQR.Design
     // it: taken from headless Edge 157.0.4341.42 (V8 15.7.11.4 and its ICU), the same as Node 24.19.0's ICU 78.3 gives
     // (Unicode 17.0), where each code point, surrogates included, was put through toUpperCase and toLowerCase on its
     // own and tested with /\p{Cased}/u and /\p{Case_Ignorable}/u (for the capital sigma that ends a word, Final_Sigma),
-    // by qr-pc-plan/fixtures/gen-chromium-case-tables.mjs. .NET Framework 4.8's ToUpperInvariant and ToLowerInvariant
-    // don't do the same: they give one character for one (ß stays ß, not SS), leave ı, ſ, K (the Kelvin sign) and İ as
-    // they are, never give ς, and lack the case pairs of newer letters (Georgian's capitals and Cherokee's small
-    // letters among them).
+    // by gen-chromium-case-tables.mjs, a script outside this repo. .NET Framework 4.8's ToUpperInvariant and
+    // ToLowerInvariant don't do the same: they give one character for one (ß stays ß, not SS), leave ı, ſ, K (the
+    // Kelvin sign) and İ as they are, never give ς, and lack the case pairs of newer letters (Georgian's capitals and
+    // Cherokee's small letters among them).
     static partial class Js
     {
         // capitals of one code point: runs of code points (the first, the last, every one or every other one, and

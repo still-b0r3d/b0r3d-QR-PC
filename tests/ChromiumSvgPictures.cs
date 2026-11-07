@@ -1,4 +1,4 @@
-// Made by qr-pc-plan\fixtures\gen-chromium-svg-pictures.mjs: 70 SVG pictures drawn by Chromium (Edge 156.0.0.0) the way
+// Made by gen-chromium-svg-pictures.mjs (outside this repo): 70 SVG pictures drawn by Chromium (Edge 156.0.0.0) the way
 // qr.b0r3d.org's PNG exports draw SVG logos and frame pictures: as <image href="data:image/svg+xml;base64,...">
 // in an outer SVG drawn into a canvas. Each case has three PNGs (see Layouts). Don't edit by hand: run it again.
 namespace B0r3dQR.Tests

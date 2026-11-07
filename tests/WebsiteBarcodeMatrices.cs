@@ -2,7 +2,7 @@ namespace B0r3dQR.Tests
 {
     // GENERATED TEST DATA. The modules of each 2D code as qr.b0r3d.org's barcode maker makes them (zint
     // 2.16.0 inside zxing-wasm 3.1.6, called as the website calls it, without the quiet zone), by a
-    // script outside this repo (qr-pc-plan/fixtures/gen-website-barcodes.mjs): the type, the text, whether
+    // script outside this repo (gen-website-barcodes.mjs): the type, the text, whether
     // a rectangular Data Matrix is allowed, and zint's message, or its rows top to bottom (1 = dark).
     // PDF417's rows come out as many times as each row is high.
     static partial class TestMain

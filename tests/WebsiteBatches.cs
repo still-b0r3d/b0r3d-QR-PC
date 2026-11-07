@@ -1,7 +1,7 @@
 namespace B0r3dQR.Tests
 {
     // GENERATED TEST DATA. What qr.b0r3d.org's own batch code (src/utils/csv.ts and csvBatchProcessing.ts in the
-    // website repo) makes of these CSV files, by a script outside this repo (qr-pc-plan/fixtures/gen-website-batches.mjs):
+    // website repo) makes of these CSV files, by a script outside this repo (gen-website-batches.mjs):
     // for a QR batch, whether the file is taken and each row's data, frame text, file name, font, whether a frame
     // goes on, and the file names in the batch; for a barcode batch, each row's number, data and file name, and the
     // file names; and the text the website reads from a file's bytes.

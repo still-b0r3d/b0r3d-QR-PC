@@ -1,7 +1,7 @@
 namespace B0r3dQR.Qr
 {
     // GENERATED from qr.b0r3d.org's Fontsource 5.3.0 packages (each font under the SIL Open Font License 1.1;
-    // see THIRD-PARTY-NOTICES.txt) by qr-pc-plan/fixtures/gen-website-fonts.mjs: the website's 18 web fonts in
+    // see THIRD-PARTY-NOTICES.txt) by gen-website-fonts.mjs (outside this repo): the website's 18 web fonts in
     // its order, each with its faces in its 400.css's order: the subset, its file in assets\fonts (the .woff
     // unpacked into TrueType, byte for byte the original font), the family name Windows gives the file (with
     // its STAT table's names: "Merriweather 18pt"), and the characters the website's @font-face uses it for

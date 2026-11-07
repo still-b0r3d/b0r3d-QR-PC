@@ -1,12 +1,12 @@
 namespace B0r3dQR.Tests
 {
     // GENERATED TEST DATA. JavaScript's toUpperCase and toLowerCase as headless Edge 157.0.4341.42 (Chromium: V8
-    // 15.7.11.4 and its ICU) gives them, by a script outside this repo
-    // (qr-pc-plan/fixtures/gen-chromium-case-tables.mjs): every code point either changes (and is listed here with what
-    // it gives) or stays as it is; each code point's part in the rule that makes a capital sigma at the end of a word
-    // ς, found by putting it before and after one (0 neither, 1 a cased letter, 2 passed over as case-ignorable), as
-    // runs from the code point given; and 916 strings with what toUpperCase and toLowerCase give: 704 sigmas in all
-    // kinds of surroundings, then 212 strings of the letters whose cases differ most between browsers and .NET.
+    // 15.7.11.4 and its ICU) gives them, by a script outside this repo (gen-chromium-case-tables.mjs): every code point
+    // either changes (and is listed here with what it gives) or stays as it is; each code point's part in the rule that
+    // makes a capital sigma at the end of a word ς, found by putting it before and after one (0 neither, 1 a cased
+    // letter, 2 passed over as case-ignorable), as runs from the code point given; and 916 strings with what
+    // toUpperCase and toLowerCase give: 704 sigmas in all kinds of surroundings, then 212 strings of the letters whose
+    // cases differ most between browsers and .NET.
     static partial class TestMain
     {
         // the code points toUpperCase makes one other code point, each with it: 1478

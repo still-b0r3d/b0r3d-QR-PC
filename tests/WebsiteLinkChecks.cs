@@ -1,7 +1,7 @@
 namespace B0r3dQR.Tests
 {
     // GENERATED TEST DATA. What qr.b0r3d.org's own link checks (src/utils/linkChecks.ts in the website repo) find in
-    // these links, by a script outside this repo (qr-pc-plan/fixtures/gen-website-link-checks.mjs): the tracking
+    // these links, by a script outside this repo (gen-website-link-checks.mjs): the tracking
     // parameters, and the link without them.
     static partial class TestMain
     {

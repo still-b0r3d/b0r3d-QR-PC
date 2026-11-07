@@ -2,7 +2,7 @@ namespace B0r3dQR.Tests
 {
     // GENERATED TEST DATA. Each barcode made the way qr.b0r3d.org makes it (src/lib/barcode/create.ts in
     // the website repo: zint 2.16.0 inside zxing-wasm 3.1.6), by a script outside this repo
-    // (qr-pc-plan/fixtures/gen-website-barcodes.mjs): the type, the text typed, the options (text under
+    // (gen-website-barcodes.mjs): the type, the text typed, the options (text under
     // the bars, rectangular Data Matrix allowed, bar height, quiet zones), and then the message the
     // website shows instead of a code, or the code's size in modules and the SVG it keeps for it (zint's
     // drawing, one unit per module, tidied and given its bar height as the website does). b0r3d QR must

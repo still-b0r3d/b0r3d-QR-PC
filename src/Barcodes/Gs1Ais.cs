@@ -1,7 +1,7 @@
 namespace B0r3dQR.Barcodes
 {
     // GENERATED from zint 2.16.0's backend/gs1_lint.h (BSD-3-Clause, Copyright Robin Stuart and the zint
-    // contributors; see THIRD-PARTY-NOTICES.txt) by qr-pc-plan/fixtures/gen-gs1-lengths.mjs: the GS1
+    // contributors; see THIRD-PARTY-NOTICES.txt) by gen-gs1-lengths.mjs (outside this repo): the GS1
     // Application Identifiers zint knows, as ranges of AI numbers, and the shortest and longest data each
     // takes.
     static partial class Gs1

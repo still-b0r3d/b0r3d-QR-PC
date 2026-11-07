@@ -22,7 +22,7 @@
     <!-- the b0r3d Cup and Rukus presets' logos: the website's own PNG files, byte for byte -->
     <Resource Include="..\assets\presets\b0r3d-cup.png" Link="assets\presets\b0r3d-cup.png" />
     <Resource Include="..\assets\presets\rukus.png" Link="assets\presets\rukus.png" />
-    <!-- the website's 18 caption fonts, one TrueType file per subset (qr-pc-plan\fixtures\gen-website-fonts.mjs) -->
+    <!-- the website's 18 caption fonts, one TrueType file per subset (made by gen-website-fonts.mjs, outside this repo) -->
     <Resource Include="..\assets\fonts\*.ttf" Link="fonts\%(Filename)%(Extension)" />
     <EmbeddedResource Include="..\LICENSE" Link="LICENSE" LogicalName="B0r3dQR.LICENSE" />
     <EmbeddedResource Include="..\THIRD-PARTY-NOTICES.txt" Link="THIRD-PARTY-NOTICES.txt" LogicalName="B0r3dQR.THIRD-PARTY-NOTICES.txt" />
