@@ -27,9 +27,25 @@
                 <RadioButton x:Name="AloneChoice" GroupName="Layout" IsChecked="True" Checked="OnLayout" Margin="0,0,0,6">
                     <AccessText x:Name="AloneText" TextWrapping="Wrap" Text="_Alone, in the middle of the page" />
                 </RadioButton>
-                <RadioButton x:Name="SheetChoice" GroupName="Layout" Checked="OnLayout">
+                <RadioButton x:Name="SheetChoice" GroupName="Layout" Checked="OnLayout" Margin="0,0,0,6">
                     <AccessText x:Name="SheetText" TextWrapping="Wrap" Text="A _sheet of copies" />
                 </RadioButton>
+                <RadioButton x:Name="LabelsChoice" GroupName="Layout" Checked="OnLayout">
+                    <AccessText x:Name="LabelsText" TextWrapping="Wrap" Text="A _label sheet (Avery)" />
+                </RadioButton>
+                <StackPanel x:Name="LabelsPanel" Margin="22,8,0,0" Visibility="Collapsed">
+                    <ComboBox x:Name="LabelSheetBox" SelectionChanged="OnLabelSheet" AutomationProperties.Name="Label sheet" />
+                    <TextBlock Margin="0,10,0,4" Foreground="{DynamicResource Dim}" TextWrapping="Wrap"
+                               Text="Nudge (mm), if your printer prints slightly off:" />
+                    <WrapPanel>
+                        <TextBlock Text="Right" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource Dim}" />
+                        <c:NumberBox x:Name="NudgeXBox" Width="76" Minimum="-10" Maximum="10" Step="0.5" Decimals="2"
+                                     ValueChanged="OnNudge" Margin="0,0,12,0" AutomationProperties.Name="Nudge right in millimetres" />
+                        <TextBlock Text="Down" VerticalAlignment="Center" Margin="0,0,6,0" Foreground="{DynamicResource Dim}" />
+                        <c:NumberBox x:Name="NudgeYBox" Width="76" Minimum="-10" Maximum="10" Step="0.5" Decimals="2"
+                                     ValueChanged="OnNudge" AutomationProperties.Name="Nudge down in millimetres" />
+                    </WrapPanel>
+                </StackPanel>
                 <DockPanel x:Name="CopiesRow" Margin="22,8,0,0">
                     <c:NumberBox x:Name="CopiesBox" DockPanel.Dock="Left" Width="90" Minimum="1" Maximum="1000" Step="1" ValueChanged="OnCopies" AutomationProperties.Name="Copies" />
                     <TextBlock x:Name="CopiesNote" Margin="8,0,0,0" VerticalAlignment="Center" TextWrapping="Wrap" Foreground="{DynamicResource Dim}" />

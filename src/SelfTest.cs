@@ -92,6 +92,9 @@ namespace B0r3dQR
                     overlay.UpdateLayout();
                     snip.Close();
                 }
+                IntPtr trayIcon = Tray.MakeIcon(32);
+                if (trayIcon == IntPtr.Zero) throw new InvalidOperationException("the tray icon didn't load from inside the exe");
+                Tray.DestroyIcon(trayIcon);
                 lines.Add("windows=ok");
 
                 // the designer inside this exe: the b0r3d Cup preset (its logo is one of the exe's
@@ -135,6 +138,19 @@ namespace B0r3dQR
                 fontsOk &= FontFiles(inPacifico.ToDrawing()) == "pacifico-latin-400-normal.ttf";
                 lines.Add("fonts=" + (fontsOk ? "ok" : "failed"));
                 ok &= fontsOk;
+
+                // a vector PDF inside this exe: the framed code in Pacifico drawn as shapes (its caption as the
+                // letters' outlines), read back through Windows' PDF reader and scanned
+                byte[] pdfBytes = QrExport.Pdf(inPacifico, null, false, "self-test");
+                var pdfPicture = PdfFile.ReadPicture(pdfBytes);
+                bool pdfOk = pdfPicture != null && !System.Text.Encoding.ASCII.GetString(pdfBytes).Contains("/Subtype /Image");
+                if (pdfOk)
+                {
+                    byte[] pdfGrays = ScanCheck.Grays(pdfPicture, out int pdfW, out int pdfH);
+                    pdfOk = ScanCheck.Read(pdfGrays, pdfW, pdfH)?.Text == Text;
+                }
+                lines.Add("pdf=" + (pdfOk ? "ok" : "failed"));
+                ok &= pdfOk;
 
                 // the other barcodes inside this exe: one made by each kind of encoder (bars, Data Matrix,
                 // Aztec, PDF417), drawn as the scan check draws them and read back with their own reader;
@@ -219,6 +235,9 @@ namespace B0r3dQR
                 printWindow.Lay();
                 printWindow.Root.UpdateLayout();
                 printOk &= printWindow.Document?.Pages.Count == 1 && printWindow.PagePicture.Source != null;
+                printWindow.LabelsChoice.IsChecked = true;
+                printWindow.Lay();
+                printOk &= printWindow.Document?.Pages.Count == 1 && ((System.Windows.Documents.FixedPage)printWindow.Document.Pages[0].Child).Children.Count >= 30;
                 printWindow.Close();
                 lines.Add("print=" + (printOk ? "ok" : "failed"));
                 ok &= printOk;

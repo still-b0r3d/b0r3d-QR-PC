@@ -69,6 +69,7 @@ namespace B0r3dQR.Tests
                 Check(found.TryGetValue("designer", out string designer) && designer == "ok", "a designed code (a preset's logo, a frame) didn't draw and read back inside the exe: " + all);
                 Check(found.TryGetValue("svglogo", out string svgLogo) && svgLogo == "ok", "an SVG logo didn't draw and read back inside the exe: " + all);
                 Check(found.TryGetValue("fonts", out string fonts) && fonts == "ok", "the website's caption fonts didn't open, measure and draw inside the exe: " + all);
+                Check(found.TryGetValue("pdf", out string pdf) && pdf == "ok", "a vector PDF didn't draw and read back through Windows' PDF reader inside the exe: " + all);
                 Check(found.TryGetValue("barcodes", out string barcodes) && barcodes == "ok", "the barcodes (bars, Data Matrix, Aztec, PDF417) didn't make and read back inside the exe: " + all);
                 Check(found.TryGetValue("batch", out string batchMade) && batchMade == "ok", "a batch (a CSV into a zip, read back) or the Batch export window didn't work inside the exe: " + all);
                 Check(found.TryGetValue("print", out string printed) && printed == "ok", "a printed page didn't lay out and read back, or the Print window didn't build, inside the exe: " + all);
@@ -91,7 +92,9 @@ namespace B0r3dQR.Tests
         static readonly Dictionary<string, string[]> AllowedNative = new Dictionary<string, string[]>
         {
             { "user32.dll", new[] { "GetThreadDpiAwarenessContext", "AreDpiAwarenessContextsEqual", "GetAwarenessFromDpiAwarenessContext",   // screen scaling
-                                    "EnumDisplayMonitors", "GetMonitorInfo", "GetCursorPos", "SetWindowPos", "GetDC", "ReleaseDC" } },  // the screens
+                                    "EnumDisplayMonitors", "GetMonitorInfo", "GetCursorPos", "SetWindowPos", "GetDC", "ReleaseDC",           // the screens
+                                    "RegisterHotKey", "UnregisterHotKey", "CreateIconFromResourceEx", "DestroyIcon" } },                     // scan from anywhere
+            { "shell32.dll", new[] { "Shell_NotifyIconW" } },                                                                                // the tray icon
             { "dwmapi.dll", new[] { "DwmSetWindowAttribute" } },                                                                   // title bars, fades
             { "gdi32.dll", new[] { "CreateCompatibleDC", "CreateCompatibleBitmap", "SelectObject", "BitBlt", "DeleteObject", "DeleteDC" } },  // screen pictures
             { "shcore.dll", new[] { "GetDpiForMonitor" } },                                                                        // each screen's scaling

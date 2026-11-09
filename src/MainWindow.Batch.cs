@@ -26,12 +26,13 @@ namespace B0r3dQR
                 WholePixels = wholePixels,
                 Look = look.Clone(),
             };
-            var window = new BatchWindow(kind, MakingBarcode ? BarcodeFormats.Get(codeType.Value).Label + " barcodes" : "QR codes");
+            var window = new BatchWindow(kind, MakingBarcode ? BarcodeFormats.Get(codeType.Value).Label + " barcodes" : "QR codes", settings);
             if (csvPath != null) window.LoadCsv(csvPath);
             if (show)
             {
                 window.Owner = this;
                 window.ShowDialog();
+                SaveSettings();
             }
             return window;
         }

@@ -20,6 +20,7 @@ namespace B0r3dQR
         public const string FileName = "b0r3dQR.ini";
         public const int MaxQuietZone = 20, MinPictureSize = 100;
         public const double MinWindow = 600, MaxWindow = 20000;
+        public const double MaxLabelNudge = 10;
 
         public Look Look = Look.Windows;
         public QrLevel Level = QrLevel.Q;   // error correction (the design keeps these three now; read for an older ini)
@@ -36,6 +37,11 @@ namespace B0r3dQR
         // the barcode settings and print size, kept apart from QR codes' as the website keeps them
         public BarcodeLook BarcodeLook = new BarcodeLook();
         public PrintSize BarcodePrint = new PrintSize();
+
+        // Print → A label sheet (Avery): the sheet and how far to nudge it (in millimetres)
+        public string LabelSheet = "5160";
+        public double LabelNudgeX, LabelNudgeY;
+        public bool ScanAnywhere = true;    // tray icon and Ctrl+Shift+Q while b0r3d QR is running
 
         public static Settings Load() => Load(System.IO.Path.Combine(DataFolder.Path, FileName));
 
@@ -137,6 +143,20 @@ namespace B0r3dQR
                     case "barcode_print_dpi":
                         if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out int barcodeDpi) && Array.IndexOf(PrintSize.Resolutions, barcodeDpi) >= 0) s.BarcodePrint.Dpi = barcodeDpi;
                         break;
+                    case "label_sheet":
+                        if (Printing.PrintSheet.IsLabelSheet(value)) s.LabelSheet = value.ToUpperInvariant();
+                        break;
+                    case "label_nudge_x":
+                        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double nudgeX) && !double.IsNaN(nudgeX) && !double.IsInfinity(nudgeX))
+                            s.LabelNudgeX = Math.Max(-MaxLabelNudge, Math.Min(MaxLabelNudge, nudgeX));
+                        break;
+                    case "label_nudge_y":
+                        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double nudgeY) && !double.IsNaN(nudgeY) && !double.IsInfinity(nudgeY))
+                            s.LabelNudgeY = Math.Max(-MaxLabelNudge, Math.Min(MaxLabelNudge, nudgeY));
+                        break;
+                    case "scan_anywhere":
+                        s.ScanAnywhere = !Array.Exists(new[] { "off", "false", "no", "0" }, word => value.Equals(word, StringComparison.OrdinalIgnoreCase));
+                        break;
                 }
             }
             if (!wholePixelsLine && lines.Length > 0)
@@ -191,6 +211,10 @@ namespace B0r3dQR
             text.Append("barcode_print_width=").Append(BarcodePrint.Width.ToString("0.######", CultureInfo.InvariantCulture)).Append("\r\n");
             text.Append("barcode_print_unit=").Append(BarcodePrint.Unit).Append("\r\n");
             text.Append("barcode_print_dpi=").Append(BarcodePrint.Dpi.ToString(CultureInfo.InvariantCulture)).Append("\r\n");
+            text.Append("label_sheet=").Append(LabelSheet).Append("\r\n");
+            text.Append("label_nudge_x=").Append(LabelNudgeX.ToString("0.######", CultureInfo.InvariantCulture)).Append("\r\n");
+            text.Append("label_nudge_y=").Append(LabelNudgeY.ToString("0.######", CultureInfo.InvariantCulture)).Append("\r\n");
+            text.Append("scan_anywhere=").Append(ScanAnywhere ? "on" : "off").Append("\r\n");
             return text.ToString();
         }
 

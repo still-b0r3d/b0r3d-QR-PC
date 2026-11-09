@@ -74,7 +74,7 @@ namespace B0r3dQR.Tests
         }
 
         // One code alone: the middle of the page, exactly its print size; a sheet of copies, as many as fit, each with
-        // its caption and cut marks; a code bigger than the paper made smaller to fit, and said so
+        // its caption and cut marks; an Avery label sheet with nudge; a code bigger than the paper made smaller to fit, and said so
         static void PrintingLaysOutPages()
         {
             MainWindow window = NewMain();
@@ -130,6 +130,35 @@ namespace B0r3dQR.Tests
             print.CaptionsCheck.IsChecked = false;
             print.MarksCheck.IsChecked = false;
             Check(!PageOf(print.Document, 0).Children.OfType<TextBlock>().Any() && !PageOf(print.Document, 0).Children.OfType<Path>().Any(), "no captions and no marks when they're off");
+
+            // Avery label sheets: one code on every label, no cut marks, and nudging shifts every label's code
+            PrintWindow labels = window.PrintWindowFor();
+            LayOut(labels.Root, 760, 720);
+            labels.Lay();
+            labels.LabelsChoice.IsChecked = true;
+            Check(labels.LabelsPanel.Visibility == Visibility.Visible && labels.MarksCheck.Visibility != Visibility.Visible, "label options shown, cut marks hidden");
+            Check(labels.CopiesBox.Value == 30 && labels.Document.Pages.Count == 1 && PageOf(labels.Document, 0).Children.OfType<Image>().Count() == 30 && !PageOf(labels.Document, 0).Children.OfType<Path>().Any(),
+                "Avery 5160: 30 labels on 1 US Letter sheet, no cut marks");
+            Check(labels.Document.DocumentPaginator.PageSize == PrintSheet.Letter, "Avery 5160 is on US Letter");
+            LabelSheetPreset l7160 = PrintSheet.FindLabelSheet("L7160");
+            labels.LabelSheetBox.SelectedItem = l7160;
+            Check(labels.CopiesBox.Value == 21 && labels.Document.DocumentPaginator.PageSize == PrintSheet.A4 && PageOf(labels.Document, 0).Children.OfType<Image>().Count() == 21,
+                "Avery L7160: 21 labels on 1 A4 sheet");
+            List<Rect> beforeNudge = PageOf(labels.Document, 0).Children.OfType<Image>().Select(Where).ToList();
+            for (int i = 0; i < beforeNudge.Count; i++)
+            {
+                int col = i % l7160.Columns, row = i / l7160.Columns;
+                var box = new Rect(l7160.Left + col * l7160.PitchX, l7160.Top + row * l7160.PitchY, l7160.LabelWidth, l7160.LabelHeight);
+                Check(box.Contains(beforeNudge[i]) && Math.Abs(beforeNudge[i].X + beforeNudge[i].Width / 2 - (box.X + box.Width / 2)) < 0.01,
+                    "label " + i + " should sit centered in its Avery L7160 die-cut box " + box + ", not at " + beforeNudge[i]);
+            }
+            labels.NudgeXBox.Value = 2.5;
+            labels.NudgeYBox.Value = -1.5;
+            List<Rect> afterNudge = PageOf(labels.Document, 0).Children.OfType<Image>().Select(Where).ToList();
+            double dx = PrintSheet.Mm(2.5), dy = PrintSheet.Mm(-1.5);
+            for (int i = 0; i < afterNudge.Count; i++)
+                Check(Math.Abs(afterNudge[i].X - (beforeNudge[i].X + dx)) < 0.01 && Math.Abs(afterNudge[i].Y - (beforeNudge[i].Y + dy)) < 0.01,
+                    "nudge should shift label " + i + " by (" + dx + ", " + dy + ")");
 
             // a Wi-Fi network's caption is its name, as Recent codes shows it: never its password
             Type(window, "WIFI:T:WPA;S:home;P:hunter2;;");
@@ -193,6 +222,10 @@ namespace B0r3dQR.Tests
             sheets.Lay();
             Check(sheets.SheetChoice.IsChecked == true && sheets.CopiesRow.Visibility != Visibility.Visible && sheets.Document.Pages.Count == 1, "a batch prints on a sheet, with no copies to choose");
             Check(PageOf(sheets.Document, 0).Children.OfType<TextBlock>().Select(t => t.Text).SequenceEqual(new[] { "first", "second", "third" }), "each code's file name under it");
+            sheets.LabelsChoice.IsChecked = true;
+            Check(sheets.Document.Pages.Count == 1 && PageOf(sheets.Document, 0).Children.OfType<Image>().Count() == 3 && !PageOf(sheets.Document, 0).Children.OfType<Path>().Any(),
+                "a batch on a label sheet: 3 labels used, no cut marks");
+            Check(PageOf(sheets.Document, 0).Children.OfType<TextBlock>().Select(t => t.Text).SequenceEqual(new[] { "first", "second", "third" }), "each label has its code's file name under it");
             sheets.AloneChoice.IsChecked = true;
             Check(sheets.Document.Pages.Count == 3, "one a page: " + sheets.Document.Pages.Count + " pages");
             for (int p = 0; p < 3; p++)

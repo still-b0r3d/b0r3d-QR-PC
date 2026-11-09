@@ -311,7 +311,8 @@ namespace B0r3dQR.Tests
             Unique("the Make tab with a barcode", always.Concat(new ContentControl[] { window.CodeTypeLabel, window.SavePngButton, window.SaveSvgButton, window.CopyButton,
                     window.ShowTextCheck, window.QuietZonesCheck, window.RectangularCheck, window.TransparentCheck, window.BarcodePrintCheck }.Select(b => Key(b.Content)))
                 .Concat(new[] { window.BarcodeDataSection, window.BarcodeLookSection }.Select(s => Key(s.Header))));
-            Unique("the Scan tab", always.Concat(new[] { window.ScanScreenButton, window.ScanCameraButton, window.OpenPictureButton, window.PastePictureButton, window.ScanFolderButton, window.ClearButton, window.CancelScanButton }.Select(b => Key(b.Content))));
+            Unique("the Scan tab", always.Concat(new ContentControl[] { window.ScanScreenButton, window.ScanAnywhereCheck, window.HideToTrayButton, window.ScanCameraButton, window.OpenPictureButton, window.PastePictureButton, window.ScanFolderButton, window.ClearButton, window.CancelScanButton }.Select(b => Key(b.Content))));
+            Unique("the tray menu", window.Tray.Menu.Items.OfType<MenuItem>().Select(m => Key(m.Header)));
             void Lists(MenuItem item)
             {
                 List<MenuItem> lines = item.Items.OfType<MenuItem>().ToList();
@@ -409,6 +410,72 @@ namespace B0r3dQR.Tests
             WaitForCheck(window);
             Pump(() => window.PrintButton.IsEnabled, 2000);
             Check(window.MakingBarcode && window.HasCode && window.PrintButton.IsEnabled, "a barcode should print too");
+        }
+
+        // Scan from anywhere: a tray icon and Ctrl+Shift+Q while b0r3d QR is running, scanning the screen without
+        // opening the window first when hidden in the tray, staying hidden on Esc, and opening on the Scan tab on a code
+        static void ScanFromAnywhere()
+        {
+            string data = DataFolder.Path;
+            DataFolder.Reset(Path.Combine(Work, "scan-anywhere"));
+            try
+            {
+                MainWindow window = NewMain();
+                Check(window.Tray != null && window.Tray.Active && window.ScanAnywhereMenu.IsChecked && window.ScanAnywhereCheck.IsChecked == true,
+                    "Scan from anywhere is on by default");
+                window.ScanAnywhereCheck.IsChecked = false;
+                Check(!window.Tray.Active && !window.ScanAnywhereMenu.IsChecked && !Settings.Load().ScanAnywhere,
+                    "turning it off on the Scan tab turns off the menu item, the tray and the saved setting");
+                window.OnHideToTray(null, null);
+                Check(window.HiddenInTray && window.Tray.Active && window.ScanAnywhereCheck.IsChecked == true && window.ScanAnywhereMenu.IsChecked,
+                    "hiding in the tray turns Scan from anywhere on");
+
+                // the tray's cup icon and Ctrl+Shift+Q with Windows
+                IntPtr icon = Tray.MakeIcon(32);
+                Check(icon != IntPtr.Zero, "couldn't make the tray's cup icon from the exe's resources");
+                Tray.DestroyIcon(icon);
+                using (var first = new Tray(window))
+                using (var second = new Tray(window))
+                {
+                    if (first.TryRegisterHotkeyOnly())
+                    {
+                        Check(first.HotkeyRegistered && !second.TryRegisterHotkeyOnly(),
+                            "while one Tray holds Ctrl+Shift+Q, a second shouldn't be able to take it");
+                    }
+                }
+
+                // scanning from the tray while on the Make tab: Esc leaves the window hidden in the tray on the Make tab;
+                // a chosen screen with a code brings the window back on the Scan tab with the code
+                var screen = new Screens.Screen { Bounds = new Int32Rect(0, 0, 300, 200), Scale = 1, Main = true, Number = 1 };
+                byte[] pixels = Canvas(300, 200);
+                PutQr(pixels, 300, "https://b0r3d.org/anywhere", 60, 10, 4);
+                BitmapSource shot = GrayPicture(pixels, 300, 200);
+                SnipWindow activeSnip = null;
+                window.MakeSnips = () =>
+                {
+                    activeSnip = new SnipWindow(screen, shot, true);
+                    return new List<SnipWindow> { activeSnip };
+                };
+                window.Tabs.SelectedItem = window.MakeTab;
+                window.Tray.TriggerScan();
+                Check(window.Scanning && activeSnip != null && window.HiddenInTray && window.Tabs.SelectedItem == window.MakeTab,
+                    "starting a scan from the tray opens the overlay without showing the window first");
+                activeSnip.Close();
+                Pump(() => !window.Scanning, 3000);
+                Check(window.HiddenInTray && window.Tabs.SelectedItem == window.MakeTab && window.Found.Count == 0,
+                    "cancelling a scan from the tray leaves b0r3d QR hidden in the tray");
+
+                window.Tray.TriggerScan();
+                Check(window.Scanning && activeSnip != null, "second scan from the tray");
+                activeSnip.Drag(new Point(40, 40), new Point(41, 41));
+                Pump(() => !window.Scanning, 10000);
+                Check(!window.HiddenInTray && window.Tabs.SelectedItem == window.ScanTab && window.Found.Count == 1 && window.Found[0].Text == "https://b0r3d.org/anywhere",
+                    "a code scanned from the tray opens the Scan tab with the code: " + window.ScanStatus.Text);
+            }
+            finally
+            {
+                DataFolder.Reset(data);
+            }
         }
     }
 }

@@ -37,10 +37,10 @@ namespace B0r3dQR
             noteTimer.Tick += (s, e) => { noteTimer.Stop(); ShowNote(); };
 
             Theme.Changed += ShowLook;
-            SourceInitialized += (s, e) => Theme.TitleBar(this);
+            SourceInitialized += (s, e) => { Theme.TitleBar(this); StartTray(); };
             Loaded += (s, e) => DataBox.Focus();
             Closing += OnClosing;
-            Closed += (s, e) => Theme.Changed -= ShowLook;
+            Closed += (s, e) => { Theme.Changed -= ShowLook; StopTray(); };
 
             Exports.ClearDragFolder();
             SetUpScan();
@@ -148,6 +148,7 @@ namespace B0r3dQR
             settings.WholePixels = wholePixels;
             settings.BarcodeLook = look.Clone();
             settings.BarcodePrint = barcodePrint.Clone();
+            settings.ScanAnywhere = scanAnywhere;
             settings.Maximized = WindowState == WindowState.Maximized || WindowState == WindowState.Minimized && maximized;
             Rect normal = WindowState == WindowState.Normal ? new Rect(Left, Top, ActualWidth, ActualHeight) : RestoreBounds;
             if (!normal.IsEmpty && normal.Width > 0 && normal.Height > 0)

@@ -32,17 +32,96 @@ namespace B0r3dQR
         readonly ObservableCollection<FoundCode> found = new ObservableCollection<FoundCode>();
         CancellationTokenSource scanning;   // the reading going on now, or null
         List<SnipWindow> snips;             // set while the screens wait for a box
+        Tray tray;                          // the tray icon and Ctrl+Shift+Q while b0r3d QR is running
+        bool scanAnywhere = true;
+        bool windowOnScreen, hiddenInTray, fromAnywhere;
         bool steppedAside;                  // hidden while the screens are pictured
         bool draggingOut;                   // the code is being dragged out of this window
         string madeAgain;                   // the scanned text given to the Make tab, made exactly as it was
 
+        // for the tests: stands in for capturing and covering the real screens
+        internal Func<List<SnipWindow>> MakeSnips;
         internal ObservableCollection<FoundCode> Found => found;
         internal bool Scanning => scanning != null || snips != null;
+        internal Tray Tray => tray;
+        internal bool HiddenInTray => hiddenInTray;
 
         void SetUpScan()
         {
             FoundList.ItemsSource = found;
             found.CollectionChanged += (s, e) => FoundHint.Visibility = found.Count == 0 ? Visibility.Visible : Visibility.Collapsed;
+            tray = new Tray(this);
+            SetScanAnywhere(settings.ScanAnywhere, false);
+        }
+
+        internal void StartTray()
+        {
+            windowOnScreen = true;
+            tray.SetActive(scanAnywhere, true);
+            ShowScanAnywhereNote();
+        }
+
+        void StopTray() => tray?.Dispose();
+
+        internal void SetScanAnywhere(bool on, bool save = true)
+        {
+            scanAnywhere = on;
+            ScanAnywhereMenu.IsChecked = on;
+            ScanAnywhereCheck.IsChecked = on;
+            tray?.SetActive(on, windowOnScreen);
+            ShowScanAnywhereNote();
+            if (save && ready)
+            {
+                settings.ScanAnywhere = on;
+                settings.Save();
+                ShowNote();
+            }
+        }
+
+        void ShowScanAnywhereNote()
+        {
+            ScanAnywhereNote.Text = !scanAnywhere
+                ? "Turn this on to keep an icon in the tray and use " + Tray.HotkeyText + " in any program while b0r3d QR is running."
+                : windowOnScreen && tray != null && !tray.HotkeyRegistered
+                ? "The tray icon is ready (click it to scan the screen). Another program is using " + Tray.HotkeyText + "."
+                : "While b0r3d QR is running, click its tray icon or press " + Tray.HotkeyText + " in any program to scan the screen without opening this window first.";
+        }
+
+        void OnScanAnywhereMenu(object sender, RoutedEventArgs e) => SetScanAnywhere(ScanAnywhereMenu.IsChecked);
+
+        void OnScanAnywhereCheck(object sender, RoutedEventArgs e)
+        {
+            if (ready) SetScanAnywhere(ScanAnywhereCheck.IsChecked == true);
+        }
+
+        internal void OnHideToTray(object sender, RoutedEventArgs e)
+        {
+            if (!scanAnywhere) SetScanAnywhere(true);
+            hiddenInTray = true;
+            if (IsVisible) Hide();
+        }
+
+        internal void ShowFromTray()
+        {
+            hiddenInTray = false;
+            if (windowOnScreen && !IsVisible) Show();
+            if (WindowState == WindowState.Minimized) WindowState = maximized ? WindowState.Maximized : WindowState.Normal;
+            if (IsVisible) Activate();
+        }
+
+        // from the tray icon or Ctrl+Shift+Q: scans the screen without opening the main window first
+        internal void ScanScreenFromAnywhere()
+        {
+            if (Scanning) return;
+            if (hiddenInTray || !IsVisible || WindowState == WindowState.Minimized)
+            {
+                fromAnywhere = true;
+                snips = new List<SnipWindow>();
+                CommandManager.InvalidateRequerySuggested();
+                ShowSnips();
+                return;
+            }
+            OnScanScreen(this, null);
         }
 
         void WhenNotScanning(object sender, CanExecuteRoutedEventArgs e)
@@ -142,11 +221,28 @@ namespace B0r3dQR
             var shown = new List<SnipWindow>();
             try
             {
+                if (MakeSnips != null)
+                {
+                    shown = MakeSnips();
+                    if (shown.Count == 0)
+                    {
+                        snips = null;
+                        fromAnywhere = false;
+                        ShowFromTray();
+                        ComeBack();
+                        ScanProblem("Windows says there are no screens to picture.");
+                        return;
+                    }
+                    WatchSnips(shown);
+                    return;
+                }
                 foreach (Screens.Screen screen in Screens.All())
                     shown.Add(new SnipWindow(screen, Screens.Capture(screen.Bounds), true));
                 if (shown.Count == 0)
                 {
                     snips = null;
+                    fromAnywhere = false;
+                    ShowFromTray();
                     ComeBack();
                     ScanProblem("Windows says there are no screens to picture.");
                     return;
@@ -164,6 +260,8 @@ namespace B0r3dQR
             }
             catch (Exception x)
             {
+                fromAnywhere = false;
+                ShowFromTray();
                 if (snips != null && snips.Count > 0)
                 {
                     OnSnipChosen(snips[0], SnipWindow.Choice.Cancel, Int32Rect.Empty);
@@ -204,10 +302,19 @@ namespace B0r3dQR
                 snip.Chosen -= OnSnipChosen;
                 if (!snip.IsClosed) snip.Close();
             }
+            bool startedAway = fromAnywhere;
+            fromAnywhere = false;
+            if (choice == SnipWindow.Choice.Cancel)
+            {
+                ComeBack();
+                if (!startedAway) Tabs.SelectedItem = ScanTab;
+                CommandManager.InvalidateRequerySuggested();
+                return;
+            }
+            if (startedAway) ShowFromTray();
             ComeBack();
             Tabs.SelectedItem = ScanTab;
             CommandManager.InvalidateRequerySuggested();
-            if (choice == SnipWindow.Choice.Cancel) return;
 
             bool several = all.Count > 1;
             string Name(SnipWindow w) => several ? "screen " + w.Screen.Number : "the screen";

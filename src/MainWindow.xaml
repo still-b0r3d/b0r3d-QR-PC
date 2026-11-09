@@ -122,6 +122,9 @@
                 <MenuItem Header="_Open picture…" Command="{x:Static local:Commands.OpenPicture}" />
                 <MenuItem Header="_Paste picture" Command="{x:Static local:Commands.PastePicture}" />
                 <MenuItem Header="Scan a fol_der…" Command="{x:Static local:Commands.ScanFolder}" />
+                <Separator />
+                <MenuItem x:Name="ScanAnywhereMenu" Header="Scan from _anywhere (tray icon and Ctrl+Shift+Q)" IsCheckable="True" Click="OnScanAnywhereMenu" />
+                <MenuItem x:Name="HideToTrayMenu" Header="Hide in the _tray" Click="OnHideToTray" />
             </MenuItem>
             <MenuItem Header="_View">
                 <MenuItem Header="_Look">
@@ -506,6 +509,10 @@
                                     <Button x:Name="ScanScreenButton" Content="Scan the _screen" Command="{x:Static local:Commands.ScanScreen}" HorizontalAlignment="Stretch" />
                                     <TextBlock Style="{StaticResource Hint}"
                                                Text="b0r3d QR steps aside and every screen freezes. Drag a box around a code, or click a screen to read all of it. Enter reads every screen; Esc cancels." />
+                                    <CheckBox x:Name="ScanAnywhereCheck" Content="From anywhere: tray icon and Ctrl+Shift+_Q" Margin="0,10,0,0" Checked="OnScanAnywhereCheck" Unchecked="OnScanAnywhereCheck" />
+                                    <Button x:Name="HideToTrayButton" Content="Hide in the _tray" Click="OnHideToTray" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
+                                    <TextBlock x:Name="ScanAnywhereNote" Style="{StaticResource Hint}"
+                                               Text="While b0r3d QR is running, click its tray icon or press Ctrl+Shift+Q in any program to scan the screen without opening this window first." />
 
                                     <TextBlock Style="{StaticResource Heading}" Text="With a camera" />
                                     <Button x:Name="ScanCameraButton" Content="Scan _with the camera" Command="{x:Static local:Commands.ScanCamera}" HorizontalAlignment="Stretch" />

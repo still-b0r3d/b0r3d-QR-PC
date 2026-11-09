@@ -12,17 +12,18 @@ using B0r3dQR.Printing;
 
 namespace B0r3dQR
 {
-    // Printing: the code alone at its exact size, or a sheet of copies; or a batch's codes on sheets (or one a
-    // page). A preview of each page, then Windows' Print dialog (the printer and its paper).
+    // Printing: the code alone at its exact size, a sheet of copies, or an Avery label sheet; or a batch's codes on
+    // sheets, on label sheets, or one a page. A preview of each page, then Windows' Print dialog (the printer and its paper).
     public partial class PrintWindow : Window
     {
         readonly IList<PrintCode> codes;     // one code (copies of it) or a batch's
         readonly bool batch;
         readonly string unit;                // "mm" or "in", for saying the size
+        readonly Settings settings;
         readonly PrintOptions options = new PrintOptions();
         FixedDocument document;
-        int page;
-        bool showing = true, perPageSet;
+        int page, lastFit;
+        bool showing = true, perPageSet, copiesEdited;
 
         // for the tests: the paper, instead of the default printer's
         internal Size? PaperOverride;
@@ -34,21 +35,27 @@ namespace B0r3dQR
         internal Action<string> Warned;
         internal bool Shrunk { get; private set; }
 
-        // `code` alone or as copies; `sizeNote` says what decides its size
-        internal PrintWindow(PrintCode code, string sizeNote, string unit) : this(new List<PrintCode> { code }, false, sizeNote, unit) { }
+        // `code` alone, as copies or on labels; `sizeNote` says what decides its size
+        internal PrintWindow(PrintCode code, string sizeNote, string unit, Settings settings = null) : this(new List<PrintCode> { code }, false, sizeNote, unit, settings) { }
 
         // a batch's codes
-        internal PrintWindow(IList<PrintCode> codes, string sizeNote, string unit) : this(codes, true, sizeNote, unit) { }
+        internal PrintWindow(IList<PrintCode> codes, string sizeNote, string unit, Settings settings = null) : this(codes, true, sizeNote, unit, settings) { }
 
-        PrintWindow(IList<PrintCode> codes, bool batch, string sizeNote, string unit)
+        PrintWindow(IList<PrintCode> codes, bool batch, string sizeNote, string unit, Settings settings)
         {
             InitializeComponent();
             this.codes = codes;
             this.batch = batch;
             this.unit = unit;
+            this.settings = settings;
             WhatLine.Text = !batch ? "The code from the Make tab, at its exact size." : codes.Count == 1 ? "The batch's one code, at its own size." : "The batch's " + codes.Count.ToString("N0") + " codes, each at its own size.";
             AloneText.Text = batch ? "_One a page, in the middle" : "_Alone, in the middle of the page";
             SheetText.Text = batch ? "On _sheets, as many to a page as fit" : "A _sheet of copies";
+            LabelsText.Text = batch ? "On _label sheets (Avery)" : "A _label sheet (Avery)";
+            LabelSheetBox.ItemsSource = PrintSheet.LabelSheets;
+            LabelSheetBox.SelectedItem = PrintSheet.FindLabelSheet(settings?.LabelSheet);
+            NudgeXBox.Value = settings?.LabelNudgeX ?? 0;
+            NudgeYBox.Value = settings?.LabelNudgeY ?? 0;
             if (batch) SheetChoice.IsChecked = true;
             SizeLine.Text = sizeNote;
             SourceInitialized += (s, e) => Theme.TitleBar(this);
@@ -109,48 +116,84 @@ namespace B0r3dQR
             Lay();
         }
 
-        void OnCopies(object sender, EventArgs e)
+        void OnLabelSheet(object sender, SelectionChangedEventArgs e)
         {
             if (showing || codes == null) return;
             Lay();
         }
 
+        void OnNudge(object sender, EventArgs e)
+        {
+            if (showing || codes == null) return;
+            Lay();
+        }
+
+        void OnCopies(object sender, EventArgs e)
+        {
+            if (showing || codes == null) return;
+            copiesEdited = true;
+            Lay();
+        }
+
+        void KeepLabelSettings()
+        {
+            if (settings == null) return;
+            if (LabelSheetBox.SelectedItem is LabelSheetPreset preset) settings.LabelSheet = preset.Code;
+            settings.LabelNudgeX = NudgeXBox.Value;
+            settings.LabelNudgeY = NudgeYBox.Value;
+        }
+
         // the pages, laid out again for the choices and the paper (`chosen`: the paper picked in the Print dialog)
         internal void Lay(Size? chosen = null)
         {
+            NudgeXBox.Commit();
+            NudgeYBox.Commit();
+            CopiesBox.Commit();
+            KeepLabelSettings();
             if (chosen.HasValue)
             {
                 paperSize = chosen;
                 paperChosen = true;
             }
-            options.Page = (paperSize ?? (paperSize = Paper())).Value;
+            bool labels = LabelsChoice.IsChecked == true;
+            options.Labels = labels ? (LabelSheetBox.SelectedItem as LabelSheetPreset ?? PrintSheet.LabelSheets[0]) : null;
+            options.NudgeX = labels ? PrintSheet.Mm(NudgeXBox.Value) : 0;
+            options.NudgeY = labels ? PrintSheet.Mm(NudgeYBox.Value) : 0;
+            options.Page = options.Labels != null ? options.Labels.Page : (paperSize ?? (paperSize = Paper())).Value;
             options.Sheet = SheetChoice.IsChecked == true;
             options.Captions = CaptionsCheck.IsChecked == true;
-            options.CutMarks = MarksCheck.IsChecked == true;
-            CopiesRow.Visibility = !batch && options.Sheet ? Visibility.Visible : Visibility.Collapsed;
-            CaptionsCheck.Visibility = MarksCheck.Visibility = options.Sheet ? Visibility.Visible : Visibility.Collapsed;
+            options.CutMarks = !labels && MarksCheck.IsChecked == true;
+            LabelsPanel.Visibility = labels ? Visibility.Visible : Visibility.Collapsed;
+            CopiesRow.Visibility = !batch && (options.Sheet || labels) ? Visibility.Visible : Visibility.Collapsed;
+            CaptionsCheck.Visibility = options.Sheet || labels ? Visibility.Visible : Visibility.Collapsed;
+            MarksCheck.Visibility = options.Sheet ? Visibility.Visible : Visibility.Collapsed;
             IList<PrintCode> these = codes;
             if (!batch)
             {
                 int fit = PrintSheet.PerPage(codes[0].Size, options);
-                if (!perPageSet)
+                if (!copiesEdited && (!perPageSet || fit != lastFit))
                 {
-                    // a page full of copies, to start with
+                    // a page (or label sheet) full of copies, to start with
                     showing = true;
                     CopiesBox.Value = fit;
                     showing = false;
                     perPageSet = true;
+                    lastFit = fit;
                 }
-                CopiesNote.Text = "copies (" + fit.ToString("N0") + " fit on a page)";
-                if (options.Sheet) these = Enumerable.Repeat(codes[0], Math.Max(1, (int)CopiesBox.Value)).ToList();
+                CopiesNote.Text = labels ? "labels (" + fit.ToString("N0") + " on a sheet)" : "copies (" + fit.ToString("N0") + " fit on a page)";
+                if (options.Sheet || labels) these = Enumerable.Repeat(codes[0], Math.Max(1, (int)CopiesBox.Value)).ToList();
             }
             document = PrintSheet.Pages(these, options, out bool shrunk);
             Shrunk = shrunk;
-            ShrunkLine.Text = "Bigger than the paper leaves room for, so it's printed smaller to fit: make it smaller on the Make tab for its exact size.";
+            ShrunkLine.Text = labels
+                ? "Fitted to the labels: the code is bigger than a label leaves room for."
+                : "Bigger than the paper leaves room for, so it's printed smaller to fit: make it smaller on the Make tab for its exact size.";
             ShrunkLine.Visibility = shrunk ? Visibility.Visible : Visibility.Collapsed;
-            PaperLine.Text = PrintSheet.Describe(options.Page, unit) +
-                             (PaperOverride.HasValue || paperChosen ? "" : fallback ? " (no printer said what paper it has)" : ", the default printer's paper") +
-                             ". Print… lets you choose the printer and its paper.";
+            PaperLine.Text = labels
+                ? (options.Labels.Page == PrintSheet.Letter ? "US Letter (" : "A4 (") + PrintSheet.Describe(options.Page, unit) + "), at 100 % (actual size) with no margins."
+                : PrintSheet.Describe(options.Page, unit) +
+                  (PaperOverride.HasValue || paperChosen ? "" : fallback ? " (no printer said what paper it has)" : ", the default printer's paper") +
+                  ". Print… lets you choose the printer and its paper.";
             page = Math.Min(page, Math.Max(0, document.Pages.Count - 1));
             ShowPage();
         }
@@ -204,6 +247,8 @@ namespace B0r3dQR
             bool? chosen;
             try
             {
+                if (options.Labels != null && dialog.PrintTicket != null)
+                    dialog.PrintTicket.PageMediaSize = new PageMediaSize(options.Labels.Page == PrintSheet.Letter ? PageMediaSizeName.NorthAmericaLetter : PageMediaSizeName.ISOA4, options.Labels.Page.Width, options.Labels.Page.Height);
                 chosen = AskPrinter(dialog);
             }
             catch (Exception x) when (PrinterTrouble(x))
@@ -215,7 +260,7 @@ namespace B0r3dQR
             if (chosen != true) return;
             try
             {
-                Lay(PaperOf(dialog.PrintTicket) ?? options.Page);
+                Lay(options.Labels != null ? options.Labels.Page : (PaperOf(dialog.PrintTicket) ?? options.Page));
                 dialog.PrintDocument(document.DocumentPaginator, batch ? "b0r3d QR batch" : "b0r3d QR code");
                 StatusLine.Text = LongText.Cap("Sent to " + dialog.PrintQueue.FullName + ": " + (document.Pages.Count == 1 ? "1 page." : document.Pages.Count.ToString("N0") + " pages."));
                 if (System.Windows.Automation.Peers.AutomationPeer.ListenerExists(System.Windows.Automation.Peers.AutomationEvents.LiveRegionChanged))

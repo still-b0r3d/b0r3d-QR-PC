@@ -54,19 +54,25 @@ namespace B0r3dQR.Tests
             DataFolder.Reset(folder);
             try
             {
-                var s = new Settings { Look = Look.Dark, Level = QrLevel.H, QuietZone = 7, PictureSize = 2400, WindowWidth = 1234, WindowHeight = 777, Maximized = true };
+                var s = new Settings
+                {
+                    Look = Look.Dark, Level = QrLevel.H, QuietZone = 7, PictureSize = 2400, WindowWidth = 1234, WindowHeight = 777, Maximized = true,
+                    LabelSheet = "L7163", LabelNudgeX = 1.5, LabelNudgeY = -2.25,
+                };
                 Check(s.Save(), "couldn't save: " + DataFolder.WhyNotKept);
                 Settings back = Settings.Load();
                 Check(back.Look == Look.Dark && back.Level == QrLevel.H && back.QuietZone == 7 && back.PictureSize == 2400, "read back: " + back.ToText());
                 Check(back.WindowWidth == 1234 && back.WindowHeight == 777 && back.Maximized, "the window read back as " + back.ToText());
+                Check(back.LabelSheet == "L7163" && back.LabelNudgeX == 1.5 && back.LabelNudgeY == -2.25, "the label sheet settings read back as " + back.ToText());
                 string file = Path.Combine(folder, Settings.FileName);
                 Check(!File.Exists(file + ".tmp"), "a .tmp was left behind");
 
-                File.WriteAllText(file, "look=purple\nlevel=Z\nquiet_zone=999\npicture_size=-5\nwindow=abc\nnonsense\n=x\n");
+                File.WriteAllText(file, "look=purple\nlevel=Z\nquiet_zone=999\npicture_size=-5\nwindow=abc\nlabel_sheet=9999\nlabel_nudge_x=99\nlabel_nudge_y=-99\nnonsense\n=x\n");
                 Settings odd = Settings.Load();
                 Check(odd.Look == Look.Windows && odd.Level == QrLevel.Q, "garbled look and level should be the defaults: " + odd.ToText());
                 Check(odd.QuietZone == Settings.MaxQuietZone && odd.PictureSize == Settings.MinPictureSize, "numbers out of range should be brought in: " + odd.ToText());
                 Check(odd.WindowWidth == 1000 && odd.WindowHeight == 680 && !odd.Maximized, "a garbled window size should be the default: " + odd.ToText());
+                Check(odd.LabelSheet == "5160" && odd.LabelNudgeX == Settings.MaxLabelNudge && odd.LabelNudgeY == -Settings.MaxLabelNudge, "garbled label settings should be the default or clamped: " + odd.ToText());
 
                 File.WriteAllText(file, "look=2\nlevel=3\n");
                 Settings numbers = Settings.Load();

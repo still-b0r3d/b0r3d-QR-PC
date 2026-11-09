@@ -33,6 +33,7 @@ namespace B0r3dQR
 
         readonly BatchKind kind;
         readonly string what;          // "QR codes", "EAN-13 barcodes"
+        readonly Settings settings;
         List<BatchRow> rows = new List<BatchRow>();
         List<BatchItem> items = new List<BatchItem>();
         int shown, planning;
@@ -48,11 +49,12 @@ namespace B0r3dQR
         internal IReadOnlyList<BatchItem> Items => items;
         internal BatchKind Kind => kind;
 
-        internal BatchWindow(BatchKind kind, string what)
+        internal BatchWindow(BatchKind kind, string what, Settings settings = null)
         {
             InitializeComponent();
             this.kind = kind;
             this.what = what;
+            this.settings = settings;
             AskFolder = () => FileDialogs.PickFolder(this);
             AskZip = () => FileDialogs.Save(this, "Save the batch as a zip file", "Zip file", ".zip", ZipName);
             bool qr = kind.Barcode == null;
@@ -276,7 +278,7 @@ namespace B0r3dQR
                 if (code != null) codes.Add(code);
             }
             if (codes.Count == 0) return null;
-            return new PrintWindow(codes, Printing.PrintSheet.SizeNote(codes[0].Size, kind.Print, codes.Count > 1), kind.Print.Unit);
+            return new PrintWindow(codes, Printing.PrintSheet.SizeNote(codes[0].Size, kind.Print, codes.Count > 1), kind.Print.Unit, settings);
         }
 
         // ---------- each row in turn ----------
