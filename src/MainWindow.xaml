@@ -517,7 +517,7 @@
                                     <Button x:Name="PastePictureButton" Content="_Paste picture" Command="{x:Static local:Commands.PastePicture}" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
                                     <Button x:Name="ScanFolderButton" Content="Scan a fol_der…" Command="{x:Static local:Commands.ScanFolder}" HorizontalAlignment="Stretch" Margin="0,8,0,0" />
                                     <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0"
-                                               Text="Or drop pictures or a folder anywhere on this window, or press Ctrl+V with a picture copied. PNG, JPEG, BMP, GIF and TIFF, and WebP or HEIC where Windows can open them. For a PDF, open it and scan the screen." />
+                                               Text="Or drop pictures, PDFs or a folder anywhere on this window, or press Ctrl+V with a picture or file copied. PNG, JPEG, BMP, GIF, TIFF and PDF, and WebP or HEIC where Windows can open them." />
                                 </StackPanel>
                             </ScrollViewer>
                         </Border>

@@ -293,8 +293,9 @@ namespace B0r3dQR.Tests
 
             byte[] pdf = QrExport.Pdf(art, null, false, "b0r3d.org");
             string head = Encoding.ASCII.GetString(pdf, 0, Math.Min(pdf.Length, 4000));
-            Check(head.StartsWith("%PDF-1.4", StringComparison.Ordinal) && head.Contains("/MediaBox [0 0 150 150]") && head.Contains("/Width 625 /Height 625"), "the PDF should be 150 pt square with a 625 px picture (200 px at 96 to the inch, drawn at 300 DPI)");
-            Check(ReadPicture(PdfPicture(pdf)) == d.Data, "the PDF's picture doesn't read back");
+            Check(head.StartsWith("%PDF-1.4", StringComparison.Ordinal) && head.Contains("/MediaBox [0 0 150 150]") && !head.Contains("/Subtype /Image") && head.Contains("0 0 200 200 re\n"),
+                "the PDF should be 150 pt square (200 px at 96 to the inch) and drawn as vector shapes");
+            Check(ReadPicture(PdfPicture(pdf)) == d.Data, "the PDF doesn't read back");
 
             foreach (QrExport.TextStyle style in new[] { QrExport.TextStyle.HalfBlocks, QrExport.TextStyle.FullBlocks, QrExport.TextStyle.Ascii })
             {
@@ -318,7 +319,13 @@ namespace B0r3dQR.Tests
             byte[] printedJpg = QrExport.Jpg(QrExport.Picture(art, print, false, true));
             Check(Find(printedJpg, "JFIF") == 6 && printedJpg[13] == 1 && printedJpg[14] * 256 + printedJpg[15] == 300 && printedJpg[16] * 256 + printedJpg[17] == 300, "a 300 DPI JPG should say 300 dots an inch");
             Check(Encoding.ASCII.GetString(QrExport.Pdf(art, print, false, "x"), 0, 2000).Contains("/MediaBox [0 0 113.39 113.39]"), "a 40 mm PDF should be 113.39 pt across");
-            Check(Encoding.GetEncoding(28591).GetString(QrExport.Pdf(new QrArt(clear), null, false, "x")).Contains("/SMask 7 0 R"), "a see-through code's PDF should keep its see-through parts (a soft mask)");
+            string clearPdf = Encoding.GetEncoding(28591).GetString(QrExport.Pdf(new QrArt(clear), null, false, "x"));
+            Check(!clearPdf.Contains("/Subtype /Image") && !clearPdf.Contains("1 1 1 rg\n0 0 200 200 re"), "a see-through code's PDF should draw only the modules, with no background rectangle");
+            QrArt cupArt = new QrArt(Presets.Apply("b0r3d Cup", d.Clone()));
+            byte[] cupPdf = QrExport.Pdf(cupArt, null, false, "cup");
+            string cupPdfText = Encoding.GetEncoding(28591).GetString(cupPdf);
+            Check(cupPdfText.Contains("/Subtype /Image") && cupPdfText.Contains("/SMask ") && ReadPicture(PdfPicture(cupPdf)) == d.Data,
+                "a raster logo's PDF should embed the logo picture with a soft mask alongside the vector modules and read back");
             QrDesign round = d.Clone();
             round.BorderRadius = 16;
             Check(new QrArt(round).ToSvg().Contains("<clipPath id=\"qr-export-clip\"><rect width=\"200\" height=\"200\" rx=\"16\" ry=\"16\"/></clipPath>"), "rounded corners should clip the SVG as the website's does");
@@ -379,19 +386,8 @@ namespace B0r3dQR.Tests
             return Color.FromArgb(px[3], px[2], px[1], px[0]);
         }
 
-        // the picture inside one of b0r3d QR's PDFs (its colours, Flate-compressed)
-        static BitmapSource PdfPicture(byte[] pdf)
-        {
-            string text = Encoding.GetEncoding(28591).GetString(pdf);
-            Match m = Regex.Match(text, @"/Width (\d+) /Height (\d+) /ColorSpace /DeviceRGB[^>]*/Length (\d+) >>\nstream\n");
-            int w = int.Parse(m.Groups[1].Value), h = int.Parse(m.Groups[2].Value), length = int.Parse(m.Groups[3].Value);
-            int start = m.Index + m.Length;
-            var rgb = new MemoryStream();
-            using (var inflate = new DeflateStream(new MemoryStream(pdf, start + 2, length - 6), CompressionMode.Decompress)) inflate.CopyTo(rgb);
-            BitmapSource picture = BitmapSource.Create(w, h, 96, 96, PixelFormats.Rgb24, null, rgb.ToArray(), w * 3);
-            picture.Freeze();
-            return picture;
-        }
+        // the first page of one of b0r3d QR's PDFs, rendered by Windows' PDF reader
+        static BitmapSource PdfPicture(byte[] pdf) => PdfFile.ReadPicture(pdf);
 
         // the text export back into modules (true = dark)
         static bool[,] TextGrid(string text, QrExport.TextStyle style)

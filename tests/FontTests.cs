@@ -244,6 +244,11 @@ namespace B0r3dQR.Tests
             for (int i = 0; i < a.Length; i++) if (Math.Abs(a[i] - b[i]) > 64) differ++;
             Check(differ > 100, "the Pacifico PNG's caption looks like Comic Sans' (" + differ + " pixels apart)");
             Check(ScanCheck.Read(a, w, h)?.Text == "https://b0r3d.org", "the PNG in Pacifico should scan");
+            byte[] pacificoPdf = QrExport.Pdf(pacifico, new PrintSize(), false, "pacifico");
+            string pacificoPdfText = System.Text.Encoding.GetEncoding(28591).GetString(pacificoPdf);
+            Check(!pacificoPdfText.Contains("/Subtype /Image") && pacificoPdfText.Contains(" c\n"), "a framed code's PDF should draw the caption as letter outlines");
+            byte[] pdfGrays = ScanCheck.Grays(PdfFile.ReadPicture(pacificoPdf), out int pw, out int ph);
+            Check(ScanCheck.Read(pdfGrays, pw, ph)?.Text == "https://b0r3d.org", "the Pacifico PDF should scan");
 
             List<BatchRow> rows = BatchRows.ReadQr("url,frameText,fileName,frameFontFamily\nhttps://b0r3d.org/a,Scan me,a,Pacifico\nhttps://b0r3d.org/b,Hello there,b,\"'Bebas Neue', sans-serif\"\n" +
                                                    "https://b0r3d.org/c,Plain,c,Default\nhttps://b0r3d.org/d,Odd,d,No Such Font\n", out bool framed);

@@ -32,11 +32,30 @@
   </ItemGroup>
 
   <ItemGroup>
-    <!-- parts of .NET Framework itself (every Windows has them): zip files for batch export, and printing -->
+    <!-- parts of .NET Framework and Windows itself (every Windows 10 and 11 has them): zip files, printing, and PDF reading -->
     <Reference Include="System.IO.Compression" />
     <Reference Include="System.IO.Compression.FileSystem" />
     <Reference Include="ReachFramework" />
     <Reference Include="System.Printing" />
+    <Reference Include="System.Runtime.WindowsRuntime">
+      <HintPath>$(windir)\Microsoft.NET\Framework64\v4.0.30319\System.Runtime.WindowsRuntime.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Windows.Data">
+      <HintPath>$(windir)\System32\WinMetadata\Windows.Data.winmd</HintPath>
+      <IsWinMDFile>true</IsWinMDFile>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Windows.Foundation">
+      <HintPath>$(windir)\System32\WinMetadata\Windows.Foundation.winmd</HintPath>
+      <IsWinMDFile>true</IsWinMDFile>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Windows.Storage">
+      <HintPath>$(windir)\System32\WinMetadata\Windows.Storage.winmd</HintPath>
+      <IsWinMDFile>true</IsWinMDFile>
+      <Private>false</Private>
+    </Reference>
   </ItemGroup>
 
   <ItemGroup>

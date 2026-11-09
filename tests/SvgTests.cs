@@ -289,7 +289,9 @@ namespace B0r3dQR.Tests
             Check(ReadPicture(png) == d.Data && Like(PixelAt(png, middle, middle), brown), "the PNG should read back with the logo in its middle: " + PixelAt(png, middle, middle));
             BitmapSource jpg = Images.FromBytes(QrExport.Jpg(QrExport.Picture(art, null, false, true)));
             Check(ReadPicture(jpg) == d.Data && Like(PixelAt(jpg, middle, middle), brown, 12), "the JPG should read back with the logo: " + PixelAt(jpg, middle, middle));
-            BitmapSource pdf = PdfPicture(QrExport.Pdf(art, null, false, "x"));
+            byte[] pdfBytes = QrExport.Pdf(art, null, false, "x");
+            Check(!Encoding.GetEncoding(28591).GetString(pdfBytes).Contains("/Subtype /Image"), "an SVG logo's PDF should be vector all the way");
+            BitmapSource pdf = PdfPicture(pdfBytes);
             Check(ReadPicture(pdf) == d.Data && Like(PixelAt(pdf, pdf.PixelWidth / 2, pdf.PixelHeight / 2), brown), "the PDF's picture should read back with the logo");
             Check(art.ToSvg().Contains("href=\"" + d.Logo + "\""), "the SVG file should carry the logo as it is, as the website's does");
 

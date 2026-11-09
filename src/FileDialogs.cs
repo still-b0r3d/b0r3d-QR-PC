@@ -30,6 +30,7 @@ namespace B0r3dQR
         const uint FileSystemPath = 0x80058000;
 
         internal const string PictureTypes = "*.png;*.jpg;*.jpeg;*.jpe;*.jfif;*.bmp;*.dib;*.gif;*.tif;*.tiff;*.ico;*.webp;*.heic;*.heif;*.avif;*.jxr;*.wdp";
+        internal const string ScanTypes = PictureTypes + ";*.pdf";
 
         // the chosen file, or null when cancelled
         public static string Save(Window owner, string title, string typeName, string extension, string fileName) =>
@@ -183,10 +184,11 @@ namespace B0r3dQR
             else
             {
                 dialog.SetOptions(options | OpenOptions);
-                dialog.SetTitle("Open pictures to read codes from");
-                dialog.SetFileTypes(2, new[]
+                dialog.SetTitle("Open pictures or PDFs to read codes from");
+                dialog.SetFileTypes(3, new[]
                 {
-                    new FilterSpec { Name = "Pictures", Spec = PictureTypes },
+                    new FilterSpec { Name = "Pictures and PDFs", Spec = ScanTypes },
+                    new FilterSpec { Name = "PDF files (*.pdf)", Spec = "*.pdf" },
                     new FilterSpec { Name = "All files", Spec = "*.*" },
                 });
             }

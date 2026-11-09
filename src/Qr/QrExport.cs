@@ -144,30 +144,17 @@ namespace B0r3dQR.Qr
             return art.ToSvg(Length(print.Width), Length(print.Width * art.H / art.W));
         }
 
-        // The PDF: the picture without loss, its page exactly the picture's size on paper (the print
-        // size, or the screen size at 96 px to the inch drawn at up to 300 DPI).
+        // The PDF: the drawing's shapes (its caption as the letters' outlines, a raster picture kept
+        // without loss), its page exactly the picture's size on paper (the print size, or the screen
+        // size at 96 px to the inch).
         public static byte[] Pdf(QrArt art, PrintSize print, bool wholePixels, string title)
         {
-            BitmapSource picture;
-            double inches;
-            if (print != null && print.Applies)
-            {
-                picture = Picture(art, print, wholePixels);
-                inches = print.Inches;
-            }
-            else
-            {
-                Size screen = PictureSize(art, null, wholePixels);
-                inches = screen.Width / 96.0;
-                int dpi = Math.Max(1, Math.Min(300, (int)Math.Floor(4096 / inches)));
-                int w = (int)Math.Round(inches * dpi, MidpointRounding.AwayFromZero);
-                int h = (int)Math.Round(w * art.H / art.W, MidpointRounding.AwayFromZero);
-                Allowed(w, h);
-                picture = art.Render(w / art.W, w, h, null, dpi);
-            }
+            Size size = PictureSize(art, print, wholePixels);
+            Allowed(size.Width, size.Height);
+            double inches = print != null && print.Applies ? print.Inches : size.Width / 96.0;
             double pageWidth = Math.Round(inches * PdfFile.PointsPerInch, 2);
-            double pageHeight = Math.Round(pageWidth * picture.PixelHeight / picture.PixelWidth, 2);
-            return PdfFile.Make(picture, pageWidth, pageHeight, new Rect(0, 0, pageWidth, pageHeight), string.IsNullOrEmpty(title) ? "QR code" : title);
+            double pageHeight = Math.Round(pageWidth * art.H / art.W, 2);
+            return PdfFile.Make(art.ToDrawing(), new Rect(0, 0, art.W, art.H), pageWidth, pageHeight, new Rect(0, 0, pageWidth, pageHeight), string.IsNullOrEmpty(title) ? "QR code" : title);
         }
 
         // ---------- text ----------

@@ -1577,7 +1577,7 @@ namespace B0r3dQR
                 if (drop) Dispatcher.BeginInvoke(new Action(() => OpenBatch(csvFile)));
                 return true;
             }
-            if (Tabs.SelectedItem != MakeTab || !LogoSection.IsVisible) return false;
+            if (Tabs.SelectedItem != MakeTab || !LogoSection.IsVisible || PdfOrFolderIn(e.Data)) return false;
             Point at = e.GetPosition(LogoSection);
             if (at.X < 0 || at.Y < 0 || at.X > LogoSection.ActualWidth || at.Y > LogoSection.ActualHeight) return false;
             if (!Pictures.CanRead(e.Data) && SvgIn(e.Data) == null) return false;
@@ -1599,6 +1599,19 @@ namespace B0r3dQR
             {
             }
             return null;
+        }
+
+        static bool PdfOrFolderIn(IDataObject data)
+        {
+            try
+            {
+                if (data != null && data.GetDataPresent(DataFormats.FileDrop) && data.GetData(DataFormats.FileDrop) is string[] paths)
+                    return paths.Any(p => string.Equals(Path.GetExtension(p), ".pdf", StringComparison.OrdinalIgnoreCase) || Directory.Exists(p));
+            }
+            catch (COMException)
+            {
+            }
+            return false;
         }
     }
 }

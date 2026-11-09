@@ -317,37 +317,22 @@ namespace B0r3dQR.Tests
             CheckPdf(BarcodeExport.Pdf(art, look, print, "test"), art, art.W * 3 * 0.75, art.H * 3 * 0.75, sharper, "at the picture's size");
         }
 
-        // one of our barcode PDFs: its page size in points, its picture's size and colours, and that the picture reads back
+        // one of our barcode PDFs: its page size in points, vector shapes for bars and text, and that Windows' PDF reader
+        // draws it in its colours and reads it back
         static void CheckPdf(byte[] pdf, BarcodeArt art, double pageWidth, double pageHeight, int modulePx, string what)
         {
             string text = Encoding.GetEncoding(28591).GetString(pdf);   // one character a byte
             Match page = Regex.Match(text, @"/MediaBox \[0 0 ([0-9.]+) ([0-9.]+)\]");
-            Match image = Regex.Match(text, @"/Subtype /Image /Width ([0-9]+) /Height ([0-9]+) /ColorSpace /DeviceRGB [^>]*/Length ([0-9]+) >>\nstream\n");
-            Check(text.StartsWith("%PDF-", StringComparison.Ordinal) && page.Success && image.Success, "the PDF " + what + " has no page size or picture");
+            Check(text.StartsWith("%PDF-", StringComparison.Ordinal) && page.Success && !text.Contains("/Subtype /Image") && text.Contains(" re\n") && text.Contains(" c\n"),
+                "the PDF " + what + " should have a page size and vector shapes for the bars and text");
             double Number(Group g) => double.Parse(g.Value, CultureInfo.InvariantCulture);
             Check(Math.Abs(Number(page.Groups[1]) - pageWidth) < 0.01 && Math.Abs(Number(page.Groups[2]) - pageHeight) < 0.01,
                 "the PDF " + what + " is " + page.Groups[1].Value + " × " + page.Groups[2].Value + " pt, not " + pageWidth + " × " + pageHeight);
-            int w = int.Parse(image.Groups[1].Value), h = int.Parse(image.Groups[2].Value);
-            Check(w == art.W * modulePx && h == art.H * modulePx, "the PDF's picture " + what + " is " + w + " × " + h + ", not " + modulePx + " px a module");
-            byte[] rgb;
-            int start = image.Index + image.Length, length = int.Parse(image.Groups[3].Value);
-            using (var input = new MemoryStream(pdf, start + 2, length - 2))   // past zlib's two-byte header
-            using (var inflate = new System.IO.Compression.DeflateStream(input, System.IO.Compression.CompressionMode.Decompress))
-            using (var output = new MemoryStream())
-            {
-                inflate.CopyTo(output);
-                rgb = output.ToArray();
-            }
+            BitmapSource rendered = PdfFile.ReadPicture(pdf);
+            Check(rendered != null, "Windows' PDF reader didn't render the barcode PDF " + what);
+            byte[] grays = ScanCheck.Grays(rendered, out int w, out int h);
             var bgra = new byte[w * h * 4];
-            var grays = new byte[w * h];
-            for (int i = 0; i < w * h; i++)
-            {
-                bgra[4 * i] = rgb[3 * i + 2];
-                bgra[4 * i + 1] = rgb[3 * i + 1];
-                bgra[4 * i + 2] = rgb[3 * i];
-                bgra[4 * i + 3] = 255;
-                grays[i] = (byte)((rgb[3 * i] * 299 + rgb[3 * i + 1] * 587 + rgb[3 * i + 2] * 114) / 1000);
-            }
+            new FormatConvertedBitmap(rendered, System.Windows.Media.PixelFormats.Bgra32, null, 0).CopyPixels(bgra, w * 4, 0);
             Check(Paints(bgra, 0, 0xfe, 0xdc, 0xba) && Paints(bgra, FirstInk(bgra, w, h / 3, 0xfe), 0x12, 0x34, 0x56), "the PDF's picture " + what + ": its colours");
             Check(BarcodeExport.Read(grays, w, h, BarcodeFormats.Get(BarcodeType.Ean13)) == "4006381333931", "the PDF's picture " + what + " doesn't read back");
         }

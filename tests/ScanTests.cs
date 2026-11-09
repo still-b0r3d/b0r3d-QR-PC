@@ -245,6 +245,44 @@ namespace B0r3dQR.Tests
             Check(tiffPages.Count == 2 && tiffPages[1].Name == "scan.tif, page 2", "the TIFF's pages: " + string.Join(", ", tiffPages.Select(p => p.Name)));
             Check(ReadCanvas(tiffPages[1].Pixels, tiffPages[1].Width, tiffPages[1].Height).Count == 1, "page 2 of the TIFF wasn't read");
 
+            // a multi-page PDF and a rotated PDF read through Windows' built-in PDF reader
+            string multiPdf = Path.Combine(folder, "pages.pdf");
+            File.WriteAllBytes(multiPdf, TestVectorQrPdf(new[] { "pdf page 1", "pdf page 2", "pdf page 3" }, 595, 842));
+            List<Gray> pdfPages = Pictures.Load(multiPdf);
+            Check(pdfPages.Count == 3 && pdfPages[0].Name == "pages.pdf, page 1" && pdfPages[2].Name == "pages.pdf, page 3", "the PDF's pages: " + string.Join(", ", pdfPages.Select(p => p.Name)));
+            for (int i = 0; i < 3; i++)
+                Check(ReadCanvas(pdfPages[i].Pixels, pdfPages[i].Width, pdfPages[i].Height).Select(f => f.Text).SequenceEqual(new[] { "pdf page " + (i + 1) }), "PDF page " + (i + 1) + " wasn't read");
+
+            string rotatedPdf = Path.Combine(folder, "rotated.pdf");
+            File.WriteAllBytes(rotatedPdf, TestVectorQrPdf(new[] { "rotated pdf" }, 595, 842, rotate: 90));
+            List<Gray> rotPages = Pictures.Load(rotatedPdf);
+            Check(rotPages.Count == 1 && rotPages[0].Width > rotPages[0].Height && ReadCanvas(rotPages[0].Pixels, rotPages[0].Width, rotPages[0].Height).Select(f => f.Text).SequenceEqual(new[] { "rotated pdf" }),
+                "rotated PDF wasn't read");
+
+            // a password-protected PDF and a damaged PDF say what's wrong in words
+            string lockedPdf = Path.Combine(folder, "locked.pdf");
+            File.WriteAllBytes(lockedPdf, TestEncryptedQrPdf("secret", "pw"));
+            try
+            {
+                Pictures.Load(lockedPdf);
+                Check(false, "a password-protected PDF opened without a password");
+            }
+            catch (PictureException e)
+            {
+                Check(e.Message == "it's protected by a password", "the message for a password-protected PDF: " + e.Message);
+            }
+            string brokenPdf = Path.Combine(folder, "broken.pdf");
+            File.WriteAllText(brokenPdf, "not a pdf");
+            try
+            {
+                Pictures.Load(brokenPdf);
+                Check(false, "a text file passed as a PDF");
+            }
+            catch (PictureException e)
+            {
+                Check(e.Message == "it isn't a PDF, or it's damaged", "the message for a broken PDF: " + e.Message);
+            }
+
             // what isn't a picture says so in words
             string notPicture = Path.Combine(folder, "notes.png");
             File.WriteAllText(notPicture, "this is not a picture");
@@ -304,8 +342,10 @@ namespace B0r3dQR.Tests
 
             MainWindow.ScanOutcome one = MainWindow.ReadFilesNow(new[] { Path.Combine(folder, "c.png") }, CancellationToken.None, t => { });
             Check(one.Codes.Count == 0 && one.Summary.StartsWith("No code in c.png"), "one picture with no code: " + one.Summary);
-            MainWindow.ScanOutcome pdf = MainWindow.ReadFilesNow(new[] { Path.Combine(folder, "ticket.pdf") }, CancellationToken.None, t => { });
-            Check(pdf.Summary.Contains("Scan the screen"), "a PDF should point to scanning the screen: " + pdf.Summary);
+            string ticketPdf = Path.Combine(folder, "ticket.pdf");
+            File.WriteAllBytes(ticketPdf, TestVectorQrPdf(new[] { "https://b0r3d.org/ticket" }, 300, 300));
+            MainWindow.ScanOutcome pdf = MainWindow.ReadFilesNow(new[] { ticketPdf }, CancellationToken.None, t => { });
+            Check(pdf.Codes.Count == 1 && pdf.Codes[0].Text == "https://b0r3d.org/ticket" && pdf.Summary == "1 code in ticket.pdf", "a PDF should read its code: " + pdf.Summary);
 
             using (var stopped = new CancellationTokenSource())
             {
@@ -611,6 +651,118 @@ namespace B0r3dQR.Tests
 
             window.ReadData(new DataObject(), "the copied picture", "Nothing to read on the clipboard.");
             Check(window.ScanStatus.Text == "Nothing to read on the clipboard." && !window.Scanning, "an empty clipboard: \"" + window.ScanStatus.Text + "\"");
+        }
+
+        // a multi-page PDF with vector QR codes for testing the PDF scanner
+        static byte[] TestVectorQrPdf(IList<string> pageTexts, double pageWidthPt, double pageHeightPt, int rotate = 0)
+        {
+            var pdf = new MemoryStream();
+            var offsets = new List<long>();
+            void WriteAscii(string s) { byte[] b = System.Text.Encoding.ASCII.GetBytes(s); pdf.Write(b, 0, b.Length); }
+            void StartObj(int id) { offsets.Add(pdf.Position); WriteAscii(id + " 0 obj\n"); }
+
+            WriteAscii("%PDF-1.4\n");
+            StartObj(1); WriteAscii("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+            var kids = string.Join(" ", Enumerable.Range(0, pageTexts.Count).Select(i => (3 + i * 2) + " 0 R"));
+            StartObj(2); WriteAscii("<< /Type /Pages /Kids [" + kids + "] /Count " + pageTexts.Count + " >>\nendobj\n");
+
+            string rotPart = rotate != 0 ? " /Rotate " + rotate : "";
+            for (int i = 0; i < pageTexts.Count; i++)
+            {
+                int pageObj = 3 + i * 2, contentObj = pageObj + 1;
+                byte[] streamBytes = TestVectorQrStream(pageTexts[i], pageWidthPt, pageHeightPt);
+                StartObj(pageObj);
+                WriteAscii(string.Format(System.Globalization.CultureInfo.InvariantCulture,
+                    "<< /Type /Page /Parent 2 0 R /MediaBox [0 0 {0:0.###} {1:0.###}]{2} /Contents {3} 0 R >>\nendobj\n",
+                    pageWidthPt, pageHeightPt, rotPart, contentObj));
+                StartObj(contentObj);
+                WriteAscii("<< /Length " + streamBytes.Length + " >>\nstream\n");
+                pdf.Write(streamBytes, 0, streamBytes.Length);
+                WriteAscii("endstream\nendobj\n");
+            }
+            long xref = pdf.Position;
+            WriteAscii("xref\n0 " + (offsets.Count + 1) + "\n0000000000 65535 f \n");
+            foreach (long o in offsets) WriteAscii(o.ToString("D10", System.Globalization.CultureInfo.InvariantCulture) + " 00000 n \n");
+            WriteAscii("trailer\n<< /Size " + (offsets.Count + 1) + " /Root 1 0 R >>\nstartxref\n" + xref + "\n%%EOF\n");
+            return pdf.ToArray();
+        }
+
+        static byte[] TestVectorQrStream(string text, double pageWidthPt, double pageHeightPt)
+        {
+            QrCode code = QrCode.Make(text, QrLevel.M);
+            int quiet = 4, totalModules = code.Size + quiet * 2;
+            double boxSize = Math.Min(pageWidthPt, pageHeightPt) * 0.5, cell = boxSize / totalModules;
+            double originX = (pageWidthPt - boxSize) / 2.0, originY = (pageHeightPt - boxSize) / 2.0;
+            var sb = new System.Text.StringBuilder();
+            sb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture, "1 1 1 rg 0 0 {0:0.##} {1:0.##} re f\n0 0 0 rg\n", pageWidthPt, pageHeightPt);
+            for (int r = 0; r < code.Size; r++)
+                for (int c = 0; c < code.Size; c++)
+                    if (code[r, c])
+                    {
+                        double px = originX + (c + quiet) * cell, py = originY + (totalModules - 1 - (r + quiet)) * cell;
+                        sb.AppendFormat(System.Globalization.CultureInfo.InvariantCulture, "{0:0.###} {1:0.###} {2:0.###} {2:0.###} re\n", px, py, cell);
+                    }
+            sb.Append("f\n");
+            return System.Text.Encoding.ASCII.GetBytes(sb.ToString());
+        }
+
+        static byte[] TestEncryptedQrPdf(string qrText, string userPassword)
+        {
+            byte[] pad = {
+                0x28, 0xBF, 0x4E, 0x5E, 0x4E, 0x75, 0x8A, 0x41, 0x64, 0x00, 0x4E, 0x56, 0xFF, 0xFA, 0x01, 0x08,
+                0x2E, 0x2E, 0x00, 0xB6, 0xD0, 0x68, 0x3E, 0x80, 0x2F, 0x0C, 0xA9, 0xFE, 0x64, 0x53, 0x69, 0x7A,
+            };
+            byte[] raw = System.Text.Encoding.ASCII.GetBytes(userPassword);
+            byte[] padded = new byte[32];
+            Array.Copy(raw, 0, padded, 0, Math.Min(raw.Length, 32));
+            if (raw.Length < 32) Array.Copy(pad, 0, padded, raw.Length, 32 - raw.Length);
+            byte[] Rc4(byte[] key, byte[] data)
+            {
+                byte[] s = new byte[256];
+                for (int i = 0; i < 256; i++) s[i] = (byte)i;
+                for (int i = 0, j = 0; i < 256; i++) { j = (j + s[i] + key[i % key.Length]) & 255; byte t = s[i]; s[i] = s[j]; s[j] = t; }
+                byte[] res = new byte[data.Length];
+                for (int k = 0, x = 0, y = 0; k < data.Length; k++) { x = (x + 1) & 255; y = (y + s[x]) & 255; byte t = s[x]; s[x] = s[y]; s[y] = t; res[k] = (byte)(data[k] ^ s[(s[x] + s[y]) & 255]); }
+                return res;
+            }
+            string Hex(byte[] bytes) => "<" + string.Concat(bytes.Select(b => b.ToString("X2", System.Globalization.CultureInfo.InvariantCulture))) + ">";
+            byte[] fileId = System.Text.Encoding.ASCII.GetBytes("0123456789ABCDEF");
+            int permissions = -4;
+            using (var md5 = System.Security.Cryptography.MD5.Create())
+            {
+                byte[] ownerKey = md5.ComputeHash(padded).Take(5).ToArray();
+                byte[] O = Rc4(ownerKey, padded);
+                var keyInput = new MemoryStream();
+                keyInput.Write(padded, 0, 32);
+                keyInput.Write(O, 0, 32);
+                keyInput.Write(BitConverter.GetBytes(permissions), 0, 4);
+                keyInput.Write(fileId, 0, 16);
+                byte[] encKey = md5.ComputeHash(keyInput.ToArray()).Take(5).ToArray();
+                byte[] U = Rc4(encKey, pad);
+                byte[] objKeyInput = new byte[10];
+                Array.Copy(encKey, 0, objKeyInput, 0, 5);
+                objKeyInput[5] = 4;
+                byte[] objKey = md5.ComputeHash(objKeyInput).Take(10).ToArray();
+                byte[] encStream = Rc4(objKey, TestVectorQrStream(qrText, 200, 200));
+
+                var pdf = new MemoryStream();
+                var offsets = new List<long>();
+                void WriteAscii(string s) { byte[] b = System.Text.Encoding.ASCII.GetBytes(s); pdf.Write(b, 0, b.Length); }
+                void StartObj(int id) { offsets.Add(pdf.Position); WriteAscii(id + " 0 obj\n"); }
+                WriteAscii("%PDF-1.4\n");
+                StartObj(1); WriteAscii("<< /Type /Catalog /Pages 2 0 R >>\nendobj\n");
+                StartObj(2); WriteAscii("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
+                StartObj(3); WriteAscii("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 200 200] /Contents 4 0 R >>\nendobj\n");
+                StartObj(4); WriteAscii("<< /Length " + encStream.Length + " >>\nstream\n");
+                pdf.Write(encStream, 0, encStream.Length);
+                WriteAscii("\nendstream\nendobj\n");
+                StartObj(5); WriteAscii("<< /Filter /Standard /V 1 /R 2 /Length 40 /P " + permissions + " /O " + Hex(O) + " /U " + Hex(U) + " >>\nendobj\n");
+                long xref = pdf.Position;
+                WriteAscii("xref\n0 " + (offsets.Count + 1) + "\n0000000000 65535 f \n");
+                foreach (long o in offsets) WriteAscii(o.ToString("D10", System.Globalization.CultureInfo.InvariantCulture) + " 00000 n \n");
+                WriteAscii("trailer\n<< /Size " + (offsets.Count + 1) + " /Root 1 0 R /Encrypt 5 0 R /ID [" + Hex(fileId) + " " + Hex(fileId) + "] >>\nstartxref\n" + xref + "\n%%EOF\n");
+                return pdf.ToArray();
+            }
         }
     }
 }

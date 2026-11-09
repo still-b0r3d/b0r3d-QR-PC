@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading;
 using System.Windows;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
@@ -22,8 +23,8 @@ namespace B0r3dQR.Scan
         public string Name;   // "photo.jpg", "scan.tif, page 2"
     }
 
-    // Pictures to read codes from: files (through Windows' own picture readers), folders of them,
-    // and pictures handed over by the clipboard or a drop.
+    // Pictures and PDFs to read codes from: files (through Windows' own picture and PDF readers),
+    // folders of them, and pictures handed over by the clipboard or a drop.
     static class Pictures
     {
         // bigger pictures are shrunk to this many pixels first, which is plenty for any code in them
@@ -32,24 +33,24 @@ namespace B0r3dQR.Scan
         static readonly string[] Extensions =
         {
             ".png", ".jpg", ".jpeg", ".jpe", ".jfif", ".bmp", ".dib", ".gif", ".tif", ".tiff", ".ico",
-            ".webp", ".heic", ".heif", ".avif", ".jxr", ".wdp", ".hdp",
+            ".webp", ".heic", ".heif", ".avif", ".jxr", ".wdp", ".hdp", ".pdf",
         };
 
         public static bool LooksLikePicture(string path) => Extensions.Contains(Path.GetExtension(path).ToLowerInvariant());
 
-        // the pictures in a folder (not in the folders inside it), by name
+        // the pictures and PDFs in a folder (not in the folders inside it), by name
         public static List<string> InFolder(string folder)
         {
             return Directory.EnumerateFiles(folder).Where(LooksLikePicture).OrderBy(f => f, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
 
-        // A picture file's grey levels: every page of a TIFF (up to 20), the biggest picture in an
-        // icon, otherwise the first (a GIF's first frame). Safe on any thread.
-        public static List<Gray> Load(string path)
+        // A picture or PDF file's grey levels: every page of a PDF (up to 50) or a TIFF (up to 20),
+        // the biggest picture in an icon, otherwise the first (a GIF's first frame). Safe on any thread.
+        public static List<Gray> Load(string path, CancellationToken cancel = default)
         {
             string name = Path.GetFileName(path);
             if (Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
-                throw new PictureException("it's a PDF, so open it and use Scan the screen instead");
+                return PdfPages.Load(path, cancel);
             try
             {
                 using (var stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete))

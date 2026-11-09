@@ -395,7 +395,7 @@ namespace B0r3dQR
                     try
                     {
                         BitmapSource look = null;
-                        foreach (Gray page in Pictures.Load(file))
+                        foreach (Gray page in Pictures.Load(file, cancel))
                         {
                             here.AddRange(Reader.ReadAll(page.Pixels, page.Width, page.Height, page.Name, cancel));
                             if (look == null && batch) look = Pictures.Thumbnail(page);

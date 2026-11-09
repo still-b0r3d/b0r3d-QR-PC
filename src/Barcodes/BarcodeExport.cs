@@ -102,27 +102,17 @@ namespace B0r3dQR.Barcodes
             return svg.Substring(0, open.Index) + tag + svg.Substring(open.Index + open.Length);
         }
 
-        // The PDF: the PNG without loss at its size on paper. With a print size every module keeps its
-        // printed width; without, the page is the PNG's size at 96 px to the inch, drawn at whole pixels per
-        // module near 300 DPI (but no more than 4096 px wide) so the bars stay sharp.
+        // The PDF: the bars and text as shapes at the picture's size on paper. With a print size every
+        // module keeps its printed width; without, the page is the PNG's size at 96 px to the inch.
         public static byte[] Pdf(BarcodeArt art, BarcodeLook look, PrintSize print, string title)
         {
             int modulePx = ModulePx(art.Barcode, look, print);
-            double dpi;
-            if (print.Applies) dpi = print.Dpi;
-            else
-            {
-                int sharper = (int)Math.Ceiling(modulePx * 300 / 96.0);
-                int widest = (int)Math.Floor(4096.0 / art.W);
-                double pageInches = art.W * modulePx / 96.0;
-                modulePx = Math.Max(modulePx, Math.Min(sharper, widest));
-                dpi = art.W * modulePx / pageInches;
-            }
+            double dpi = print.Applies ? print.Dpi : 96;
             Allowed(art.W * modulePx, art.H * modulePx);
-            BitmapSource picture = art.Render(modulePx, Paint(look.Color), look.Transparent ? (Color?)null : Paint(look.Background), null, dpi);
-            double pageWidth = Math.Round(picture.PixelWidth / dpi * PdfFile.PointsPerInch, 2);
-            double pageHeight = Math.Round(picture.PixelHeight / dpi * PdfFile.PointsPerInch, 2);
-            return PdfFile.Make(picture, pageWidth, pageHeight, new Rect(0, 0, pageWidth, pageHeight), string.IsNullOrEmpty(title) ? "Barcode" : title);
+            double pageWidth = Math.Round(art.W * modulePx / dpi * PdfFile.PointsPerInch, 2);
+            double pageHeight = Math.Round(art.H * modulePx / dpi * PdfFile.PointsPerInch, 2);
+            Drawing drawing = art.ToDrawing(Paint(look.Color), look.Transparent ? (Color?)null : Paint(look.Background));
+            return PdfFile.Make(drawing, new Rect(0, 0, art.W, art.H), pageWidth, pageHeight, new Rect(0, 0, pageWidth, pageHeight), string.IsNullOrEmpty(title) ? "Barcode" : title);
         }
 
         // "0.48 mm" or "0.019 in" (the website's formatSmallLength)
