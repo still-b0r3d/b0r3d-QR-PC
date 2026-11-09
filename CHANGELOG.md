@@ -3,6 +3,59 @@
 What changed in each version of b0r3d QR for Windows, the newest first. The versions before 1.0
 are its stages, built one after the other; 0.8 is the first one released.
 
+## 0.9 (not released yet)
+
+Scan from anywhere, scanning PDFs, Avery label sheets and vector PDFs, and the release
+candidate for 1.3.
+
+- **Scan from anywhere** (Scan menu and Scan tab): while b0r3d QR is running, a cup icon in
+  the taskbar corner and **Ctrl+Shift+Q** start Scan the screen without opening the main
+  window first. **Hide in the tray** hides the main window to the tray icon; pressing Esc
+  during a screen scan leaves it hidden there, and a code found opens the Scan tab. Right-click
+  the tray icon for Scan the screen, Scan with the camera, Paste picture, Show b0r3d QR and
+  Exit. Nothing starts with Windows, and nothing is written outside the data folder.
+- **Scan PDFs**: **Open picture or PDF…** (Ctrl+O), dropping a PDF on the window, pasting a
+  copied PDF file (Ctrl+V), or **Scan a folder…** reads every page of a PDF (up to 50 pages,
+  at 200 DPI) through Windows' built-in PDF reader (`Windows.Data.Pdf`), with the page number
+  on each code found (`file.pdf (page 2)`). Password-protected PDFs say so. Nothing extra is
+  installed and b0r3d QR still never goes online.
+- **Vector PDF**: PDF exports (File → Save as PDF… and Batch export) now draw QR codes,
+  barcodes, frames, SVG logos (linear and radial gradients included) and captions (their
+  letters as outlines, colour emoji as their layers) as vector shapes, so they stay sharp at
+  any zoom or print size. Raster logos and frame backgrounds are kept without loss, with a
+  soft mask for see-through parts. Every saved PDF is read back through Windows' PDF reader
+  and scanned.
+- **Label sheets**: **Print…** and Batch export's **Print them…** print onto standard Avery
+  label sheets (**5160**, **5167**, **5163**, **5164** and **22806** on US Letter; **L7160**,
+  **L7163** and **L7165** on A4), one code on every label with a 1.5 mm safe inset and no cut
+  marks, plus a **Nudge** setting (**Right** and **Down**, up to 10 mm) for printers that feed
+  sheets slightly off. The sheet and nudge are kept in `b0r3dQR.ini`.
+- **Parity with the new qr.b0r3d.org and fixes**:
+  - The colour contrast warning rounds the ratio down (`Low contrast (3.9:1)` for red on
+    white), matching the website.
+  - Saving a JPG with a partly see-through background puts white paper under it, for QR codes
+    and barcodes alike.
+  - A design file whose logo has control characters before its scheme is refused.
+  - One-click text fixes (`Trim…`) and saving a data template keep Windows line breaks (`CR LF`)
+    when the text already uses them; after a one-click fix, the focus returns to the Data box;
+    choosing the template already showing in the list opens its form.
+  - Recent codes: a code whose design can't be read says `That code can't be opened: …`; a
+    recent barcode whose entry leaves out some settings keeps the settings currently on the
+    Make tab, as on the website; a Data Matrix Wi-Fi code with a password is titled by network
+    name (`WiFi: …`) and shown with a padlock instead of its picture, like a QR code's.
+  - `mailto:`, `sms:` and quoted-printable vCard 2.1 text decode broken UTF-8 with one
+    replacement character (``) per broken byte sequence, as browsers do.
+  - Unticking **Include quiet zones** leaves Data Matrix and PDF417 margins alone (the box is
+    hidden for them), and **What's in this code** says which codes have quiet zones.
+  - Screen readers hear a barcode's error once per mistake rather than on every character count
+    change; barcode text under the bars is drawn fully opaque.
+  - Batch export plans and names large CSVs in linear time, and cuts file names over 255
+    characters down so Windows can save them.
+  - Case-blind regular expressions use the invariant culture, so Turkish Windows matches `i`
+    and `I` as other Windows languages do.
+- The self-test also draws a framed code in Pacifico to a vector PDF and reads it back through
+  Windows' PDF reader (`pdf=ok`), lays out an Avery label sheet, and loads the tray icon.
+
 ## 0.8 (released 6 November 2026)
 
 The last of what qr.b0r3d.org does: SVG logos, its caption fonts and the camera.

@@ -1,7 +1,7 @@
 # b0r3d QR for Windows
 
 **b0r3d QR** makes static QR codes and barcodes on your PC, designed the way
-[qr.b0r3d.org](https://qr.b0r3d.org) designs them, and reads codes off pictures, folders, the
+[qr.b0r3d.org](https://qr.b0r3d.org) designs them, and reads codes off pictures, PDFs, folders, the
 screen and a webcam. Whatever you type goes straight into the pattern, so a code never expires,
 there's no account, and nothing you type or scan is sent anywhere: b0r3d QR never goes online.
 
@@ -67,7 +67,8 @@ little quiet zone) and **What's in this code**: what's stored, the size, the lev
 the text is encoded.
 
 Then **Save PNG…**, **Save SVG…**, **Copy picture** and **Print…** under the code, or the
-**File** menu for **JPG**, **PDF** and **text** too (Unicode half or full blocks or ASCII, each
+**File** menu for **JPG**, **PDF** (drawn as vector shapes, captions included, sharp at any size)
+and **text** too (Unicode half or full blocks or ASCII, each
 as plain text or Markdown), at the website's sizes or the print size. **Edit** copies it as a
 picture, as SVG or as text, or drag the code into another program, or into a folder as a PNG
 file.
@@ -139,8 +140,10 @@ the CSV's file name, else qr-0, qr-1 and so on).
 
 **Print…** under the code, or **File → Print…** (Ctrl+P), prints the code at its exact size,
 the print size set on the Make tab (its picture's size without one): alone in the middle of the
-page, or a sheet of copies with a caption under each code and cut marks at the corners.
-**Print them…** in Batch export prints a batch's codes on sheets, each with its file name, or
+page, a sheet of copies with a caption under each code and cut marks at the corners, or a
+standard Avery label sheet (one code on every label, with a **Nudge** setting in mm for
+printers that feed sheets slightly off).
+**Print them…** in Batch export prints a batch's codes on sheets or Avery label sheets, each with its file name, or
 one a page.
 
 ![The Print window: a sheet of twelve copies with captions and cut marks, and the page's preview](docs/images/print-light.png)
@@ -158,16 +161,20 @@ there are in a picture:
 - **Scan the screen** (Scan menu, Ctrl+Shift+R): b0r3d QR steps aside and every screen
   freezes. Drag a box around a code, click a screen to read all of it, or press Enter to
   read every screen; Esc cancels.
+- **Scan from anywhere** (Scan menu and Scan tab): while b0r3d QR is running, a cup icon in the
+  taskbar corner and **Ctrl+Shift+Q** start Scan the screen without opening the main window
+  first. **Hide in the tray** hides the window to the tray icon; Esc during a screen scan leaves
+  it hidden there, and a code found opens the Scan tab. Nothing starts with Windows.
 - **Scan with the camera** (Scan menu, Ctrl+Shift+A): your webcam's picture, with the
   website's aiming frame. The first code it sees goes to the Scan tab and the camera turns off
   at once; Esc or **Cancel** turns it off without one. With more than one camera, choose which
   from the list. Windows has to let desktop apps use the camera:
   Settings > Privacy & security > Camera (on Windows 10, Settings > Privacy > Camera).
-- **Open picture…** (Ctrl+O), Ctrl+V with a picture copied (or **Paste picture**,
-  Ctrl+Shift+V), or drop pictures anywhere on the window: PNG, JPEG, BMP, GIF and TIFF
-  (every page), and WebP or HEIC where Windows can open them. For a PDF, open it and scan
-  the screen.
-- **Scan a folder…** (Ctrl+Shift+O) reads every picture in a folder (not the folders inside
+- **Open picture or PDF…** (Ctrl+O), Ctrl+V with a picture or PDF copied (or **Paste picture**,
+  Ctrl+Shift+V), or drop pictures or PDFs anywhere on the window: PNG, JPEG, BMP, GIF, TIFF
+  (every page) and PDF (every page, through Windows' built-in PDF reader), and WebP or HEIC
+  where Windows can open them.
+- **Scan a folder…** (Ctrl+Shift+O) reads every picture and PDF in a folder (not the folders inside
   it) and gives each one a line, so a batch can be checked: its codes, or "No code found",
   or "Couldn't open" and why. Pictures that are only online (OneDrive and the like) are
   left alone rather than downloaded.
