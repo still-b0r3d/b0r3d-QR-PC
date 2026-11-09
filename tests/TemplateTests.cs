@@ -210,7 +210,9 @@ namespace B0r3dQR.Tests
             Check(Js.EncodeUriComponent("a b!*'()~ü/&") == "a%20b!*'()~%C3%BC%2F%26", "encodeURIComponent: " + Js.EncodeUriComponent("a b!*'()~ü/&"));
             Check(Js.DecodeUriComponent("%E2%82%AC+x") == "€+x" && Js.DecodeUriComponent("%E2%82") == null && Js.DecodeUriComponent("100%") == null, "decodeURIComponent");
             Check(Js.SearchParam("?a=1&b=x+y%20z&a=2", "a") == "1" && Js.SearchParam("a=1&b=x+y%20z", "b") == "x y z" && Js.SearchParam("a", "a") == "" && Js.SearchParam("a=1", "c") == null &&
-                  Js.SearchParam("q=%ZZ", "q") == "%ZZ", "URLSearchParams");
+                  Js.SearchParam("q=%ZZ", "q") == "%ZZ" && Js.SearchParam("?a=%C2%C2", "a") == "\uFFFD\uFFFD" && Js.SearchParam("?a=%E0%A0x", "a") == "\uFFFDx", "URLSearchParams");
+            Templates.Detect("BEGIN:VCARD\nVERSION:2.1\nN;ENCODING=QUOTED-PRINTABLE:=C2=C2;x\nEND:VCARD", out Dictionary<string, string> qp);
+            Check(qp["lastName"] == "\uFFFD\uFFFD", "quoted-printable UTF-8 replaces each broken part as TextDecoder does: " + Show(qp["lastName"]));
             Check(Js.ParseFloat(" 12abc") == 12 && double.IsNaN(Js.ParseFloat("abc")) && Js.ParseFloat("1e3") == 1000 && Js.ParseFloat("-.5") == -0.5 && Js.ParseFloat("1e") == 1 &&
                   double.IsPositiveInfinity(Js.ParseFloat("Infinity")) && double.IsPositiveInfinity(Js.ParseFloat("1e400")), "parseFloat");
             Check(Js.ToFixed2(1.005) == "1.00" && Js.ToFixed2(0.125) == "0.13" && Js.ToFixed2(12.5) == "12.50" && Js.ToFixed2(1e3) == "1000.00" && Js.ToFixed2(0.004) == "0.00", "toFixed(2)");

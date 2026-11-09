@@ -146,12 +146,20 @@ namespace B0r3dQR.Batch
 
         // ---------- the files' names ----------
 
+        // kept well under Windows' 255-character limit on a file name, with room for a number and the extension
+        public const int MostNameLength = 200;
+
         // A name made safe for a file: every character other than A-Z, a-z, 0-9, _ and - made _ (each UTF-16 unit, so
-        // an emoji, which is two, becomes __)
+        // an emoji, which is two, becomes __), at most 200 characters
         public static string Safe(string name)
         {
-            var safe = new StringBuilder(name.Length);
-            foreach (char c in name) safe.Append(IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_');
+            int length = Math.Min(name.Length, MostNameLength);
+            var safe = new StringBuilder(length);
+            for (int i = 0; i < length; i++)
+            {
+                char c = name[i];
+                safe.Append(IsLetterOrDigit(c) || c == '_' || c == '-' ? c : '_');
+            }
             return safe.ToString();
         }
 
@@ -229,19 +237,31 @@ namespace B0r3dQR.Batch
             return site.Success ? Regex.Replace(site.Groups[1].Value, "[^A-Za-z0-9]", "_") : null;
         }
 
+        // A name not given yet: `wanted` itself, else `wanted` with _first, _first+1 and so on. Each try that was
+        // taken stays taken, so the next row wanting the same name starts where the last one stopped.
+        static string Numbered(string wanted, int first, HashSet<string> given, Dictionary<string, int> next)
+        {
+            string name = wanted;
+            if (given.Contains(name))
+            {
+                int n = next.TryGetValue(wanted, out int start) ? start : first;
+                while (given.Contains(wanted + "_" + n)) n++;
+                name = wanted + "_" + n;
+                next[wanted] = n + 1;
+            }
+            given.Add(name);
+            return name;
+        }
+
         // The barcode page's file names: the CSV's file name, else the code's text, made safe (and not a device's),
         // with _2, _3 and so on for a name already taken
         public static List<string> BarcodeNames(IList<BatchRow> rows)
         {
-            var used = new HashSet<string>();
-            var names = new List<string>();
+            var used = new HashSet<string>(StringComparer.Ordinal);
+            var next = new Dictionary<string, int>(StringComparer.Ordinal);
+            var names = new List<string>(rows.Count);
             foreach (BatchRow row in rows)
-            {
-                string safe = NotADevice(Safe(string.IsNullOrEmpty(row.FileName) ? row.Data : row.FileName)), name = safe;
-                for (int n = 2; used.Contains(name); n++) name = safe + "_" + n;
-                used.Add(name);
-                names.Add(name);
-            }
+                names.Add(Numbered(NotADevice(Safe(string.IsNullOrEmpty(row.FileName) ? row.Data : row.FileName)), 2, used, next));
             return names;
         }
 
@@ -250,14 +270,11 @@ namespace B0r3dQR.Batch
         // name given already gets _1, or if that's taken too _2, and so on.
         public static List<string> TextNames(IList<BatchRow> rows, IList<int> places)
         {
-            var names = new List<string>();
-            var given = new HashSet<string>();
+            var names = new List<string>(rows.Count);
+            var given = new HashSet<string>(StringComparer.Ordinal);
+            var next = new Dictionary<string, int>(StringComparer.Ordinal);
             for (int k = 0; k < rows.Count; k++)
-            {
-                string wanted = NotADevice(Safe(string.IsNullOrEmpty(rows[k].FileName) ? "qr-" + places[k] : rows[k].FileName)), name = wanted;
-                for (int n = 1; !given.Add(name); n++) name = wanted + "_" + n;
-                names.Add(name);
-            }
+                names.Add(Numbered(NotADevice(Safe(string.IsNullOrEmpty(rows[k].FileName) ? "qr-" + places[k] : rows[k].FileName)), 1, given, next));
             return names;
         }
     }

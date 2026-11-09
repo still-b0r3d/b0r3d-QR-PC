@@ -58,7 +58,9 @@ namespace B0r3dQR.Design
                     warnings.Add("Light code on a dark background: many phone cameras can't read inverted codes.");
                 double worst = parts.Min(p => Contrast(Luminance(p), back));
                 if (worst < 4)
-                    warnings.Add("Low contrast (" + Math.Round(worst, 1, MidpointRounding.AwayFromZero).ToString("0.#", CultureInfo.InvariantCulture) +
+                    // rounded down, as the website shows it, so a warning never says 4:1 (red on white is
+                    // 3.998:1, so 3.9:1); the tiny nudge keeps an exact 3.9 from flooring to 3.8
+                    warnings.Add("Low contrast (" + (Math.Floor(worst * 10 + 1e-9) / 10).ToString("0.#", CultureInfo.InvariantCulture) +
                                  ":1) between the code and its background. Dark on light with at least 4:1 scans best.");
             }
             if (margin < 4)
@@ -113,7 +115,7 @@ namespace B0r3dQR.Design
             if (t.Length == 0 || t.Any(char.IsWhiteSpace)) return false;
             Match scheme = Regex.Match(t, @"^[A-Za-z][A-Za-z0-9+.\-]*:");
             if (scheme.Success && !Regex.IsMatch(t.Substring(scheme.Length), @"^\d{1,5}([/?#]|$)")) return false;
-            return Regex.IsMatch(t, @"^(www\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(:\d{1,5})?([/?#].*)?$", RegexOptions.IgnoreCase);
+            return Regex.IsMatch(t, @"^(www\.)?([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+[a-z]{2,63}(:\d{1,5})?([/?#].*)?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
 
         static readonly string[] TrackingList =
@@ -127,7 +129,7 @@ namespace B0r3dQR.Design
         {
             clean = text;
             var names = new List<string>();
-            Match m = Regex.Match(text ?? "", @"^(https?://)([^/?#\s]*)([^?#\s]*)(\?[^#\s]*)?(#\S*)?$", RegexOptions.IgnoreCase);
+            Match m = Regex.Match(text ?? "", @"^(https?://)([^/?#\s]*)([^?#\s]*)(\?[^#\s]*)?(#\S*)?$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             if (!m.Success || !m.Groups[4].Success) return names;
             string authority = m.Groups[2].Value;
             string host = authority.Substring(authority.LastIndexOf('@') + 1);

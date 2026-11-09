@@ -47,7 +47,7 @@ namespace B0r3dQR.Camera
         public string Id;
 
         // shown mirrored, as the website shows a camera named for facing you ("front", "user")
-        public bool Mirrored => Regex.IsMatch(Name ?? "", "front|user", RegexOptions.IgnoreCase);
+        public bool Mirrored => Regex.IsMatch(Name ?? "", "front|user", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
     }
 
     // one picture from a camera: 4 bytes a pixel (blue, green, red, unused), the top row first

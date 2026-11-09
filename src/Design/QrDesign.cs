@@ -35,7 +35,7 @@ namespace B0r3dQR.Design
         // the code clears room for it and raises L or M to Q, even where b0r3d QR can't draw the
         // picture itself (an SVG). One on the web only counts once the website has fetched it, so
         // here, where nothing is ever fetched, it counts as none, as on the website when it can't.
-        public bool LogoCounts => HasLogo && !Regex.IsMatch(Logo.Trim(), "^https?://", RegexOptions.IgnoreCase);
+        public bool LogoCounts => HasLogo && !Regex.IsMatch(Logo.Trim(), "^https?://", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
 
         // the level the code is made at: a logo needs at least Q (as on the website)
         public QrLevel LevelUsed => LogoCounts && (Level == QrLevel.L || Level == QrLevel.M) ? QrLevel.Q : Level;

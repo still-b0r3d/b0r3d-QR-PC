@@ -1013,7 +1013,7 @@ namespace B0r3dQR.Svg
         // the font shorthand: [style] [weight] size[/line-height] family
         void Font(string v, Style parent)
         {
-            var m = System.Text.RegularExpressions.Regex.Match(v, @"^\s*((?:(?:italic|oblique|normal|bold|bolder|lighter|[1-9]00|small-caps)\s+)*)([^\s/]+)(?:\s*/\s*\S+)?\s+(.+)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+            var m = System.Text.RegularExpressions.Regex.Match(v, @"^\s*((?:(?:italic|oblique|normal|bold|bolder|lighter|[1-9]00|small-caps)\s+)*)([^\s/]+)(?:\s*/\s*\S+)?\s+(.+)$", System.Text.RegularExpressions.RegexOptions.IgnoreCase | System.Text.RegularExpressions.RegexOptions.CultureInvariant);
             if (!m.Success) return;
             string size = m.Groups[2].Value;
             if (!FontSizes.ContainsKey(size.ToLowerInvariant()) && !Length.TryParse(size, out _, true)) return;

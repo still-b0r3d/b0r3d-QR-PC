@@ -170,6 +170,19 @@ namespace B0r3dQR
         internal void Open(RecentCode code)
         {
             confirming = false;
+            RecentCode found = RecentCodes.Find(code.Id);
+            if (found != null && found.Barcode == null)
+            {
+                try
+                {
+                    DesignFile.Read(found.Design, new QrDesign());
+                }
+                catch (DesignFileException e)
+                {
+                    Say("That code can't be opened: " + e.Message);
+                    return;
+                }
+            }
             if (open(code.Id))
             {
                 Close();
@@ -249,7 +262,7 @@ namespace B0r3dQR
                 {
                     // off for this run at least: it's the text typed that's kept
                     LastFailed = false;
-                    Say("New codes won’t be added while b0r3d QR is open, but the setting couldn't be saved for next time.");
+                    Say("New codes won't be added while b0r3d QR is open, but the setting couldn't be saved for next time.");
                     Refresh();
                     return;
                 }
@@ -261,7 +274,7 @@ namespace B0r3dQR
                 return;
             }
             if (!on) LastFailed = false;
-            Say(on ? "New codes will be added here." : "New codes won’t be added. The ones above stay until you delete them.");
+            Say(on ? "New codes will be added here." : "New codes won't be added. The ones above stay until you delete them.");
             Refresh();
         }
     }

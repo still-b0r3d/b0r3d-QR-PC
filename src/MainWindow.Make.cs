@@ -43,6 +43,7 @@ namespace B0r3dQR
         // what's typed in each data template's form, kept while b0r3d QR runs (as the website keeps it)
         readonly Dictionary<TemplateKind, Dictionary<string, string>> templateForms = new Dictionary<TemplateKind, Dictionary<string, string>>();
         int templateAtOpen = -1;   // the template the list was on when it opened
+        bool templateChosen;       // an item in the open list was clicked or chosen with Enter
         int noteCode;              // the code the note about Recent codes is about
 
         // for the tests
@@ -92,6 +93,12 @@ namespace B0r3dQR
             CentresTypeBox.ItemsSource = Presets.CornerDotTypes;
             FramePresetBox.ItemsSource = Presets.FrameNames;
             TemplateBox.ItemsSource = TemplateForms.Menu.Select(TemplateForms.Label).ToList();
+            TemplateBox.PreviewKeyDown += (s, e) => { if (TemplateBox.IsDropDownOpen && e.Key == Key.Enter) templateChosen = true; };
+            TemplateBox.AddHandler(UIElement.PreviewMouseLeftButtonDownEvent, new MouseButtonEventHandler((s, e) =>
+            {
+                if (TemplateBox.IsDropDownOpen && ItemsControl.ContainerFromElement(TemplateBox, e.OriginalSource as DependencyObject) is ComboBoxItem)
+                    templateChosen = true;
+            }), true);
             var versions = new List<string> { "Auto (smallest that fits)" };
             for (int v = 1; v <= 40; v++) versions.Add(v + " (" + (17 + 4 * v) + " × " + (17 + 4 * v) + ")");
             VersionBox.ItemsSource = versions;
@@ -843,6 +850,8 @@ namespace B0r3dQR
                 fix.Click += (s, e) =>
                 {
                     DataBox.Text = fixedText;
+                    madeAgain = DataBox.Text;
+                    DataBox.Focus();
                     DataBox.CaretIndex = DataBox.Text.Length;
                     typingPause.Stop();
                     Refresh();
@@ -1213,7 +1222,11 @@ namespace B0r3dQR
         void OnTemplate(object sender, SelectionChangedEventArgs e) =>
             TemplateHint.Visibility = TemplateBox.SelectedIndex < 0 ? Visibility.Visible : Visibility.Collapsed;
 
-        void OnTemplateOpened(object sender, EventArgs e) => templateAtOpen = TemplateBox.SelectedIndex;
+        void OnTemplateOpened(object sender, EventArgs e)
+        {
+            templateAtOpen = TemplateBox.SelectedIndex;
+            templateChosen = false;
+        }
 
         // A template chosen in the open list opens its form. On the closed list the arrow keys only
         // move through the templates (Edit… opens the one showing), so the list can be looked
@@ -1221,7 +1234,7 @@ namespace B0r3dQR
         void OnTemplateClosed(object sender, EventArgs e) =>
             Dispatcher.BeginInvoke(new Action(() =>   // Enter in the open list chooses only once it has closed
             {
-                if (Quiet || TemplateBox.SelectedIndex < 0 || TemplateBox.SelectedIndex == templateAtOpen) return;
+                if (Quiet || TemplateBox.SelectedIndex < 0 || (TemplateBox.SelectedIndex == templateAtOpen && !templateChosen)) return;
                 OpenTemplate(TemplateForms.Menu[TemplateBox.SelectedIndex]);
             }), System.Windows.Threading.DispatcherPriority.Input);
 
@@ -1250,6 +1263,7 @@ namespace B0r3dQR
                 return;
             }
             DataBox.Text = written;
+            madeAgain = DataBox.Text;
             if (shortened) LongText.MarkCut(DataBox);
             typingPause.Stop();
             Refresh();

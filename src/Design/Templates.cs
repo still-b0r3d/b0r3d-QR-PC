@@ -545,7 +545,7 @@ namespace B0r3dQR.Design
             }
             byte[] all = bytes.ToArray();
             int skip = all.Length >= 3 && all[0] == 0xEF && all[1] == 0xBB && all[2] == 0xBF ? 3 : 0;   // TextDecoder drops a byte-order mark
-            return Encoding.UTF8.GetString(all, skip, all.Length - skip);
+            return Js.DecodeUtf8(all, skip);
         }
 
         static string RawValue(ContentLine line) => line.Params.Contains("QUOTED-PRINTABLE") ? QuotedPrintable(line.Value) : line.Value;

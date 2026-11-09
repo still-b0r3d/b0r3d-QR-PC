@@ -456,7 +456,11 @@ namespace B0r3dQR.Qr
             var visual = new DrawingVisual();
             using (DrawingContext dc = visual.RenderOpen())
             {
-                if (under.HasValue) dc.DrawRectangle(new SolidColorBrush(under.Value), null, new Rect(0, 0, pixelWidth * k, pixelHeight * k));
+                if (under.HasValue)
+                {
+                    if (under.Value.A < 255) dc.DrawRectangle(Brushes.White, null, new Rect(0, 0, pixelWidth * k, pixelHeight * k));
+                    dc.DrawRectangle(new SolidColorBrush(under.Value), null, new Rect(0, 0, pixelWidth * k, pixelHeight * k));
+                }
                 dc.PushTransform(new ScaleTransform(scale * k, scale * k));
                 dc.DrawDrawing(ToDrawing());
                 dc.Pop();

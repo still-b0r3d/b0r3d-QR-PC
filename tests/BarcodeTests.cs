@@ -241,7 +241,12 @@ namespace B0r3dQR.Tests
             Check(Svg() == withText, "the default height again is the first drawing again");
             window.QuietZonesCheck.IsChecked = false;
             WaitForCheck(window);
-            Check(window.BarcodeShown.W < BarcodeSvg.From(withText).Width && window.QuietZonesNote.Visibility == Visibility.Visible, "without quiet zones it's narrower, with the note");
+            Check(window.BarcodeShown.W < BarcodeSvg.From(withText).Width && window.QuietZonesNote.Visibility == Visibility.Visible && InCode(window, "Size").EndsWith("no blank margin", StringComparison.Ordinal),
+                "without quiet zones it's narrower, with the note and Size saying no blank margin: " + InCode(window, "Size"));
+            ChooseType(window, BarcodeType.DataMatrix);
+            Check(Barcode.WithMargin(BarcodeType.DataMatrix, window.BarcodeSettings.Options) && InCode(window, "Size").EndsWith("blank margin included", StringComparison.Ordinal),
+                "Data Matrix keeps its margin even when QuietZones is off: " + InCode(window, "Size"));
+            ChooseType(window, BarcodeType.Ean13);
             window.QuietZonesCheck.IsChecked = true;
             WaitForCheck(window);
 
@@ -273,12 +278,19 @@ namespace B0r3dQR.Tests
             var bgra = new byte[w * h * 4];
             new FormatConvertedBitmap(picture, System.Windows.Media.PixelFormats.Bgra32, null, 0).CopyPixels(bgra, w * 4, 0);
             Check(Paints(bgra, 0, 0xfe, 0xdc, 0xba) && Paints(bgra, FirstInk(bgra, w, h / 3, 0xfe), 0x12, 0x34, 0x56), "the picture's colours: the background and the bars");
+            for (int i = 3; i < bgra.Length; i += 4)
+                Check(bgra[i] == 255, "every pixel on an opaque background should have alpha 255");
             var jpgLook = look.Clone();
             jpgLook.Background = "transparent";
             BitmapSource jpgPicture = BarcodeExport.Picture(art, jpgLook, print, true);
             var jpgPixels = new byte[jpgPicture.PixelWidth * jpgPicture.PixelHeight * 4];
             new FormatConvertedBitmap(jpgPicture, System.Windows.Media.PixelFormats.Bgra32, null, 0).CopyPixels(jpgPixels, jpgPicture.PixelWidth * 4, 0);
             Check(Paints(jpgPixels, 0, 0xff, 0xff, 0xff), "a JPG of a see-through background is on white, not black");
+            jpgLook.Background = "#00000080";
+            BitmapSource halfJpg = BarcodeExport.Picture(art, jpgLook, print, true);
+            var halfPixels = new byte[halfJpg.PixelWidth * halfJpg.PixelHeight * 4];
+            new FormatConvertedBitmap(halfJpg, System.Windows.Media.PixelFormats.Bgra32, null, 0).CopyPixels(halfPixels, halfJpg.PixelWidth * 4, 0);
+            Check(halfPixels[0] >= 126 && halfPixels[0] <= 129, "a barcode JPG of a partly see-through background puts white under it: " + halfPixels[0]);
 
             string svg = BarcodeExport.Svg(made, look, print);
             Check(svg.Contains("fill=\"#123456\"") && svg.Contains("fill=\"#fedcba\"") && svg.Contains("viewBox=\"0 0 " + made.Width + " " + made.Height + "\""), "the SVG's colours and size");
@@ -429,6 +441,11 @@ namespace B0r3dQR.Tests
                 LayOut(list.Root, 600, 660);
                 Check(((Border)((DockPanel)list.CodesList.Children[0]).Children[0]).Child is Image, "a recent barcode has a picture in the list");
                 list.Close();
+
+                // a Wi-Fi network in a barcode gets the network's name, the padlock and no password in the list
+                RecentCode wifiBarcode = RecentCodes.NewBarcode(BarcodeType.DataMatrix, "WIFI:T:WPA;S:SecretNet;P:topsecret;;", look, 1700000001000);
+                Check(wifiBarcode.Title == "SecretNet" && wifiBarcode.Sensitive && !wifiBarcode.Name.Contains("topsecret"),
+                    "a Wi-Fi barcode in Recent codes should hide its password: " + wifiBarcode.Name);
 
                 // a scanned barcode made again, kept (as Save, Copy and drag keep it) and opened: its text exactly
                 var scanned = new FoundCode { Text = "B0R3D\r\nTWO", Kind = "Text", Format = "Code 128", CanMakeAgain = true, Barcode = BarcodeType.Code128 };

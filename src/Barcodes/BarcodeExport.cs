@@ -66,9 +66,8 @@ namespace B0r3dQR.Barcodes
         {
             int modulePx = ModulePx(art.Barcode, look, print);
             Allowed(art.W * modulePx, art.H * modulePx);
-            // a JPG has no see-through: on white then, as the website does for "transparent" (and so for a colour of no opacity)
-            Color background = Paint(look.Background);
-            Color? under = forJpg ? (look.Transparent || background.A == 0 ? Colors.White : background) : (Color?)null;
+            // a JPG has no see-through: on white then (and under a colour that can be seen through)
+            Color? under = forJpg ? Colors.White : (Color?)null;
             return art.Render(modulePx, Paint(look.Color), look.Transparent ? (Color?)null : Paint(look.Background), under, print.Applies ? print.Dpi : 96);
         }
 

@@ -23,6 +23,7 @@ namespace B0r3dQR.Design
         public BarcodeType? Barcode;                  // a barcode: its type, the text as typed, its settings
         public string BarcodeText;
         public BarcodeLook BarcodeLook;
+        internal Dictionary<string, object> BarcodeSaved;
 
         public string Name => Title.Length > 0 ? Label + ": " + Title : Label;
 
@@ -158,15 +159,17 @@ namespace B0r3dQR.Design
         static bool TooBig(string picture) => picture != null && picture.StartsWith("data:", StringComparison.Ordinal) && picture.Length > MostImageLength;
 
         // A barcode to keep: its type, the text as typed, the settings it was made with (the website's
-        // newRecentBarcode: listed by its type's name and the text)
+        // newRecentBarcode: listed by its type's name and a title as a QR code's is, never a Wi-Fi password)
         public static RecentCode NewBarcode(BarcodeType type, string text, BarcodeLook look, long savedAt)
         {
             BarcodeFormat format = BarcodeFormats.Get(type);
+            Describe(text, out _, out string title, out bool sensitive);
             return new RecentCode
             {
                 Key = "barcode:" + format.Id + ":" + text,
                 Label = format.Label,
-                Title = Shorten(text),
+                Title = title,
+                Sensitive = sensitive,
                 SavedAt = savedAt,
                 Barcode = type,
                 BarcodeText = text,
@@ -194,7 +197,7 @@ namespace B0r3dQR.Design
 
         // A barcode's settings from the file, as the website takes them back: only known ones of the
         // right kind, the rest as they are now; sizes kept in range, colours that aren't colours left out
-        static BarcodeLook BarcodeSettings(Dictionary<string, object> saved, BarcodeLook current)
+        public static BarcodeLook BarcodeSettings(Dictionary<string, object> saved, BarcodeLook current)
         {
             BarcodeLook look = current.Clone();
             if (saved == null) return look;
@@ -267,7 +270,8 @@ namespace B0r3dQR.Design
                         if (format == null || Json.Str(barcode, "data") == null) continue;
                         code.Barcode = format.Type;
                         code.BarcodeText = Json.Str(barcode, "data");
-                        code.BarcodeLook = BarcodeSettings(Json.Obj(barcode, "settings"), new BarcodeLook());
+                        code.BarcodeSaved = Json.Obj(barcode, "settings");
+                        code.BarcodeLook = BarcodeSettings(code.BarcodeSaved, new BarcodeLook());
                     }
                     else
                     {

@@ -123,7 +123,61 @@ namespace B0r3dQR.Design
                 }
                 else decoded.Add(bytes[i]);
             }
-            return Encoding.UTF8.GetString(decoded.ToArray());
+            return DecodeUtf8(decoded.ToArray());
+        }
+
+        // UTF-8 as a browser's TextDecoder (WHATWG Encoding Standard) reads it: one U+FFFD for each maximal
+        // ill-formed subpart, reprocessing the byte that ended an unfinished sequence (.NET Framework's
+        // UTF8Encoding replaces a broken two-byte sequence with one U+FFFD where a browser emits two)
+        public static string DecodeUtf8(byte[] bytes, int start = 0)
+        {
+            var sb = new StringBuilder(bytes.Length - start);
+            int codePoint = 0, bytesSeen = 0, bytesNeeded = 0, lowerBoundary = 0x80, upperBoundary = 0xBF;
+            for (int i = start; i < bytes.Length; i++)
+            {
+                int b = bytes[i];
+                if (bytesNeeded == 0)
+                {
+                    if (b <= 0x7F) sb.Append((char)b);
+                    else if (b >= 0xC2 && b <= 0xDF) { bytesNeeded = 1; codePoint = b & 0x1F; }
+                    else if (b >= 0xE0 && b <= 0xEF)
+                    {
+                        if (b == 0xE0) lowerBoundary = 0xA0;
+                        else if (b == 0xED) upperBoundary = 0x9F;
+                        bytesNeeded = 2;
+                        codePoint = b & 0x0F;
+                    }
+                    else if (b >= 0xF0 && b <= 0xF4)
+                    {
+                        if (b == 0xF0) lowerBoundary = 0x90;
+                        else if (b == 0xF4) upperBoundary = 0x8F;
+                        bytesNeeded = 3;
+                        codePoint = b & 0x07;
+                    }
+                    else sb.Append('\uFFFD');
+                }
+                else if (b < lowerBoundary || b > upperBoundary)
+                {
+                    codePoint = bytesNeeded = bytesSeen = 0;
+                    lowerBoundary = 0x80;
+                    upperBoundary = 0xBF;
+                    sb.Append('\uFFFD');
+                    i--;
+                }
+                else
+                {
+                    lowerBoundary = 0x80;
+                    upperBoundary = 0xBF;
+                    codePoint = (codePoint << 6) | (b & 0x3F);
+                    if (++bytesSeen == bytesNeeded)
+                    {
+                        sb.Append(char.ConvertFromUtf32(codePoint));
+                        codePoint = bytesNeeded = bytesSeen = 0;
+                    }
+                }
+            }
+            if (bytesNeeded != 0) sb.Append('\uFFFD');
+            return sb.ToString();
         }
 
         // parseFloat: the number at the start (after any space), else NaN ("12abc" is 12)

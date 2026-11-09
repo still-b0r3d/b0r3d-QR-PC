@@ -21,7 +21,7 @@ namespace B0r3dQR.Design
             // rgb(...) and the like, what's inside on one line but for space around it (looked at without a
             // pattern for the inside: one that has to try every way to split spaces took minutes for a
             // few thousand of them)
-            Match f = Regex.Match(v, @"^(rgba?|hsla?)\(", RegexOptions.IgnoreCase);
+            Match f = Regex.Match(v, @"^(rgba?|hsla?)\(", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
             if (f.Success && v.EndsWith(")", StringComparison.Ordinal))
             {
                 string inside = v.Substring(f.Length, v.Length - f.Length - 1).Trim();
@@ -32,7 +32,7 @@ namespace B0r3dQR.Design
             try
             {
                 // WPF knows the CSS (X11) colour names, but only the "gray" way of spelling the greys
-                object named = ColorConverter.ConvertFromString(Regex.Replace(v, "grey", "gray", RegexOptions.IgnoreCase));
+                object named = ColorConverter.ConvertFromString(Regex.Replace(v, "grey", "gray", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant));
                 return named is Color c ? c : (Color?)null;
             }
             catch (FormatException)
@@ -105,9 +105,9 @@ namespace B0r3dQR.Design
         public static bool IsLength(string value)
         {
             string v = (value ?? "").Trim();
-            if (Regex.IsMatch(v, @"^(auto|min-content|max-content|fit-content|inherit|initial|unset|revert|revert-layer)$", RegexOptions.IgnoreCase)) return true;
-            if (Regex.IsMatch(v, @"^(calc|min|max|clamp|var|env|fit-content)\(.*\)$", RegexOptions.IgnoreCase | RegexOptions.Singleline)) return true;
-            return Regex.IsMatch(v, @"^\+?(0+(\.0+)?|(\d+(\.\d+)?|\.\d+)(e[+-]?\d+)?(" + Units + "))$", RegexOptions.IgnoreCase);
+            if (Regex.IsMatch(v, @"^(auto|min-content|max-content|fit-content|inherit|initial|unset|revert|revert-layer)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return true;
+            if (Regex.IsMatch(v, @"^(calc|min|max|clamp|var|env|fit-content)\(.*\)$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant | RegexOptions.Singleline)) return true;
+            return Regex.IsMatch(v, @"^\+?(0+(\.0+)?|(\d+(\.\d+)?|\.\d+)(e[+-]?\d+)?(" + Units + "))$", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
         }
 
         const string Units = "px|em|rem|ex|rex|ch|rch|cap|rcap|ic|ric|lh|rlh|vw|vh|vi|vb|vmin|vmax|svw|svh|svi|svb|svmin|svmax|lvw|lvh|lvi|lvb|lvmin|lvmax|" +

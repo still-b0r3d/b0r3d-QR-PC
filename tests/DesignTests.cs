@@ -287,6 +287,9 @@ namespace B0r3dQR.Tests
             clear.Background = "transparent";
             BitmapSource seeThrough = Images.FromBytes(QrExport.Jpg(QrExport.Picture(new QrArt(clear), null, false, true)));
             Check(Corner(seeThrough) == Colors.White, "a JPG of a see-through code should be on white");
+            QrDesign halfClear = d.Clone();
+            halfClear.Background = "#ffffff80";
+            Check(Corner(QrExport.Picture(new QrArt(halfClear), null, false, true)) == Colors.White, "a JPG of a partly see-through background (#ffffff80) should have white paper under it");
 
             byte[] pdf = QrExport.Pdf(art, null, false, "b0r3d.org");
             string head = Encoding.ASCII.GetString(pdf, 0, Math.Min(pdf.Length, 4000));
@@ -460,6 +463,8 @@ namespace B0r3dQR.Tests
             Refused("not json", DesignFile.NotADesign, "not JSON");
             Refused("{\"props\":{},\"style\":{}}", DesignFile.NotADesign, "a style without borderRadius");
             Refused("{\"props\":{\"image\":\"javascript:alert(1)\"},\"style\":{\"borderRadius\":\"0px\"}}", DesignFile.NotADesign, "a javascript: logo");
+            Refused("{\"props\":{\"image\":\"\\u0001javascript:alert(1)\"},\"style\":{\"borderRadius\":\"0px\"}}", DesignFile.NotADesign, "a logo with a control character before javascript:");
+            Refused("{\"props\":{\"image\":\"java\\tscript:alert(1)\"},\"style\":{\"borderRadius\":\"0px\"}}", DesignFile.NotADesign, "a logo with a tab inside javascript:");
             Refused("{\"props\":{},\"style\":{\"borderRadius\":\"0px\"},\"frame\":{\"text\":\"x\",\"position\":\"middle\",\"style\":{}}}", DesignFile.NotADesign, "a frame in the middle");
             Check(Encoding.UTF8.GetBytes(DesignFile.Newer).Length > DesignFile.Newer.Length && DesignFile.Newer.Contains("’"), "the website's messages use a typographic apostrophe");
 
@@ -498,6 +503,19 @@ namespace B0r3dQR.Tests
             QrDesign grey = d.Clone();
             grey.DotsColor = "#aaaaaa";
             Check(Checks.Warnings(grey).Any(w => w.StartsWith("Low contrast (2.3:1)", StringComparison.Ordinal)), "grey on white: " + string.Join(" | ", Checks.Warnings(grey)));
+            QrDesign red = d.Clone();
+            red.DotsColor = "#ff0000";
+            Check(Checks.Warnings(red).Any(w => w.StartsWith("Low contrast (3.9:1)", StringComparison.Ordinal)), "red on white (3.998:1) should round down to 3.9:1: " + string.Join(" | ", Checks.Warnings(red)));
+            System.Globalization.CultureInfo wasCulture = System.Threading.Thread.CurrentThread.CurrentCulture;
+            try
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = System.Globalization.CultureInfo.GetCultureInfo("tr-TR");
+                Check(Checks.BareDomain("WWW.INFO.COM") && Css.Colour("INDIGO") != null, "Turkish Windows: capital I in domain and colour names");
+            }
+            finally
+            {
+                System.Threading.Thread.CurrentThread.CurrentCulture = wasCulture;
+            }
             QrDesign clear = d.Clone();
             clear.Background = "transparent";
             clear.Margin = 2;
@@ -531,7 +549,7 @@ namespace B0r3dQR.Tests
             framed.Frame = Presets.ApplyFrame("Default Frame", null);
             framed.Frame.BackgroundColor = "rgba(0, 0, 0, 0.7)";
             List<string> dim = Checks.Warnings(framed);
-            Check(dim.Count == 1 && dim[0].StartsWith("Low contrast (2.5:1)", StringComparison.Ordinal), "black on a 70 % black frame: " + string.Join(" | ", dim));
+            Check(dim.Count == 1 && dim[0].StartsWith("Low contrast (2.4:1)", StringComparison.Ordinal), "black on a 70 % black frame: " + string.Join(" | ", dim));
         }
     }
 }

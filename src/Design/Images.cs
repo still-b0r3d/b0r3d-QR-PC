@@ -55,7 +55,7 @@ namespace B0r3dQR.Design
         static ImageSource Decode(string v, out string problem)
         {
             problem = null;
-            if (Regex.IsMatch(v, "^https?://", RegexOptions.IgnoreCase))
+            if (Regex.IsMatch(v, "^https?://", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant))
             {
                 // (what a note quotes from the design file goes through Xml.Quote: cut short, and kept to one line)
                 string host = Uri.TryCreate(v, UriKind.Absolute, out Uri uri) ? Xml.Quote(uri.Host) : "a web address";

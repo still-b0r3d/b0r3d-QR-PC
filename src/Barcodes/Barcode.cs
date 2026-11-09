@@ -127,6 +127,13 @@ namespace B0r3dQR.Barcodes
     {
         public const int DefaultBarHeight = 50, MinBarHeight = 20, MaxBarHeight = 150;
 
+        // whether a barcode includes its quiet zones: 2D codes and ITF-14 always do (the checkbox is hidden for them)
+        public static bool WithMargin(BarcodeType type, BarcodeOptions options)
+        {
+            BarcodeFormat format = BarcodeFormats.Get(type);
+            return !format.Linear || format.KeepsQuietZones || options.QuietZones;
+        }
+
         // the barcode, or null with the message the website shows
         public static BarcodeSvg Make(string text, BarcodeType type, BarcodeOptions options, out string error)
         {
@@ -140,7 +147,7 @@ namespace B0r3dQR.Barcodes
                 error = Friendly(error);
                 return null;
             }
-            BarcodeSvg barcode = BarcodeSvg.From(ZintSvg.Draw(symbol, format.Linear && options.ShowText, options.QuietZones || format.KeepsQuietZones));
+            BarcodeSvg barcode = BarcodeSvg.From(ZintSvg.Draw(symbol, format.Linear && options.ShowText, WithMargin(type, options)));
             return format.Linear ? barcode.WithBarHeight(options.BarHeight) : barcode;
         }
 

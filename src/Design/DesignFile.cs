@@ -171,10 +171,18 @@ namespace B0r3dQR.Design
         // website (no scheme). Any other scheme (javascript:, file:, data:text/...) refuses the file.
         public static bool SafeLogo(string logo)
         {
-            string v = (logo ?? "").Trim();
+            // read the way a browser reads an address: tabs and line breaks anywhere, and control
+            // characters and spaces at either end, don't count (so "\u0001javascript:" is still javascript:)
+            var s = new System.Text.StringBuilder((logo ?? "").Length);
+            foreach (char c in logo ?? "")
+                if (c != '\t' && c != '\n' && c != '\r') s.Append(c);
+            int start = 0, end = s.Length;
+            while (start < end && s[start] <= 0x20) start++;
+            while (end > start && s[end - 1] <= 0x20) end--;
+            string v = s.ToString(start, end - start);
             if (v.Length == 0) return true;
             if (v.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase)) return true;
-            if (Regex.IsMatch(v, "^https?://", RegexOptions.IgnoreCase)) return true;
+            if (Regex.IsMatch(v, "^https?://", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)) return true;
             return !Regex.IsMatch(v, @"^[A-Za-z][A-Za-z0-9+.\-]*:");
         }
 
@@ -198,7 +206,7 @@ namespace B0r3dQR.Design
             if (Json.Has(style, "fontFamily") && !(style["fontFamily"] is string)) return null;
             string picture = Json.Str(style, "backgroundImage");
             if (Json.Has(style, "backgroundImage") && (picture == null ||
-                !(picture.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) || Regex.IsMatch(picture, "^https?://", RegexOptions.IgnoreCase)))) return null;
+                !(picture.StartsWith("data:image/", StringComparison.OrdinalIgnoreCase) || Regex.IsMatch(picture, "^https?://", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)))) return null;
             // the website rounds the frame's width (caption + 200) and keeps it to 250-800
             double? caption = Json.Num(f, "captionWidth");
             double frameWidth = caption.HasValue && !double.IsNaN(caption.Value) ? Math.Round(caption.Value + 200, MidpointRounding.AwayFromZero) : 400;

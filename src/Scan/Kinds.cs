@@ -121,7 +121,7 @@ namespace B0r3dQR.Scan
                 kind = "Sign-in code (two-factor)";
                 // (/{2}, not two slashes: the never-online test reads "scheme://" in strings as an address)
                 // ([^/?]: with no label, "totp?issuer=A/B&secret=..." must not pass for one)
-                Match label = Regex.Match(t, @"^otpauth:/{2}[^/?]+/([^?]*)", RegexOptions.IgnoreCase);
+                Match label = Regex.Match(t, @"^otpauth:/{2}[^/?]+/([^?]*)", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant);
                 detail = label.Success ? Uri.UnescapeDataString(label.Groups[1].Value) : "";
                 return;
             }
@@ -215,7 +215,7 @@ namespace B0r3dQR.Scan
         // the value of a vCard or iCalendar line ("FN:Rukus", "SUMMARY;LANGUAGE=en:Party")
         static string Line(string text, string name)
         {
-            Match m = Regex.Match(text, "(?im)^" + name + @"(?:;[^:\r\n]*)?:(.*)$");
+            Match m = Regex.Match(text, "(?im)^" + name + @"(?:;[^:\r\n]*)?:(.*)$", RegexOptions.CultureInvariant);
             return m.Success ? m.Groups[1].Value.Trim() : null;
         }
     }

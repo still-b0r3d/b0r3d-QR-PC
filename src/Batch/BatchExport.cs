@@ -84,9 +84,12 @@ namespace B0r3dQR.Batch
             }
             else
             {
-                List<BatchItem> made = items.Where(i => i.Problem == null).ToList();
+                var places = new List<int>();
+                for (int i = 0; i < items.Count; i++)
+                    if (items[i].Problem == null) places.Add(i);
+                List<BatchItem> made = places.Select(i => items[i]).ToList();
                 List<string> names = kind.Barcode != null ? BatchRows.BarcodeNames(made.Select(i => i.Row).ToList())
-                    : BatchRows.TextNames(made.Select(i => i.Row).ToList(), made.Select(i => rows.IndexOf(i.Row)).ToList());
+                    : BatchRows.TextNames(made.Select(i => i.Row).ToList(), places);
                 for (int i = 0; i < made.Count; i++) made[i].Name = names[i];
             }
             return items;

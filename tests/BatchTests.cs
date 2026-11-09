@@ -57,6 +57,14 @@ namespace B0r3dQR.Tests
             // two names the same only once made safe: the second isn't lost (the website's zip keeps one of them)
             var clash = new List<BatchRow> { new BatchRow { Data = "1", FileName = "a b" }, new BatchRow { Data = "2", FileName = "a_b" } };
             Check(BatchRows.QrNames(clash).SequenceEqual(new[] { "a_b", "a_b-1" }), "names alike once safe: " + string.Join(", ", BatchRows.QrNames(clash)));
+            // a name over 255 characters is capped so it writes into a folder and unpacks from a zip on Windows
+            var longRow = new List<BatchRow> { new BatchRow { Data = "1", FrameText = new string('a', 300) }, new BatchRow { Data = "2", FrameText = new string('a', 300) } };
+            List<string> longNames = BatchRows.QrNames(longRow);
+            Check(longNames[0].Length == BatchRows.MostNameLength && longNames[1] == longNames[0] + "-1", "long batch names capped: " + longNames[0].Length + ", " + longNames[1].Length);
+            // 10,000 rows of one name: linear time, same names
+            var many = Enumerable.Range(0, 10000).Select(i => new BatchRow { Row = i + 2, Data = "https://b0r3d.org", FileName = "same" }).ToList();
+            List<string> manyBarcodes = BatchRows.BarcodeNames(many);
+            Check(manyBarcodes[0] == "same" && manyBarcodes[1] == "same_2" && manyBarcodes[9999] == "same_10000", "10,000 repeated barcode names: " + manyBarcodes[9999]);
         }
 
         // a batch window for the Make tab as it is, with this CSV read in

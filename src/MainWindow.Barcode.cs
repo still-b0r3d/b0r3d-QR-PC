@@ -30,7 +30,8 @@ namespace B0r3dQR
         BarcodeArt barcodeArt;          // the barcode drawn, or null
         string barcodePrepared, barcodeExpected;   // what was encoded (before any check digit), and what a scanner should read
         string barcodeMadeAgain;        // a scanned barcode given by "Make this code again", exactly as it was read
-        DispatcherTimer barcodeTyping;
+        string barcodeSaidKind = "";
+        DispatcherTimer barcodeTyping, barcodeSaidTimer;
 
         internal bool MakingBarcode => codeType != null;
 
@@ -47,6 +48,8 @@ namespace B0r3dQR
             barcodePrint = settings.BarcodePrint.Clone();
             barcodeTyping = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };   // the website waits a moment after typing
             barcodeTyping.Tick += (s, e) => RefreshBarcode();
+            barcodeSaidTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
+            barcodeSaidTimer.Tick += (s, e) => { barcodeSaidTimer.Stop(); BarcodeErrorSaid.Text = ""; };
 
             showing = true;
             // QR first, then the website's groups, as its Code type list has them (the items' alignment set here:
@@ -167,10 +170,24 @@ namespace B0r3dQR
             string text = BarcodeText;
             BarcodeSvg made = Barcodes.Barcode.Make(text, type, look.Options, out string error);
             barcodeArt = made == null ? null : new BarcodeArt(made);
-            string said = BarcodeError.Text;
-            BarcodeError.Text = LongText.Cap(error ?? "");
-            BarcodeError.Visibility = error != null ? Visibility.Visible : Visibility.Collapsed;
-            if (error != null && BarcodeError.Text != said) Say(BarcodeError);
+            string message = error == null ? null : LongText.Cap(error);
+            BarcodeError.Text = message ?? "";
+            BarcodeError.Visibility = message != null ? Visibility.Visible : Visibility.Collapsed;
+            // Said when the mistake is another one, not as its count goes up with each key ("this has 7",
+            // "this has 8"): a check digit or a GS1 field that changes is another mistake. The line read
+            // out goes again a moment later, so it isn't read twice when the window is read through.
+            string kind = message == null ? "" : System.Text.RegularExpressions.Regex.Replace(message, "this has [0-9]+", "this has #");
+            if (kind != barcodeSaidKind)
+            {
+                barcodeSaidKind = kind;
+                BarcodeErrorSaid.Text = message ?? "";
+                barcodeSaidTimer.Stop();
+                if (message != null)
+                {
+                    Say(BarcodeErrorSaid);
+                    barcodeSaidTimer.Start();
+                }
+            }
             if (barcodeArt != null)
             {
                 barcodePrepared = format.Prepare(text);
@@ -266,7 +283,8 @@ namespace B0r3dQR
             if (barcodeExpected != barcodePrepared)
                 rows.Add(new KeyValuePair<string, string>("Check digit", (barcodeExpected.StartsWith(barcodePrepared, StringComparison.Ordinal)
                     ? barcodeExpected.Substring(barcodePrepared.Length) : barcodeExpected.Substring(barcodeExpected.Length - 1)) + ", added for you"));
-            rows.Add(new KeyValuePair<string, string>("Size", barcodeArt.W + " × " + barcodeArt.H + " modules, blank margin included"));
+            rows.Add(new KeyValuePair<string, string>("Size", barcodeArt.W + " × " + barcodeArt.H + " modules, " +
+                (Barcodes.Barcode.WithMargin(codeType.Value, look.Options) ? "blank margin included" : "no blank margin")));
             ShowInCode(rows, "Stored");
             InCodeText.Text = "";
             InCodeText.Visibility = Visibility.Collapsed;
@@ -418,7 +436,7 @@ namespace B0r3dQR
         // a barcode from Recent codes: its type, text and settings back, as the website opens one
         void OpenRecentBarcode(RecentCode code)
         {
-            look = code.BarcodeLook.Clone();
+            look = code.BarcodeSaved != null ? RecentCodes.BarcodeSettings(code.BarcodeSaved, look) : code.BarcodeLook.Clone();
             ShowBarcodeSettings();
             barcodeMadeAgain = code.BarcodeText;   // its text exactly as it was kept, Windows line breaks too
             Tabs.SelectedItem = MakeTab;

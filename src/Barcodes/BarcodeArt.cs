@@ -64,10 +64,14 @@ namespace B0r3dQR.Barcodes
             var picture = new RenderTargetBitmap(width, height, 96, 96, PixelFormats.Pbgra32);
             picture.Render(visual);
             picture.Freeze();
-            if (Math.Abs(dpi - 96) < 0.001) return picture;
-            // the same pixels, marked with the print resolution
+            bool solid = ink.A == 255 && ((paper.HasValue && paper.Value.A == 255) || (under.HasValue && under.Value.A == 255));
+            if (!solid && Math.Abs(dpi - 96) < 0.001) return picture;
+            // the same pixels, marked with the print resolution, and with alpha 255 on a solid background
+            // (WPF's text anti-aliasing can leave alpha 254 on glyph edges over an opaque background)
             var pixels = new byte[width * height * 4];
             picture.CopyPixels(pixels, width * 4, 0);
+            if (solid)
+                for (int i = 3; i < pixels.Length; i += 4) pixels[i] = 255;
             BitmapSource marked = BitmapSource.Create(width, height, dpi, dpi, PixelFormats.Pbgra32, null, pixels, width * 4);
             marked.Freeze();
             return marked;
