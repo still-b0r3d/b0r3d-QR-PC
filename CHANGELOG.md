@@ -3,10 +3,11 @@
 What changed in each version of b0r3d QR for Windows, the newest first. The versions before 1.0
 are its stages, built one after the other; 0.8 is the first one released.
 
-## 0.9 (not released yet)
+## 1.3 (released 8 November 2026)
 
-Scan from anywhere, scanning PDFs, Avery label sheets and vector PDFs, and the release
-candidate for 1.3.
+Version 1.3 for parity with qr.b0r3d.org v1.3 (skipping 0.9 to 1.2 to match the website's
+version number): four new features (Scan from anywhere, Scan PDFs, Vector PDF, Avery label
+sheets with printer nudge), plus website parity and bug fixes.
 
 - **Scan from anywhere** (Scan menu and Scan tab): while b0r3d QR is running, a cup icon in
   the taskbar corner and **Ctrl+Shift+Q** start Scan the screen without opening the main

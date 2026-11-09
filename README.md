@@ -5,15 +5,14 @@
 screen and a webcam. Whatever you type goes straight into the pattern, so a code never expires,
 there's no account, and nothing you type or scan is sent anywhere: b0r3d QR never goes online.
 
-Version 0.8, for Windows 10 and 11: one exe of about 4 MB, nothing to install. Made by
+Version 1.3, for Windows 10 and 11: one exe of about 4 MB, nothing to install. Made by
 [b0r3d.org](https://b0r3d.org).
 
 ![The Make tab: a QR code in the b0r3d Cup style, in a frame with the caption "Scan for more info", and a line saying it scans](docs/images/design-light.png)
 
-**An early release.** This is version 0.8, the first one released, with everything planned for
-1.0: making codes in the website's designs, fonts and logos, the 13 other barcodes, the data
-templates, reading codes off pictures, folders, the screen and a webcam, batch export and
-printing. 1.0 comes after a full test run on a real PC.
+**Version 1.3** matches qr.b0r3d.org v1.3 with four PC additions: scan from anywhere (tray icon
+and Ctrl+Shift+Q), scanning PDFs through Windows' built-in reader, Avery label sheets with
+printer nudge, and vector PDFs.
 
 ## Getting it
 
