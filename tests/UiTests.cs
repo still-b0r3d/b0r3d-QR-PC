@@ -510,6 +510,22 @@ namespace B0r3dQR.Tests
             Pump(() => window.PdfReadBack != null, 15000);
             Check(window.PdfReadBack == "different" && window.Note.Text.StartsWith("Saved qr.pdf, but it didn't scan when read back", StringComparison.Ordinal),
                 "a PDF that reads as other text should say so: " + window.PdfReadBack + " · " + window.Note.Text);
+
+            // one that can't be read back at all says that, not "more contrast": Windows' PDF reader not opening it, or
+            // the file held by another program
+            string broken = Path.Combine(folder, "broken.pdf");
+            File.WriteAllText(broken, "not a PDF");
+            window.ReadBackPdf(broken, (grays, width, height) => ScanCheck.Read(grays, width, height)?.Text, "https://b0r3d.org/saved");
+            Pump(() => window.PdfReadBack != null, 15000);
+            Check(window.PdfReadBack == "unreadable" && window.Note.Text == "Saved broken.pdf, but it couldn't be read back to check it: Windows' PDF reader didn't open it.",
+                "a PDF Windows' reader doesn't open: " + window.PdfReadBack + " · " + window.Note.Text);
+            using (new FileStream(Path.Combine(folder, "qr.pdf"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            {
+                window.ReadBackPdf(Path.Combine(folder, "qr.pdf"), (grays, width, height) => ScanCheck.Read(grays, width, height)?.Text, "https://b0r3d.org/saved");
+                Pump(() => window.PdfReadBack != null, 15000);
+            }
+            Check(window.PdfReadBack == "unreadable" && window.Note.Text.StartsWith("Saved qr.pdf, but it couldn't be read back to check it (", StringComparison.Ordinal),
+                "a PDF held by another program: " + window.PdfReadBack + " · " + window.Note.Text);
             window.AskWhereStandIn = null;
         }
 

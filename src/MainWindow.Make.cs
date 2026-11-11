@@ -965,7 +965,9 @@ namespace B0r3dQR
         internal string PdfReadBack;
 
         // A PDF just saved, read back from the disk through Windows' PDF reader and scanned off the window's thread,
-        // as a batch's files are: the bottom line says it scanned, or that it didn't
+        // as a batch's files are: the bottom line says it scanned, that it didn't, or that it couldn't be read back
+        // at all (the file held by another program, or Windows' PDF reader not opening it), which says nothing of
+        // the code
         internal void ReadBackPdf(string path, Func<byte[], int, int, string> read, string expected)
         {
             string name = Path.GetFileName(path);
@@ -980,6 +982,9 @@ namespace B0r3dQR
             {
                 PdfReadBack = done.IsFaulted ? "unreadable" : done.Result;
                 if (PdfReadBack == "ok") Flash("Saved " + name + ", read back and scanned.", "Good");
+                else if (PdfReadBack == "unreadable")
+                    Flash("Saved " + name + ", but it couldn't be read back to check it" +
+                          (done.IsFaulted ? " (" + done.Exception.GetBaseException().Message.TrimEnd('.') + ")" : ": Windows' PDF reader didn't open it") + ".", "Warn");
                 else Flash("Saved " + name + ", but it didn't scan when read back from the disk: try more contrast or a larger size.", "Warn");
             })));
         }

@@ -45,7 +45,8 @@ Fixes for 1.3.
   code is titled `Data Matrix: <network>`; and the replacement character is back in its place.
 - **File → Save PDF reads the PDF back** from the disk through Windows' PDF reader and scans
   it, a QR code's and a barcode's, as Batch export does; the line at the bottom says it
-  scanned, or that it didn't.
+  scanned, that it didn't, or that it couldn't be read back at all (held by another program,
+  or not opened by Windows' PDF reader).
 - **A tab in a caption is drawn as a space,** as browsers draw the website's captions (it
   jumped to a tab stop).
 - **Screen readers** hear a barcode's mistake from the line shown under its data, still once
