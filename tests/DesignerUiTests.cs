@@ -38,6 +38,16 @@ namespace B0r3dQR.Tests
             Check(window.CurrentDesign.Frame == null, "unticking should take the frame off");
             window.FrameCheck.IsChecked = true;
             Check(window.CurrentDesign.Frame?.Text == "Two\nlines", "ticking again should bring the same frame back");
+            // a frame switched on with its caption emptied gets the usual caption back in its box, as on the website
+            // (an empty caption is drawn as it anyway)
+            window.CaptionBox.Text = "";
+            window.CatchUp();
+            window.FrameCheck.IsChecked = false;
+            window.FrameCheck.IsChecked = true;
+            Check(window.CurrentDesign.Frame?.Text == QrFrame.DefaultText && window.CaptionBox.Text == QrFrame.DefaultText,
+                "a frame switched on with no caption should get \"Scan for more info\": \"" + window.CaptionBox.Text + "\"");
+            window.CaptionBox.Text = "Two\r\nlines";
+            window.CatchUp();
             window.FrameRight.IsChecked = true;
             Check(window.FrameWidthRow.Visibility == Visibility.Visible && window.CurrentDesign.Frame.Position == "right", "a caption on the right should show its width");
             window.FrameBorderBox.Text = "16";   // no unit: the website refuses it

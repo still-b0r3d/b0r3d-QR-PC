@@ -147,6 +147,13 @@ namespace B0r3dQR.Tests
             string bell = new QrArt(d).ToSvg();
             new System.Xml.XmlDocument().LoadXml(bell);
             Check(bell.Contains(">Bell &amp; &lt;b&gt;</tspan>"), "a control character in a caption should be left out of the SVG, so it stays valid XML");
+            // a tab in a caption is drawn as a space, as a browser draws the website's SVG text (WPF jumped to a tab
+            // stop); the file keeps the tab, as the website's does
+            d.Frame.Text = "Scan\tme";
+            byte[] tabbed = QrExport.Png(QrExport.Picture(new QrArt(d), null, false));
+            Check(new QrArt(d).ToSvg().Contains(">Scan\tme</tspan>"), "the SVG should keep the caption's tab as the website's does");
+            d.Frame.Text = "Scan me";
+            Check(tabbed.SequenceEqual(QrExport.Png(QrExport.Picture(new QrArt(d), null, false))), "a tab in a caption should be drawn as a space");
             d.Frame.Text = QrFrame.DefaultText;
             d.Frame.BackgroundImage = "data:image/svg+xml;base64," + Convert.ToBase64String(Encoding.UTF8.GetBytes("<svg xmlns=\"http://www.w3.org/2000/svg\"/>"));
             Check(new QrArt(d).ToSvg().Contains("clip-path=\"url(#frame-bg-clip)\" href=\"" + d.Frame.BackgroundImage), "a frame's SVG picture should go into the SVG, clipped as the website clips it");

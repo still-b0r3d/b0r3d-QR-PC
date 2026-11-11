@@ -414,10 +414,11 @@ namespace B0r3dQR.Qr
                         // as browsers draw the website's SVG: each line after the first moves down a
                         // line, but an empty line has no letter for its move to act on, so it moves
                         // nothing and its room is left at the bottom; a line is centred with any space
-                        // it ends in; emoji in their colours
+                        // it ends in; a tab is a space (SVG text has no tab stops: WPF's jumped to one);
+                        // emoji in their colours
                         if (drawn[i].Length == 0) continue;
                         if (i > 0) y += LineHeight;
-                        FormattedText text = font.Text(drawn[i], CaptionSize, ink, CultureInfo.CurrentUICulture);
+                        FormattedText text = font.Text(drawn[i].Replace('\t', ' '), CaptionSize, ink, CultureInfo.CurrentUICulture);
                         ColourGlyphs.DrawText(dc, text, new Point(captionX - text.WidthIncludingTrailingWhitespace / 2, y - text.Baseline));
                     }
                 }
