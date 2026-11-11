@@ -371,6 +371,29 @@ namespace B0r3dQR.Tests
             Check(!window.MakingBarcode && window.Code?.Text == qr.Text, "a QR code after a barcode should be made as a QR code");
         }
 
+        // A barcode's mistake is said once from the line shown (a live region with a size, as the scan check's line is:
+        // a line of no size kept apart to be said is one some screen readers pass over), not again as its count goes
+        // up with each key; another mistake is said again
+        static void BarcodeMistakesSaidOnce()
+        {
+            MainWindow window = NewMain();
+            ChooseType(window, BarcodeType.Ean13);
+            int said = window.BarcodeErrorsSaid;
+            TypeBarcode(window, "12345");
+            string first = window.BarcodeError.Text;
+            TypeBarcode(window, "123456");
+            Check(first.EndsWith("this has 5.", StringComparison.Ordinal) && window.BarcodeError.Text.EndsWith("this has 6.", StringComparison.Ordinal) && window.BarcodeErrorsSaid == said + 1,
+                "a count going up is the same mistake, said once: " + (window.BarcodeErrorsSaid - said) + " times");
+            TypeBarcode(window, "12345A");
+            Check(window.BarcodeError.Text == "EAN-13 can only hold digits." && window.BarcodeErrorsSaid == said + 2, "another mistake is said again: " + (window.BarcodeErrorsSaid - said) + " times");
+            LayOut(window.Root, MainWidth, MainHeight);
+            Check(System.Windows.Automation.AutomationProperties.GetLiveSetting(window.BarcodeError) == System.Windows.Automation.AutomationLiveSetting.Assertive &&
+                  window.BarcodeError.Visibility == Visibility.Visible && window.BarcodeError.ActualWidth > 0 && window.BarcodeError.ActualHeight > 0,
+                "the line said should be the one shown, with a size: " + window.BarcodeError.ActualWidth + " × " + window.BarcodeError.ActualHeight);
+            TypeBarcode(window, "400638133393");
+            Check(window.BarcodeError.Visibility == Visibility.Collapsed && window.BarcodeErrorsSaid == said + 2, "no mistake, nothing said");
+        }
+
         // the barcode settings kept for next time; Recent codes keep a barcode's type, text and settings
         static void BarcodeSettingsKept()
         {

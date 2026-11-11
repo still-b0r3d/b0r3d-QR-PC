@@ -169,6 +169,7 @@ namespace B0r3dQR.Tests
                 Run("printing: a barcode at its files' size; a batch on sheets with file names, or one a page, each page scanned", PrintingBarcodesAndBatches);
                 Run("printing: with Windows' print service not answering, Print says so in plain words instead of failing", PrintingWithoutThePrintService);
                 Run("designer: barcode settings kept for next time; a recent barcode opens with its type, text and look", BarcodeSettingsKept);
+                Run("designer: a barcode's mistake is said once from the line shown, not again as its count goes up; another mistake is said again", BarcodeMistakesSaidOnce);
                 Run("shapes: exactly the dark modules, with the quiet zone around them", ShapesMatchTheCode);
                 Run("picture size: whole pixels per module, as near the size asked for as can be", PictureSizes);
 

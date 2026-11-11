@@ -368,8 +368,7 @@
                                                          VerticalScrollBarVisibility="Auto" TextChanged="OnBarcodeDataChanged" AutomationProperties.Name="Data to encode" />
                                                 <TextBlock x:Name="BarcodeHint" Style="{StaticResource Hint}" />
                                                 <TextBlock x:Name="BarcodeError" TextWrapping="Wrap" FontSize="12" Margin="0,6,0,0" Foreground="{DynamicResource Bad}"
-                                                           Visibility="Collapsed" />
-                                                <TextBlock x:Name="BarcodeErrorSaid" Width="0" Height="0" AutomationProperties.LiveSetting="Assertive" />
+                                                           Visibility="Collapsed" AutomationProperties.LiveSetting="Assertive" />
                                             </StackPanel>
                                         </Expander>
 

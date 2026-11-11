@@ -31,7 +31,10 @@ namespace B0r3dQR
         string barcodePrepared, barcodeExpected;   // what was encoded (before any check digit), and what a scanner should read
         string barcodeMadeAgain;        // a scanned barcode given by "Make this code again", exactly as it was read
         string barcodeSaidKind = "";
-        DispatcherTimer barcodeTyping, barcodeSaidTimer;
+        DispatcherTimer barcodeTyping;
+
+        // for the tests: how many times a barcode's mistake has been said
+        internal int BarcodeErrorsSaid;
 
         internal bool MakingBarcode => codeType != null;
 
@@ -48,8 +51,6 @@ namespace B0r3dQR
             barcodePrint = settings.BarcodePrint.Clone();
             barcodeTyping = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(250) };   // the website waits a moment after typing
             barcodeTyping.Tick += (s, e) => RefreshBarcode();
-            barcodeSaidTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(5) };
-            barcodeSaidTimer.Tick += (s, e) => { barcodeSaidTimer.Stop(); BarcodeErrorSaid.Text = ""; };
 
             showing = true;
             // QR first, then the website's groups, as its Code type list has them (the items' alignment set here:
@@ -174,18 +175,17 @@ namespace B0r3dQR
             BarcodeError.Text = message ?? "";
             BarcodeError.Visibility = message != null ? Visibility.Visible : Visibility.Collapsed;
             // Said when the mistake is another one, not as its count goes up with each key ("this has 7",
-            // "this has 8"): a check digit or a GS1 field that changes is another mistake. The line read
-            // out goes again a moment later, so it isn't read twice when the window is read through.
+            // "this has 8"): a check digit or a GS1 field that changes is another mistake. Said from the line
+            // shown (a live region, as the scan check's line is), once it's laid out: a line of no size, kept
+            // apart to be said, is one some screen readers pass over.
             string kind = message == null ? "" : System.Text.RegularExpressions.Regex.Replace(message, "this has [0-9]+", "this has #");
             if (kind != barcodeSaidKind)
             {
                 barcodeSaidKind = kind;
-                BarcodeErrorSaid.Text = message ?? "";
-                barcodeSaidTimer.Stop();
                 if (message != null)
                 {
-                    Say(BarcodeErrorSaid);
-                    barcodeSaidTimer.Start();
+                    BarcodeErrorsSaid++;
+                    Dispatcher.BeginInvoke(new Action(() => { if (BarcodeError.IsVisible) Say(BarcodeError); }), DispatcherPriority.Loaded);
                 }
             }
             if (barcodeArt != null)

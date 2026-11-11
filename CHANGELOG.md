@@ -49,6 +49,9 @@ Fixes for 1.3.
   scanned, or that it didn't.
 - **Captions, as on the website:** a tab is drawn as a space (it jumped to a tab stop), and a
   frame switched on with no caption gets "Scan for more info" in its caption box too.
+- **Screen readers** hear a barcode's mistake from the line shown under its data, still once
+  for each mistake; it was said from a hidden line of no size, which some screen readers pass
+  over.
 
 ## 1.3 (released 8 November 2026)
 
