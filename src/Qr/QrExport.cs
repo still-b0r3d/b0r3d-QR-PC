@@ -108,8 +108,15 @@ namespace B0r3dQR.Qr
         {
             Size size = PictureSize(art, print, wholePixels);
             Allowed(size.Width, size.Height);
+            // A JPG has no see-through: under it goes the background when it's solid, else white paper. The
+            // drawing paints the background itself, so a partly see-through one is painted once, on the white
+            // (put under it as well, it came out twice as strong: #00000080 at 63 instead of the website's 128).
             Color? under = null;
-            if (forJpg) under = art.Design.Transparent ? Colors.White : Css.Paint(art.Design.Background);
+            if (forJpg)
+            {
+                Color background = Css.Paint(art.Design.Background);
+                under = art.Design.Transparent || background.A < 255 ? Colors.White : background;
+            }
             return art.Render(size.Scale, size.Width, size.Height, under, size.Dpi);
         }
 

@@ -3,6 +3,14 @@
 What changed in each version of b0r3d QR for Windows, the newest first. The versions before 1.0
 are its stages, built one after the other; 0.8 is the first one released.
 
+## Next version (not released yet)
+
+Fixes for 1.3.
+
+- **JPG with a partly see-through background:** the colour was painted twice, so it came out
+  too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
+  white paper, as the website and barcodes do.
+
 ## 1.3 (released 8 November 2026)
 
 Version 1.3 for parity with qr.b0r3d.org v1.3 (skipping 0.9 to 1.2 to match the website's
