@@ -157,6 +157,7 @@ namespace B0r3dQR.Tests
                 Run("designer: a number typed with a point means the same in any language", NumbersInAnyLanguage);
                 Run("designer: data templates in the window, filled from the text, with their messages, Save and examples", TemplatesInTheWindow);
                 Run("designer: Recent codes: kept on save or copy, the note once, open, delete, Clear all asks, off", RecentCodesInTheWindow);
+                Run("designer: as on the website: a recent code that can't be opened says so, a recent barcode's missing settings the Make tab's; Windows line breaks kept through a fix and a template", RecentCodesAndLineBreaksLikeTheWebsite);
                 Run("designer: barcodes: every type from the list, checked, its own options, the website's messages, QR code again", BarcodesInTheWindow);
                 Run("batch export: into a folder, each file read back; files already there numbered, skipped or replaced; a row too long left out", BatchIntoAFolder);
                 Run("batch export: every kind of file into a zip, read back out of it; barcodes with a refused row", BatchIntoAZip);

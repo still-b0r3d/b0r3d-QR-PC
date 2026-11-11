@@ -119,6 +119,46 @@ namespace B0r3dQR.Tests
             });
         }
 
+        // As on the website: a recent code whose design can't be read says "That code can't be opened: …" and stays listed
+        // (it said "isn't here any more"); a recent barcode kept without some of its settings takes the Make tab's for
+        // those; a code's text with Windows line breaks keeps them through a one-click fix and a template's Save
+        static void RecentCodesAndLineBreaksLikeTheWebsite()
+        {
+            InFreshDataFolder("recent-website", () =>
+            {
+                var settings = new Settings();
+                var window = new MainWindow(settings);
+                LayOut(window.Root, MainWidth, MainHeight);
+                RecentCode refused = RecentCodes.New(new QrDesign { Data = "https://b0r3d.org/refused" }, 1700000000000);
+                refused.Design = "{\"props\":{\"image\":\"\\u0001javascript:alert(1)\"},\"style\":{\"borderRadius\":\"0px\"}}";
+                Check(RecentCodes.Add(refused) > 0, "the code should be kept");
+                var list = new RecentWindow(settings, window.OpenRecent);
+                LayOut(list.Root, 600, 660);
+                list.Open(list.Codes[0]);
+                Check(list.StatusLine.Text.StartsWith("That code can't be opened: ", StringComparison.Ordinal) && RecentCodes.Load().Count == 1 && window.DataBox.Text == "",
+                    "a code whose design can't be read: \"" + list.StatusLine.Text + "\"");
+                list.Close();
+
+                var now = new Barcodes.BarcodeLook { Color = "#112233", Background = "#fedcba", Scale = 7, BarHeight = 90, ShowText = false };
+                Barcodes.BarcodeLook back = RecentCodes.BarcodeSettings(new Dictionary<string, object> { ["color"] = "#445566", ["showText"] = true }, now);
+                Check(back.Color == "#445566" && back.ShowText && back.Background == "#fedcba" && back.Scale == 7 && back.BarHeight == 90,
+                    "a recent barcode's settings: its own where kept, the Make tab's for the rest: " + back.Color + " " + back.Background + " " + back.Scale + " " + back.BarHeight + " " + back.ShowText);
+            });
+
+            // a text that came in with Windows line breaks (a template's Save writes the text as it is, CR LF and all) keeps
+            // them in the code, and through a fix (Trim) too; typed text has the website's LF, as a browser's text box gives
+            MainWindow make = NewMain();
+            make.UseTemplateText("  first line\r\nsecond line  ");
+            make.CatchUp();
+            Check(make.Code?.Text == "  first line\r\nsecond line  ", "a template's text should keep CR LF in the code: " + Show(make.Code?.Text));
+            Button trim = make.DataChecksPanel.Children.OfType<DockPanel>().SelectMany(p => p.Children.OfType<Button>()).FirstOrDefault(b => (string)b.Content == "Trim");
+            Check(trim != null, "spaces round the text should offer Trim");
+            trim.RaiseEvent(new RoutedEventArgs(ButtonBase.ClickEvent));
+            Check(make.DataBox.Text == "first line\r\nsecond line" && make.Code?.Text == "first line\r\nsecond line", "Trim should keep CR LF in the code: " + Show(make.Code?.Text));
+            Type(make, "typed\r\ntext");
+            Check(make.Code?.Text == "typed\ntext", "typed text has LF, as in a browser: " + Show(make.Code?.Text));
+        }
+
         // the codes saved or copied land in the list, with the note the first time; the list opens and deletes them
         static void RecentCodesInTheWindow()
         {
