@@ -593,30 +593,76 @@ namespace B0r3dQR.Tests
             Check(SingleCopy.Name(folder) == SingleCopy.Name(folder.ToUpperInvariant() + "\\") && SingleCopy.Name(folder) != SingleCopy.Name(folder + " 2") &&
                   SingleCopy.Name(folder).StartsWith("b0r3dQR ", StringComparison.Ordinal),
                 "a data folder's name: the same however it's written, another for another folder: " + SingleCopy.Name(folder));
-            Check(SingleCopy.Claim(folder), "the first copy for a data folder should get it");
+            Check(SingleCopy.Claim(folder) == SingleCopy.Claimed.First, "the first copy for a data folder should get it");
             try
             {
-                Check(!SingleCopy.Claim(folder.ToUpperInvariant()), "a second copy for the same data folder shouldn't");
+                Check(SingleCopy.Claim(folder.ToUpperInvariant()) == SingleCopy.Claimed.Running, "a second copy for the same data folder shouldn't");
                 // the running copy: its hidden window, titled for the folder, hidden in the tray
                 MainWindow running = NewMain();
                 running.Tray.Open();
                 running.OnHideToTray(null, null);
                 Check(running.HiddenInTray && FindWindowW(null, SingleCopy.WindowTitle) == running.Tray.Handle, "the running copy's hidden window should go by the folder's name");
-                Check(SingleCopy.BringForward(2000), "a copy started again should find the running one's window");
+                Check(SingleCopy.BringForward(2000), "a copy started again should find the running one's window, and it should answer");
                 Pump(() => !running.HiddenInTray, 3000);
                 Check(!running.HiddenInTray, "the running copy should show itself when another is started");
                 running.Close();
-                Check(!SingleCopy.BringForward(300), "with no copy running, there's nothing to bring forward");
+                var gone = Stopwatch.StartNew();
+                Check(!SingleCopy.BringForward(300) && gone.ElapsedMilliseconds < 2000, "with no copy's window there (closing, or still starting), it says it couldn't, after the wait");
             }
             finally
             {
                 SingleCopy.Release();
                 DataFolder.Reset(data);
             }
-            Check(SingleCopy.Claim(folder), "once the first copy has ended, the next one gets the folder");
+            Check(SingleCopy.Claim(folder) == SingleCopy.Claimed.First, "once the first copy has ended, the next one gets the folder");
             SingleCopy.Release();
-            Check(SingleCopy.Claim(folder + " 2"), "a copy with a data folder of its own runs side by side");
+            Check(SingleCopy.Claim(folder + " 2") == SingleCopy.Claimed.First, "a copy with a data folder of its own runs side by side");
             SingleCopy.Release();
+
+            // a copy running as administrator: its claim is there, but this one may not open it (as a mutex this user is
+            // denied stands in for): a copy running, never a crash at start
+            string elevated = folder + " as administrator";
+            var denied = new System.Security.AccessControl.MutexSecurity();
+            denied.AddAccessRule(new System.Security.AccessControl.MutexAccessRule(System.Security.Principal.WindowsIdentity.GetCurrent().User,
+                System.Security.AccessControl.MutexRights.FullControl, System.Security.AccessControl.AccessControlType.Deny));
+            using (var theirs = new System.Threading.Mutex(false, @"Local\" + SingleCopy.Name(elevated), out bool made, denied))
+            {
+                Check(made && SingleCopy.Claim(elevated) == SingleCopy.Claimed.Running, "a claim this copy may not open should count as a copy running");
+            }
+
+            // a copy running but not answering (busy or hung): its window found, no answer in time, said
+            Check(SingleCopy.Claim(folder + " busy") == SingleCopy.Claimed.First, "a fresh folder's claim");
+            try
+            {
+                var ready = new System.Threading.ManualResetEventSlim();
+                bool answering = false;
+                var busy = new System.Threading.Thread(() =>
+                {
+                    var hidden = new System.Windows.Interop.HwndSource(new System.Windows.Interop.HwndSourceParameters(SingleCopy.WindowTitle)
+                    {
+                        Width = 0, Height = 0, WindowStyle = unchecked((int)0x80000000),
+                    });
+                    ready.Set();
+                    while (!System.Threading.Volatile.Read(ref answering)) System.Threading.Thread.Sleep(10);   // handles no message meanwhile
+                    hidden.Dispose();
+                    System.Windows.Threading.Dispatcher.CurrentDispatcher.InvokeShutdown();
+                });
+                busy.SetApartmentState(System.Threading.ApartmentState.STA);
+                busy.IsBackground = true;
+                busy.Start();
+                ready.Wait(5000);
+                var waited = Stopwatch.StartNew();
+                bool brought = SingleCopy.BringForward(1000, 300);
+                long ms = waited.ElapsedMilliseconds;
+                System.Threading.Volatile.Write(ref answering, true);
+                busy.Join(5000);
+                Check(!brought && ms >= 250 && ms < 2000, "a running copy that doesn't answer should be said, after " + ms + " ms");
+            }
+            finally
+            {
+                SingleCopy.Release();
+            }
+            Check(SingleCopy.NotBroughtForward.StartsWith("b0r3d QR is already running, but it didn't come to the front", StringComparison.Ordinal), "what's said then");
         }
 
         [System.Runtime.InteropServices.DllImport("user32.dll")]

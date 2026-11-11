@@ -95,7 +95,7 @@ namespace B0r3dQR.Tests
                                     "EnumDisplayMonitors", "GetMonitorInfo", "GetCursorPos", "SetWindowPos", "GetDC", "ReleaseDC",           // the screens
                                     "RegisterHotKey", "UnregisterHotKey", "CreateIconFromResourceEx", "DestroyIcon",                         // scan from anywhere
                                     "RegisterWindowMessageW", "SetForegroundWindow",                                                         // the taskbar made again, the tray menu
-                                    "FindWindowW", "GetWindowThreadProcessId", "AllowSetForegroundWindow", "PostMessageW" } },               // one copy a data folder (SingleCopy)
+                                    "FindWindowW", "GetWindowThreadProcessId", "AllowSetForegroundWindow", "SendMessageTimeoutW" } },        // one copy a data folder (SingleCopy)
             { "shell32.dll", new[] { "Shell_NotifyIconW" } },                                                                                // the tray icon
             { "dwmapi.dll", new[] { "DwmSetWindowAttribute" } },                                                                   // title bars, fades
             { "gdi32.dll", new[] { "CreateCompatibleDC", "CreateCompatibleBitmap", "SelectObject", "BitBlt", "DeleteObject", "DeleteDC" } },  // screen pictures

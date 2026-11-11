@@ -44,10 +44,10 @@ namespace B0r3dQR
             }
             DataFolder.Choose(line.DataFolder);
             if (line.SelfTestReport != null) return SelfTest.Run(line.SelfTestReport);
-            // one b0r3d QR for each data folder: started again, it brings the one running forward
-            if (!SingleCopy.Claim(DataFolder.Path))
+            // one b0r3d QR for each data folder: started again, it brings the one running forward, or says it couldn't
+            if (SingleCopy.Claim(DataFolder.Path) == SingleCopy.Claimed.Running)
             {
-                SingleCopy.BringForward();
+                if (!SingleCopy.BringForward()) MessageBox.Show(SingleCopy.NotBroughtForward, Name, MessageBoxButton.OK, MessageBoxImage.Information);
                 return 0;
             }
             try

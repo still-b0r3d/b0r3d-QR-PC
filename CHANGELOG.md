@@ -28,8 +28,9 @@ Fixes for 1.3.
   menu takes the front as it opens, so a click elsewhere closes it.
 - **One b0r3d QR for each data folder:** starting it again while it runs brings the one running
   to the front (from the tray too), instead of a second copy with a second tray icon, both
-  wanting Ctrl+Shift+Q and both writing `b0r3dQR.ini`. A copy with a data folder of its own (a
-  second portable copy) still runs alongside.
+  wanting Ctrl+Shift+Q and both writing `b0r3dQR.ini`; when the one running doesn't come to
+  the front (busy, closing, or running as administrator), it says so. A copy with a data
+  folder of its own (a second portable copy) still runs alongside.
 - **Batch export into a folder far down a drive:** names were only cut to 200 characters, so a
   file failed once the folder and its name passed Windows' 260 characters for a whole path.
   Each name is now cut to fit the folder chosen (its extension kept, and names that meet once

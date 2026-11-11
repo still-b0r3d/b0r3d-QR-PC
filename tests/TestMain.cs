@@ -243,7 +243,7 @@ namespace B0r3dQR.Tests
                 Run("help: Check for a new version opens the Releases page in the browser; Print… sits with Save and Copy", NewVersionAndPrintButton);
                 Run("tray: Scan from anywhere with the tray icon and Ctrl+Shift+Q while running, without opening the window first", ScanFromAnywhere);
                 Run("tray: a hotkey can't be held twice, and one held elsewhere is said; the icon added again when Explorer starts again; hidden in the tray only with the icon there", TrayWithWindows);
-                Run("one copy a data folder: started again, b0r3d QR brings the one running forward; another data folder, another copy", OneCopyADataFolder);
+                Run("one copy a data folder: started again, b0r3d QR brings the one running forward, or says it couldn't (busy, closing, as administrator), never a crash; another data folder, another copy", OneCopyADataFolder);
 
                 // in every part: each run checks what it left behind
                 part = onlyPart;

@@ -41,15 +41,43 @@ namespace B0r3dQR
             }
         }
 
-        // true for the first copy for this data folder, which keeps the claim until Release
-        public static bool Claim(string dataFolder)
+        public enum Claimed
+        {
+            First,     // the first copy for this data folder: it keeps the claim until Release
+            Running,   // a copy for this data folder is running
+            Unknown,   // Windows couldn't say: this copy runs on its own (never a reason not to start)
+        }
+
+        // what this copy is for its data folder; never throws
+        public static Claimed Claim(string dataFolder)
         {
             WindowTitle = Name(dataFolder);
-            var mutex = new Mutex(true, @"Local\" + WindowTitle, out bool first);
-            if (first) held = mutex;
-            else mutex.Dispose();
-            return first;
+            try
+            {
+                var mutex = new Mutex(true, @"Local\" + WindowTitle, out bool first);
+                if (first)
+                {
+                    held = mutex;
+                    return Claimed.First;
+                }
+                mutex.Dispose();
+                return Claimed.Running;
+            }
+            catch (UnauthorizedAccessException)
+            {
+                // made by a copy running with more rights than this one (started as administrator): it's there,
+                // but this one may not open it
+                return Claimed.Running;
+            }
+            catch (Exception e) when (!(e is OutOfMemoryException))
+            {
+                return Claimed.Unknown;
+            }
         }
+
+        // what a copy started again says when the one running didn't come to the front
+        public const string NotBroughtForward = "b0r3d QR is already running, but it didn't come to the front (it may be busy or closing, " +
+                                                "or running as administrator). Look for it on the taskbar or in the tray, or close it and start b0r3d QR again.";
 
         public static void Release()
         {
@@ -60,8 +88,10 @@ namespace B0r3dQR
         }
 
         // Tells the running copy to show itself, letting it come to the front (a program the person just
-        // started may hand the front over). It may still be starting, so its window is looked for a while.
-        public static bool BringForward(int waitMs = 5000)
+        // started may hand the front over), and waits `answerMs` for it to answer: false when it didn't
+        // (busy, closing, or running as administrator, whose windows don't take messages from this one).
+        // It may still be starting, so its window is looked for `waitMs` first.
+        public static bool BringForward(int waitMs = 5000, int answerMs = 3000)
         {
             var watch = Stopwatch.StartNew();
             while (true)
@@ -70,7 +100,8 @@ namespace B0r3dQR
                 if (window != IntPtr.Zero)
                 {
                     if (GetWindowThreadProcessId(window, out uint process) != 0) AllowSetForegroundWindow(process);
-                    return PostMessageW(window, (uint)Tray.ShowMessage, IntPtr.Zero, IntPtr.Zero);
+                    const uint SMTO_ABORTIFHUNG = 0x0002;
+                    return SendMessageTimeoutW(window, (uint)Tray.ShowMessage, IntPtr.Zero, IntPtr.Zero, SMTO_ABORTIFHUNG, (uint)answerMs, out _) != IntPtr.Zero;
                 }
                 if (watch.ElapsedMilliseconds >= waitMs) return false;
                 Thread.Sleep(100);
@@ -88,7 +119,6 @@ namespace B0r3dQR
         static extern bool AllowSetForegroundWindow(uint processId);
 
         [DllImport("user32.dll", CharSet = CharSet.Unicode)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        static extern bool PostMessageW(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+        static extern IntPtr SendMessageTimeoutW(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam, uint flags, uint timeoutMs, out IntPtr result);
     }
 }
