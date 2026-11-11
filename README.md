@@ -163,7 +163,8 @@ there are in a picture:
 - **Scan from anywhere** (Scan menu and Scan tab): while b0r3d QR is running, a cup icon in the
   taskbar corner and **Ctrl+Shift+Q** start Scan the screen without opening the main window
   first. It's off until you turn it on, since it takes Ctrl+Shift+Q from every other program
-  while b0r3d QR runs. **Hide in the tray** hides the window to the tray icon; Esc during a
+  while b0r3d QR runs (1.3 had it on for everyone; if you used 1.3, turn it on again to keep
+  it). **Hide in the tray** hides the window to the tray icon; Esc during a
   screen scan leaves it hidden there, and a code found opens the Scan tab. Nothing starts with
   Windows.
 - **Scan with the camera** (Scan menu, Ctrl+Shift+A): your webcam's picture, with the

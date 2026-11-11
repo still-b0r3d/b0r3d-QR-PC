@@ -20,8 +20,9 @@ Fixes for 1.3.
   a word (`2 codes in big.pdf; pages 51 to 80 weren't read (b0r3d QR reads a PDF's first 50
   pages).`). A poster's page is drawn at up to 16 million pixels.
 - **Scan from anywhere** is off until it's turned on: while on, it takes Ctrl+Shift+Q from
-  every other program (Firefox's Quit, Outlook's new meeting). A choice already saved in
-  `b0r3dQR.ini` stays as it is.
+  every other program (Firefox's Quit, Outlook's new meeting). 1.3 had it on for everyone, so
+  this version starts with it off, for those who used 1.3 too, until it's turned on again (Scan
+  menu or Scan tab). It's kept in `b0r3dQR.ini` as `scan_from_anywhere`.
 - **The tray icon comes back after Explorer restarts** (it was gone for good), and **Hide in
   the tray** keeps the window open, and says so, when Windows didn't take the icon. The tray
   menu takes the front as it opens, so a click elsewhere closes it.

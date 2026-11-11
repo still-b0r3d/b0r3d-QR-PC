@@ -42,8 +42,9 @@ namespace B0r3dQR
         public string LabelSheet = "5160";
         public double LabelNudgeX, LabelNudgeY;
         // tray icon and Ctrl+Shift+Q while b0r3d QR is running: off until it's turned on, as Ctrl+Shift+Q is
-        // taken from every other program while it's on (Firefox's Quit, Outlook's new meeting); a choice saved
-        // in the ini stays as it is
+        // taken from every other program while it's on (Firefox's Quit, Outlook's new meeting). Kept as
+        // scan_from_anywhere: 1.3 wrote scan_anywhere=on for everyone who ran it (every save writes every
+        // line), so that line says nothing about a choice and is left alone
         public bool ScanAnywhere;
 
         public static Settings Load() => Load(System.IO.Path.Combine(DataFolder.Path, FileName));
@@ -157,8 +158,10 @@ namespace B0r3dQR
                         if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out double nudgeY) && !double.IsNaN(nudgeY) && !double.IsInfinity(nudgeY))
                             s.LabelNudgeY = Math.Max(-MaxLabelNudge, Math.Min(MaxLabelNudge, nudgeY));
                         break;
-                    case "scan_anywhere":
-                        s.ScanAnywhere = !Array.Exists(new[] { "off", "false", "no", "0" }, word => value.Equals(word, StringComparison.OrdinalIgnoreCase));
+                    case "scan_from_anywhere":
+                        // on only when it says so: it takes Ctrl+Shift+Q from every other program (1.3's
+                        // scan_anywhere line is left alone, see ScanAnywhere)
+                        s.ScanAnywhere = Array.Exists(new[] { "on", "true", "yes", "1" }, word => value.Equals(word, StringComparison.OrdinalIgnoreCase));
                         break;
                 }
             }
@@ -217,7 +220,7 @@ namespace B0r3dQR
             text.Append("label_sheet=").Append(LabelSheet).Append("\r\n");
             text.Append("label_nudge_x=").Append(LabelNudgeX.ToString("0.######", CultureInfo.InvariantCulture)).Append("\r\n");
             text.Append("label_nudge_y=").Append(LabelNudgeY.ToString("0.######", CultureInfo.InvariantCulture)).Append("\r\n");
-            text.Append("scan_anywhere=").Append(ScanAnywhere ? "on" : "off").Append("\r\n");
+            text.Append("scan_from_anywhere=").Append(ScanAnywhere ? "on" : "off").Append("\r\n");
             return text.ToString();
         }
 

@@ -426,9 +426,16 @@ namespace B0r3dQR.Tests
                 window.ScanAnywhereCheck.IsChecked = true;
                 Check(window.Tray.Active && window.ScanAnywhereMenu.IsChecked && Settings.Load().ScanAnywhere,
                     "turning it on on the Scan tab turns on the menu item, the tray and the saved setting");
-                // a choice saved in the ini stays (1.3 saved "on" for everyone who ran it); an ini without the line leaves it off
+                // the choice is kept as scan_from_anywhere; 1.3's scan_anywhere=on, which it saved for everyone who ran it,
+                // leaves it off, and so do an ini without the line and no ini
                 string ini = Path.Combine(DataFolder.Path, Settings.FileName);
-                Check(File.ReadAllText(ini).Contains("scan_anywhere=on") && new MainWindow(Settings.Load()).Tray.Active, "a saved scan_anywhere=on should stay on");
+                string saved = File.ReadAllText(ini);
+                Check(saved.Contains("scan_from_anywhere=on") && !saved.Contains("scan_anywhere=") && new MainWindow(Settings.Load()).Tray.Active,
+                    "the choice should be saved as scan_from_anywhere=on, and stay on");
+                File.WriteAllText(ini, "look=light\r\nwhole_pixels=off\r\nscan_anywhere=on\r\n");
+                Check(!Settings.Load().ScanAnywhere && !new MainWindow(Settings.Load()).Tray.Active, "1.3's scan_anywhere=on (saved for everyone) should leave it off");
+                File.WriteAllText(ini, "look=light\r\nwhole_pixels=off\r\nscan_from_anywhere=off\r\n");
+                Check(!Settings.Load().ScanAnywhere, "scan_from_anywhere=off should be off");
                 File.WriteAllText(ini, "look=light\r\nwhole_pixels=off\r\n");
                 Check(!Settings.Load().ScanAnywhere && !new Settings().ScanAnywhere, "an ini without the line, and no ini, should leave it off");
                 window.ScanAnywhereCheck.IsChecked = false;
