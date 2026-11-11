@@ -951,7 +951,35 @@ namespace B0r3dQR
             if (art == null) return;
             QrArt these = art;
             string path = AskWhere("Save the code as a PDF", "PDF document", ".pdf");
-            if (path != null && Save(path, () => QrExport.Pdf(these, print, wholePixels, Path.GetFileNameWithoutExtension(path)))) Remember(these.Design);
+            if (path != null && Save(path, () => QrExport.Pdf(these, print, wholePixels, Path.GetFileNameWithoutExtension(path))))
+            {
+                Remember(these.Design);
+                ReadBackPdf(path, (grays, width, height) => ScanCheck.Read(grays, width, height)?.Text, these.Design.Data);
+            }
+        }
+
+        // for the tests: what the last PDF saved came to when read back ("ok", "different", "unreadable"), or null
+        // while it's being read
+        internal string PdfReadBack;
+
+        // A PDF just saved, read back from the disk through Windows' PDF reader and scanned off the window's thread,
+        // as a batch's files are: the bottom line says it scanned, or that it didn't
+        internal void ReadBackPdf(string path, Func<byte[], int, int, string> read, string expected)
+        {
+            string name = Path.GetFileName(path);
+            PdfReadBack = null;
+            Task.Run(() =>
+            {
+                BitmapSource page = PdfFile.ReadPicture(File.ReadAllBytes(path));
+                if (page == null) return "unreadable";
+                byte[] grays = ScanCheck.Grays(page, out int width, out int height);
+                return read(grays, width, height) == expected ? "ok" : "different";
+            }).ContinueWith(done => Dispatcher.BeginInvoke(new Action(() =>
+            {
+                PdfReadBack = done.IsFaulted ? "unreadable" : done.Result;
+                if (PdfReadBack == "ok") Flash("Saved " + name + ", read back and scanned.", "Good");
+                else Flash("Saved " + name + ", but it didn't scan when read back from the disk: try more contrast or a larger size.", "Warn");
+            })));
         }
 
         // the website's three kinds of text, each as plain text or Markdown
@@ -989,8 +1017,12 @@ namespace B0r3dQR
             if (style == QrExport.TextStyle.Ascii) Flash("Saved. Most scanners can't read the ASCII kind: it's for plain text, email and terminals.", "Warn");
         }
 
+        // for the tests: stands in for Windows' Save dialog (given the extension, gives the file's path)
+        internal Func<string, string> AskWhereStandIn;
+
         string AskWhere(string title, string typeName, string extension)
         {
+            if (AskWhereStandIn != null) return AskWhereStandIn(extension);
             try
             {
                 return FileDialogs.Save(this, title, typeName, extension, FileName + extension);

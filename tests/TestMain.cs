@@ -232,6 +232,7 @@ namespace B0r3dQR.Tests
                 Run("window: the preview is pixel for pixel at 150 %", WindowSharpAt150);
                 Run("window: the options and the look are kept, what was typed never is", WindowKeepsSettings);
                 Run("window: Save, Copy and drag first catch up with typing and half-typed numbers", ExportsCatchUp);
+                Run("window: a PDF saved is read back from the disk through Windows' PDF reader and scanned, a QR code's and a barcode's", SavedPdfsReadBack);
                 Run("keyboard: no two things share an access key, and every menu line has one", AccessKeysAreUnique);
                 Run("screen readers: the number boxes have their names", NumberBoxesHaveNames);
                 Run("look: the text boxes' right-click menu is b0r3d QR's own, so it's themed", TextMenusAreThemed);

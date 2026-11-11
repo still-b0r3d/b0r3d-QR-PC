@@ -477,6 +477,35 @@ namespace B0r3dQR.Tests
             }
         }
 
+        // File → Save PDF reads the file back from the disk through Windows' PDF reader and scans it, as a batch's are,
+        // for a QR code and a barcode, and the bottom line says so; one that reads as something else says that
+        static void SavedPdfsReadBack()
+        {
+            string folder = Path.Combine(Work, "saved-pdfs");
+            Fresh(folder);
+            MainWindow window = NewMain();
+            Type(window, "https://b0r3d.org/saved");
+            void SavePdf(string name)
+            {
+                window.AskWhereStandIn = extension => Path.Combine(folder, name + extension);
+                Commands.SavePdf.Execute(null, window);
+                Pump(() => window.PdfReadBack != null, 15000);
+            }
+            SavePdf("qr");
+            Check(File.Exists(Path.Combine(folder, "qr.pdf")) && window.PdfReadBack == "ok" && window.Note.Text == "Saved qr.pdf, read back and scanned.",
+                "a QR code's PDF should be read back: " + window.PdfReadBack + " · " + window.Note.Text);
+            window.ChooseCodeType(Barcodes.BarcodeType.Ean13, "400638133393");
+            WaitForCheck(window);
+            SavePdf("ean");
+            Check(File.Exists(Path.Combine(folder, "ean.pdf")) && window.PdfReadBack == "ok" && window.Note.Text == "Saved ean.pdf, read back and scanned.",
+                "a barcode's PDF should be read back with its own reader: " + window.PdfReadBack + " · " + window.Note.Text);
+            window.ReadBackPdf(Path.Combine(folder, "qr.pdf"), (grays, width, height) => ScanCheck.Read(grays, width, height)?.Text, "something else");
+            Pump(() => window.PdfReadBack != null, 15000);
+            Check(window.PdfReadBack == "different" && window.Note.Text.StartsWith("Saved qr.pdf, but it didn't scan when read back", StringComparison.Ordinal),
+                "a PDF that reads as other text should say so: " + window.PdfReadBack + " · " + window.Note.Text);
+            window.AskWhereStandIn = null;
+        }
+
         // The tray with Windows, with a stand-in for Shell_NotifyIcon (no icon is added to this PC's taskbar,
         // which Windows would remember) and, for the hotkey, Ctrl+Shift with F24, which no program holds,
         // in place of Q: so the check that a hotkey can't be taken twice always runs.

@@ -44,6 +44,9 @@ Fixes for 1.3.
   too. This changelog's 1.3 entry is put right where it didn't match the program: a code's
   page reads `file.pdf, page 2`; only Batch export's PDFs were read back; a Data Matrix Wi-Fi
   code is titled `Data Matrix: <network>`; and the replacement character is back in its place.
+- **File → Save PDF reads the PDF back** from the disk through Windows' PDF reader and scans
+  it, a QR code's and a barcode's, as Batch export does; the line at the bottom says it
+  scanned, or that it didn't.
 
 ## 1.3 (released 8 November 2026)
 

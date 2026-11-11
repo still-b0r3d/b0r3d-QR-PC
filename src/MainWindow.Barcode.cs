@@ -429,8 +429,15 @@ namespace B0r3dQR
             BarcodeLook kept = look.Clone();
             PrintSize printed = barcodePrint.Clone();
             Action remember = RememberShown();
+            // read back as a batch's barcodes are, with the type's own reader
+            var kind = new Batch.BatchKind { Barcode = codeType.Value, Look = kept };
+            string expected = barcodeExpected;
             string path = AskWhere("Save the barcode as a PDF", "PDF document", ".pdf");
-            if (path != null && Save(path, () => BarcodeExport.Pdf(these, kept, printed, Path.GetFileNameWithoutExtension(path)))) remember();
+            if (path != null && Save(path, () => BarcodeExport.Pdf(these, kept, printed, Path.GetFileNameWithoutExtension(path))))
+            {
+                remember();
+                ReadBackPdf(path, (grays, width, height) => Batch.BatchExport.Read(grays, width, height, kind), expected);
+            }
         }
 
         // a barcode from Recent codes: its type, text and settings back, as the website opens one
