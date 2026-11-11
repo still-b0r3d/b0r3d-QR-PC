@@ -179,6 +179,59 @@ namespace B0r3dQR.Tests
             Check(big.Shrunk && big.ShrunkLine.Visibility == Visibility.Visible && bigAt.Width <= PrintSheet.A4.Width - 2 * PrintSheet.Margin + 0.01, "a 400 mm code should be shrunk to the paper: " + bigAt);
         }
 
+        // Every Avery sheet, against Avery's own templates' figures (written out here, not taken from PrintSheet): its
+        // paper and count, its labels filling it evenly (as much paper right of them as left, below as above), and each
+        // code centred on its label inside the 1.5 mm inset. 22806's figures are b0r3d QR's own: they add up, but
+        // weren't confirmed against Avery's template.
+        static void PrintingOnEveryLabelSheet()
+        {
+            MainWindow window = NewMain();
+            Type(window, "https://b0r3d.org/labels");
+            PrintWindow labels = window.PrintWindowFor();
+            LayOut(labels.Root, 760, 720);
+            labels.Lay();
+            labels.LabelsChoice.IsChecked = true;
+            labels.CaptionsCheck.IsChecked = false;   // a code and its caption are centred together
+            labels.NudgeXBox.Value = 0;
+            labels.NudgeYBox.Value = 0;
+            // paper (Letter in inches, else A4 in mm), columns, rows, a label's width and height, the first label's left and
+            // top, and from one label to the next across and down
+            var avery = new (string Id, bool Letter, int Columns, int Rows, double W, double H, double Left, double Top, double Across, double Down)[]
+            {
+                ("5160", true, 3, 10, 2.625, 1, 0.1875, 0.5, 2.75, 1),
+                ("5167", true, 4, 20, 1.75, 0.5, 0.3, 0.5, 2.05, 0.5),
+                ("5163", true, 2, 5, 4, 2, 0.15625, 0.5, 4.1875, 2),
+                ("5164", true, 2, 3, 4, 10.0 / 3, 0.15625, 0.5, 4.1875, 10.0 / 3),
+                ("22806", true, 3, 4, 2, 2, 0.625, 0.625, 2.625, 2 + 7.0 / 12),
+                ("L7160", false, 3, 7, 63.5, 38.1, 7.2, 15.15, 66, 38.1),
+                ("L7163", false, 2, 7, 99.1, 38.1, 4.65, 15.15, 101.6, 38.1),
+                ("L7165", false, 2, 4, 99.1, 67.7, 4.65, 13.1, 101.6, 67.7),
+            };
+            Check(avery.Select(a => a.Id).SequenceEqual(PrintSheet.LabelSheets.Select(s => s.Code)), "the sheets offered: " + string.Join(", ", PrintSheet.LabelSheets.Select(s => s.Code)));
+            foreach (var a in avery)
+            {
+                double U(double v) => a.Letter ? PrintSheet.In(v) : PrintSheet.Mm(v);
+                Size paper = a.Letter ? PrintSheet.Letter : PrintSheet.A4;
+                labels.LabelSheetBox.SelectedItem = PrintSheet.FindLabelSheet(a.Id);
+                List<Rect> codes = PageOf(labels.Document, 0).Children.OfType<Image>().Select(Where).ToList();
+                Check(labels.CopiesBox.Value == a.Columns * a.Rows && labels.Document.Pages.Count == 1 && labels.Document.DocumentPaginator.PageSize == paper && codes.Count == a.Columns * a.Rows,
+                    a.Id + ": " + codes.Count + " labels on " + labels.Document.DocumentPaginator.PageSize);
+                double right = paper.Width - (U(a.Left) + (a.Columns - 1) * U(a.Across) + U(a.W)), bottom = paper.Height - (U(a.Top) + (a.Rows - 1) * U(a.Down) + U(a.H));
+                Check(Math.Abs(right - U(a.Left)) < PrintSheet.Mm(0.15) && Math.Abs(bottom - U(a.Top)) < PrintSheet.Mm(0.15),
+                    a.Id + ": the labels should fill the sheet evenly: " + right / PrintSheet.Mm(1) + " mm right, " + U(a.Left) / PrintSheet.Mm(1) + " left; " + bottom / PrintSheet.Mm(1) + " below, " + U(a.Top) / PrintSheet.Mm(1) + " above");
+                for (int i = 0; i < codes.Count; i++)
+                {
+                    int column = i % a.Columns, row = i / a.Columns;
+                    var label = new Rect(U(a.Left) + column * U(a.Across), U(a.Top) + row * U(a.Down), U(a.W), U(a.H));
+                    Rect inside = label;
+                    inside.Inflate(-PrintSheet.LabelInset + 0.01, -PrintSheet.LabelInset + 0.01);
+                    Point middle = new Point(codes[i].X + codes[i].Width / 2, codes[i].Y + codes[i].Height / 2);
+                    Check(inside.Contains(codes[i]) && Math.Abs(middle.X - (label.X + label.Width / 2)) < 0.01 && Math.Abs(middle.Y - (label.Y + label.Height / 2)) < 0.01,
+                        a.Id + ": label " + (i + 1) + "'s code should be centred on it, inside its 1.5 mm, not at " + codes[i] + " (the label " + label + ")");
+                }
+            }
+        }
+
         // A barcode prints whole pixels a module at its print size, as its files are; a batch prints on sheets with
         // each code's file name under it
         static void PrintingBarcodesAndBatches()
