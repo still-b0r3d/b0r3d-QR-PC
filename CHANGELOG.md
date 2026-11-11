@@ -45,8 +45,8 @@ Fixes for 1.3.
 - **File → Save PDF reads the PDF back** from the disk through Windows' PDF reader and scans
   it, a QR code's and a barcode's, as Batch export does; the line at the bottom says it
   scanned, or that it didn't.
-- **Captions, as on the website:** a tab is drawn as a space (it jumped to a tab stop), and a
-  frame switched on with no caption gets "Scan for more info" in its caption box too.
+- **A tab in a caption is drawn as a space,** as browsers draw the website's captions (it
+  jumped to a tab stop).
 - **Screen readers** hear a barcode's mistake from the line shown under its data, still once
   for each mistake; it was said from a hidden line of no size, which some screen readers pass
   over.

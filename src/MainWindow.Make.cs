@@ -321,13 +321,9 @@ namespace B0r3dQR
         void OnFrameOn(object sender, RoutedEventArgs e)
         {
             if (Quiet) return;
-            if (FrameCheck.IsChecked == true)
-            {
-                design.Frame = lastFrame?.Clone() ?? Presets.ApplyFrame("Default Frame", null);
-                // as the website does, a frame switched on with no caption gets the usual one in its box (an empty
-                // caption is drawn as it already)
-                if (string.IsNullOrEmpty(design.Frame.Text)) design.Frame.Text = QrFrame.DefaultText;
-            }
+            // the last frame comes back as it was, an emptied caption too, as on the website (an empty caption is
+            // drawn as "Scan for more info"; its box stays empty)
+            if (FrameCheck.IsChecked == true) design.Frame = lastFrame?.Clone() ?? Presets.ApplyFrame("Default Frame", null);
             else
             {
                 lastFrame = design.Frame;
