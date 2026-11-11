@@ -41,7 +41,10 @@ namespace B0r3dQR
         // Print → A label sheet (Avery): the sheet and how far to nudge it (in millimetres)
         public string LabelSheet = "5160";
         public double LabelNudgeX, LabelNudgeY;
-        public bool ScanAnywhere = true;    // tray icon and Ctrl+Shift+Q while b0r3d QR is running
+        // tray icon and Ctrl+Shift+Q while b0r3d QR is running: off until it's turned on, as Ctrl+Shift+Q is
+        // taken from every other program while it's on (Firefox's Quit, Outlook's new meeting); a choice saved
+        // in the ini stays as it is
+        public bool ScanAnywhere;
 
         public static Settings Load() => Load(System.IO.Path.Combine(DataFolder.Path, FileName));
 

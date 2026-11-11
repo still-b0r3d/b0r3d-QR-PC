@@ -421,8 +421,16 @@ namespace B0r3dQR.Tests
             try
             {
                 MainWindow window = NewMain();
-                Check(window.Tray != null && window.Tray.Active && window.ScanAnywhereMenu.IsChecked && window.ScanAnywhereCheck.IsChecked == true,
-                    "Scan from anywhere is on by default");
+                Check(window.Tray != null && !window.Tray.Active && !window.ScanAnywhereMenu.IsChecked && window.ScanAnywhereCheck.IsChecked == false,
+                    "Scan from anywhere is off until it's turned on (it takes Ctrl+Shift+Q from every other program)");
+                window.ScanAnywhereCheck.IsChecked = true;
+                Check(window.Tray.Active && window.ScanAnywhereMenu.IsChecked && Settings.Load().ScanAnywhere,
+                    "turning it on on the Scan tab turns on the menu item, the tray and the saved setting");
+                // a choice saved in the ini stays (1.3 saved "on" for everyone who ran it); an ini without the line leaves it off
+                string ini = Path.Combine(DataFolder.Path, Settings.FileName);
+                Check(File.ReadAllText(ini).Contains("scan_anywhere=on") && new MainWindow(Settings.Load()).Tray.Active, "a saved scan_anywhere=on should stay on");
+                File.WriteAllText(ini, "look=light\r\nwhole_pixels=off\r\n");
+                Check(!Settings.Load().ScanAnywhere && !new Settings().ScanAnywhere, "an ini without the line, and no ini, should leave it off");
                 window.ScanAnywhereCheck.IsChecked = false;
                 Check(!window.Tray.Active && !window.ScanAnywhereMenu.IsChecked && !Settings.Load().ScanAnywhere,
                     "turning it off on the Scan tab turns off the menu item, the tray and the saved setting");

@@ -162,8 +162,10 @@ there are in a picture:
   read every screen; Esc cancels.
 - **Scan from anywhere** (Scan menu and Scan tab): while b0r3d QR is running, a cup icon in the
   taskbar corner and **Ctrl+Shift+Q** start Scan the screen without opening the main window
-  first. **Hide in the tray** hides the window to the tray icon; Esc during a screen scan leaves
-  it hidden there, and a code found opens the Scan tab. Nothing starts with Windows.
+  first. It's off until you turn it on, since it takes Ctrl+Shift+Q from every other program
+  while b0r3d QR runs. **Hide in the tray** hides the window to the tray icon; Esc during a
+  screen scan leaves it hidden there, and a code found opens the Scan tab. Nothing starts with
+  Windows.
 - **Scan with the camera** (Scan menu, Ctrl+Shift+A): your webcam's picture, with the
   website's aiming frame. The first code it sees goes to the Scan tab and the camera turns off
   at once; Esc or **Cancel** turns it off without one. With more than one camera, choose which

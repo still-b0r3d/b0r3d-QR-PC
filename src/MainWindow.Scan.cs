@@ -33,7 +33,7 @@ namespace B0r3dQR
         CancellationTokenSource scanning;   // the reading going on now, or null
         List<SnipWindow> snips;             // set while the screens wait for a box
         Tray tray;                          // the tray icon and Ctrl+Shift+Q while b0r3d QR is running
-        bool scanAnywhere = true;
+        bool scanAnywhere;
         bool windowOnScreen, hiddenInTray, fromAnywhere;
         bool steppedAside;                  // hidden while the screens are pictured
         bool draggingOut;                   // the code is being dragged out of this window

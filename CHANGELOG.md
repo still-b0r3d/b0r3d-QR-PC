@@ -19,6 +19,9 @@ Fixes for 1.3.
   loses the codes on the others, and pages past the 50th are said rather than left out without
   a word (`2 codes in big.pdf; pages 51 to 80 weren't read (b0r3d QR reads a PDF's first 50
   pages).`). A poster's page is drawn at up to 16 million pixels.
+- **Scan from anywhere** is off until it's turned on: while on, it takes Ctrl+Shift+Q from
+  every other program (Firefox's Quit, Outlook's new meeting). A choice already saved in
+  `b0r3dQR.ini` stays as it is.
 - **JPG with a partly see-through background:** the colour was painted twice, so it came out
   too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
   white paper, as the website and barcodes do.
