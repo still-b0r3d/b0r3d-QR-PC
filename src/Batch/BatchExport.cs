@@ -291,13 +291,37 @@ namespace B0r3dQR.Batch
             }
         }
 
-        // A name not taken in a folder: "name (2).png", "name (3).png" and so on, as Windows numbers copies
-        public static string Numbered(string folder, string name, string extension, ICollection<string> taken)
+        // A name not taken in a folder: "name (2).png", "name (3).png" and so on, as Windows numbers copies, the name
+        // cut to leave room for its number within `longest` (LongestName)
+        public static string Numbered(string folder, string name, string extension, ICollection<string> taken, int longest = BatchRows.MostNameLength)
         {
             string candidate = name + extension;
-            for (int n = 2; taken.Contains(candidate) || File.Exists(Path.Combine(folder, candidate)); n++) candidate = name + " (" + n + ")" + extension;
+            for (int n = 2; taken.Contains(candidate) || File.Exists(Path.Combine(folder, candidate)); n++)
+            {
+                string number = " (" + n + ")";
+                candidate = Fit(name, longest - number.Length) + number + extension;
+            }
             return candidate;
         }
+
+        // Windows' limit on a file's whole path (MAX_PATH: 260 with its end mark), and what a file's name takes on
+        // top of itself while it's written: it goes in whole under ".name.png.1a2b3c4d.tmp" first (Exports.Write)
+        public const int MostPath = 259;
+        const int WritingExtra = 14;
+        // a name cut shorter than this would hardly tell the rows apart: the folder is too far down for a batch
+        public const int ShortestName = 12;
+
+        // The longest a file's name (its extension apart) can be in `folder`, under its temporary name too, and at
+        // most the 200 characters a batch name is cut to anyway; under ShortestName when the folder's own path
+        // leaves too little room (b0r3d QR doesn't rely on Windows' long paths, which are off on most PCs)
+        public static int LongestName(string folder, string extension)
+        {
+            string full = Path.GetFullPath(folder).TrimEnd('\\');
+            return Math.Min(BatchRows.MostNameLength, MostPath - (full.Length + 1) - WritingExtra - extension.Length);
+        }
+
+        // a name cut to `longest` characters (safe names are plain ASCII, so any cut is between letters)
+        public static string Fit(string name, int longest) => name.Length <= longest ? name : name.Substring(0, Math.Max(0, longest));
 
         // a short look at a row's text for the list: one line, at most 60 characters
         public static string Glimpse(string text)

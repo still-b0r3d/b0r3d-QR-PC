@@ -29,6 +29,10 @@ Fixes for 1.3.
   to the front (from the tray too), instead of a second copy with a second tray icon, both
   wanting Ctrl+Shift+Q and both writing `b0r3dQR.ini`. A copy with a data folder of its own (a
   second portable copy) still runs alongside.
+- **Batch export into a folder far down a drive:** names were only cut to 200 characters, so a
+  file failed once the folder and its name passed Windows' 260 characters for a whole path.
+  Each name is now cut to fit the folder chosen (its extension kept, and names that meet once
+  cut numbered); a folder too far down for names of 12 characters is said, and nothing made.
 - **JPG with a partly see-through background:** the colour was painted twice, so it came out
   too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
   white paper, as the website and barcodes do.

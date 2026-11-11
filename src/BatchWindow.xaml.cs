@@ -431,7 +431,17 @@ namespace B0r3dQR
                 return;
             }
             if (folder == null) return;
-            int already = items.Count(i => i.Problem == null && File.Exists(Path.Combine(folder, i.Name + kind.Extension)));
+            // names cut to fit the folder's path, which can't be so long that they'd hardly tell the rows apart
+            int longest = BatchExport.LongestName(folder, kind.Extension);
+            if (longest < BatchExport.ShortestName)
+            {
+                StatusLine.Text = LongText.Cap("Nothing was made: " + folder + " is too far down for files to go in it (Windows allows 260 characters for a file's whole path). Choose a folder nearer the top of the drive.");
+                StatusLine.SetResourceReference(TextBlock.ForegroundProperty, "Warn");
+                LastOutcome = "the folder's path is too long";
+                Say(StatusLine);
+                return;
+            }
+            int already = items.Count(i => i.Problem == null && File.Exists(Path.Combine(folder, BatchExport.Fit(i.Name, longest) + kind.Extension)));
             if (already == 0)
             {
                 Start(MakeIn(folder, Clash.Number));
@@ -499,6 +509,8 @@ namespace B0r3dQR
             BatchKind snapshot = Snapshot();
             var outcome = new Outcome();
             var taken = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            // each name cut to fit the folder's path (Windows' 260 characters), its extension kept
+            int longest = BatchExport.LongestName(folder, snapshot.Extension);
             Busy(true);
             stopping = false;
             try
@@ -506,10 +518,11 @@ namespace B0r3dQR
                 for (int n = 0; n < todo.Count && !stopping; n++)
                 {
                     BatchItem item = todo[n];
-                    string file = item.Name + snapshot.Extension;
-                    // a name this batch has used already (Windows doesn't tell capitals apart) is always numbered: the
-                    // answer about files already there is about those, never this batch's own
-                    if (taken.Contains(file)) file = BatchExport.Numbered(folder, item.Name, snapshot.Extension, taken);
+                    string name = BatchExport.Fit(item.Name, longest);
+                    string file = name + snapshot.Extension;
+                    // a name this batch has used already (Windows doesn't tell capitals apart, and names cut short can
+                    // meet) is always numbered: the answer about files already there is about those, never this batch's own
+                    if (taken.Contains(file)) file = BatchExport.Numbered(folder, name, snapshot.Extension, taken, longest);
                     else if (File.Exists(Path.Combine(folder, file)))
                     {
                         if (clash == Clash.Skip)
@@ -517,7 +530,7 @@ namespace B0r3dQR
                             outcome.Skipped++;
                             continue;
                         }
-                        if (clash == Clash.Number) file = BatchExport.Numbered(folder, item.Name, snapshot.Extension, taken);
+                        if (clash == Clash.Number) file = BatchExport.Numbered(folder, name, snapshot.Extension, taken, longest);
                     }
                     taken.Add(file);
                     string path = Path.Combine(folder, file);

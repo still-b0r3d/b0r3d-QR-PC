@@ -128,6 +128,49 @@ namespace B0r3dQR.Tests
             batch.Close();
         }
 
+        // A folder far down a drive: each file's name cut to fit Windows' 260 characters for a whole path (the temporary
+        // name it's written under first too), its extension kept, and names that meet once cut numbered; a folder too far
+        // down for names of 12 characters says so and makes nothing. (Names were only cut to 200 characters, so a file in
+        // a folder like this failed.)
+        static void BatchIntoAFolderFarDown()
+        {
+            string far = Path.Combine(Work, "far");
+            Fresh(far);
+            string deep = far;
+            while (deep.Length < 190) deep = Path.Combine(deep, "folder-inside-folder");
+            Directory.CreateDirectory(deep);
+            MainWindow window = NewMain();
+            Type(window, "https://b0r3d.org");
+            string common = new string('n', 150);
+            BatchWindow batch = NewBatch(window, "url,fileName\nhttps://b0r3d.org/one," + common + "a" + new string('z', 49) + "\nhttps://b0r3d.org/two," + common + "b" + new string('z', 49) + "\nhttps://b0r3d.org/three,short\n");
+            Check(batch.Items.Count == 3 && batch.Items[0].Name.Length == 200, "the rows: " + string.Join(" | ", batch.Items.Select(i => i.Name.Length + " " + i.Problem)));
+            MakeBatch(batch, deep);
+            int longest = BatchExport.LongestName(deep, ".png");
+            string[] files = Directory.GetFiles(deep).Select(Path.GetFileName).OrderBy(f => f, StringComparer.Ordinal).ToArray();
+            string[] expected = { new string('n', longest) + ".png", new string('n', longest - 4) + " (2).png", "short.png" };
+            Check(batch.LastOutcome == "3 made, 0 skipped, 0 failed, 0 unread" && files.SequenceEqual(expected.OrderBy(f => f, StringComparer.Ordinal), StringComparer.Ordinal),
+                "into " + deep.Length + " characters of folder: " + batch.LastOutcome + " · " + batch.StatusLine.Text + " · " + string.Join(", ", files.Select(f => f.Length + " " + f.Substring(0, Math.Min(f.Length, 12)))));
+            Check(Directory.GetFiles(deep).All(f => f.Length <= BatchExport.MostPath) && Path.Combine(deep, "." + expected[0] + ".1a2b3c4d.tmp").Length <= BatchExport.MostPath && longest >= BatchExport.ShortestName,
+                "each file and its temporary name should fit in 259 characters");
+            Check(!Directory.GetFiles(deep, "*.tmp").Any(), "a temporary file was left behind");
+
+            // again, numbered after the ones there, within the same room
+            MakeBatch(batch, deep);
+            batch.Answer(Clash.Number);
+            Pump(() => batch.Running.IsCompleted && batch.LastOutcome != "", 30000);
+            Check(batch.LastOutcome == "3 made, 0 skipped, 0 failed, 0 unread" && Directory.GetFiles(deep).Length == 6 && Directory.GetFiles(deep).All(f => f.Length <= BatchExport.MostPath),
+                "numbered far down: " + batch.LastOutcome + " · " + string.Join(", ", Directory.GetFiles(deep).Select(f => f.Length)));
+
+            // too far down: said, nothing made
+            string tooFar = deep;
+            while (tooFar.Length < 236) tooFar = Path.Combine(tooFar, "x");
+            Directory.CreateDirectory(tooFar);
+            MakeBatch(batch, tooFar);
+            Check(batch.LastOutcome == "the folder's path is too long" && batch.StatusLine.Text.StartsWith("Nothing was made: ", StringComparison.Ordinal) && Directory.GetFiles(tooFar).Length == 0,
+                "a folder too far down: " + batch.LastOutcome + " · " + batch.StatusLine.Text);
+            batch.Close();
+        }
+
         // Names that differ only in capitals (Windows doesn't tell them apart) never overwrite or skip each other; see-through
         // PNGs and text files read back as on paper; a CSV another program has open still reads; a row left out doesn't
         // take a name from the next; "Default" is the default font; nothing prints from the last file while one's checked

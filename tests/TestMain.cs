@@ -162,6 +162,7 @@ namespace B0r3dQR.Tests
                 Run("batch export: names alike but for capitals, see-through PNGs, text read from its characters, a CSV open elsewhere, names after a refused row", BatchCornerCases);
                 Run("batch export: a row whose file fails to be made is listed with why, the rest made; no temporary zip left, stopped or not", BatchRowThatFails);
                 Run("batch export: rows named like Windows' devices (CON, aux, Com1…) get _ on their files' names, and are all made", BatchDeviceNames);
+                Run("batch export: into a folder far down a drive, names cut to fit Windows' 260 characters, extensions kept; too far down is said", BatchIntoAFolderFarDown);
                 Run("saving: where Windows can't swap files (some USB sticks), a file or a batch's zip saved over another goes in by moves, the old one back if the new can't", SavingWhereFilesCantBeSwapped);
                 Run("printing: one code at its exact print size in the middle of the page; sheets of copies with captions and cut marks; too big shrunk and said", PrintingLaysOutPages);
                 Run("printing: a barcode at its files' size; a batch on sheets with file names, or one a page, each page scanned", PrintingBarcodesAndBatches);
