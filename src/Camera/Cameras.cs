@@ -255,6 +255,10 @@ namespace B0r3dQR.Camera
         readonly object gate = new object();   // Interrupt (from the thread pool) and Dispose, one at a time
         volatile bool reading;     // ReadSample is under way
         Timer lastResort;          // from a stop on: shuts the camera down if ReadSample is still waiting (see Interrupt)
+        // Interrupt was called. Media Foundation can still have a picture or two in hand when the stop's error
+        // is queued, and on a busy PC it can hand them out before it hears the error (two came through once on
+        // a 2-core build machine): Next hands none out from the stop on, but the error, at once.
+        volatile bool stopped;
 
         // how long after a stop a reader still waiting for a picture is given before the camera is shut
         // down anyway (see Interrupt; the tests shorten it)
@@ -394,6 +398,7 @@ namespace B0r3dQR.Camera
             IMFSample sample = null;
             try
             {
+                if (stopped) throw Webcams.Problem(MF.ShutDown, "the camera stopped sending pictures");
                 int hr, flags;
                 reading = true;
                 try
@@ -408,6 +413,8 @@ namespace B0r3dQR.Camera
                 if ((flags & (MF.ReadError | MF.EndOfStream)) != 0) throw new CameraException(Trouble.Failed, "the camera stopped sending pictures");
                 if ((flags & MF.CurrentTypeChanged) != 0 && !ReadSize()) throw new CameraException(Trouble.Failed, "the camera's pictures changed to a kind b0r3d QR can't read");
                 if (sample == null) return false;   // a gap in the pictures, with nothing in it
+                // a picture that was on its way when the camera was stopped isn't handed out
+                if (stopped) throw Webcams.Problem(MF.ShutDown, "the camera stopped sending pictures");
                 Copy(sample, width, height, stride, into);
                 return true;
             }
@@ -473,9 +480,11 @@ namespace B0r3dQR.Camera
         // as Next has thrown, and its light goes off. Only if ReadSample is still waiting ShutDownAfterMs
         // later (the reader never heard it: Windows' trouble) is the camera shut down from here, so that its
         // light goes off at least; its thread may then wait for good. From the thread pool, as the camera's
-        // objects are the MTA's; never while Dispose lets them go.
+        // objects are the MTA's; never while Dispose lets them go. From the stop on, Next hands out no picture
+        // (see `stopped`).
         public void Interrupt()
         {
+            stopped = true;
             lock (gate)
             {
                 if (source == null || lastResort != null) return;   // let go of, or stopped already

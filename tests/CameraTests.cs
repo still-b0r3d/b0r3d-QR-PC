@@ -1192,7 +1192,9 @@ namespace B0r3dQR.Tests
                     busy.Off();
                     Check(!stuck, "round " + round + ": the reader went on waiting after it was stopped");
                     Check(trouble == null, "round " + round + ": " + trouble);
-                    Check(ended != null && read < length && readAfter <= 2, "round " + round + ": " + read + " of " + length + " pictures read, " + readAfter + " of them after the stop, then " + (ended?.Message ?? "nothing"));
+                    // at most the one picture Next was handing out as the stop came (it hands none out after it, however
+                    // many Media Foundation still has in hand on a busy PC)
+                    Check(ended != null && read < length && readAfter <= 1, "round " + round + ": " + read + " of " + length + " pictures read, " + readAfter + " of them after the stop, then " + (ended?.Message ?? "nothing"));
                     Check(shutDown == Shutdown, "round " + round + ": the video wasn't shut down (0x" + shutDown.ToString("X8") + ")");
                     videoWorst = Math.Max(videoWorst, (letGo - stop) * 1000 / System.Diagnostics.Stopwatch.Frequency);
                     frames.Interrupt();   // after Dispose: nothing to stop, nothing used
