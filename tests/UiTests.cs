@@ -438,19 +438,10 @@ namespace B0r3dQR.Tests
                 Check(window.HiddenInTray && window.Tray.Active && window.ScanAnywhereCheck.IsChecked == true && window.ScanAnywhereMenu.IsChecked,
                     "hiding in the tray turns Scan from anywhere on");
 
-                // the tray's cup icon and Ctrl+Shift+Q with Windows
+                // the tray's cup icon
                 IntPtr icon = Tray.MakeIcon(32);
                 Check(icon != IntPtr.Zero, "couldn't make the tray's cup icon from the exe's resources");
                 Tray.DestroyIcon(icon);
-                using (var first = new Tray(window))
-                using (var second = new Tray(window))
-                {
-                    if (first.TryRegisterHotkeyOnly())
-                    {
-                        Check(first.HotkeyRegistered && !second.TryRegisterHotkeyOnly(),
-                            "while one Tray holds Ctrl+Shift+Q, a second shouldn't be able to take it");
-                    }
-                }
 
                 // scanning from the tray while on the Make tab: Esc leaves the window hidden in the tray on the Make tab;
                 // a chosen screen with a code brings the window back on the Scan tab with the code
@@ -485,5 +476,129 @@ namespace B0r3dQR.Tests
                 DataFolder.Reset(data);
             }
         }
+
+        // The tray with Windows, with a stand-in for Shell_NotifyIcon (no icon is added to this PC's taskbar,
+        // which Windows would remember) and, for the hotkey, Ctrl+Shift with F24, which no program holds,
+        // in place of Q: so the check that a hotkey can't be taken twice always runs.
+        static void TrayWithWindows()
+        {
+            string data = DataFolder.Path;
+            DataFolder.Reset(Path.Combine(Work, "tray"));
+            Directory.CreateDirectory(DataFolder.Path);
+            var told = new List<uint>();   // what Shell_NotifyIcon was asked: 0 add, 1 change, 2 delete
+            bool takes = true;
+            Tray.NotifyStandIn = message => { told.Add(message); return takes; };
+            uint key = Tray.HotkeyKey;
+            Tray.HotkeyKey = 0x87;   // F24
+            MainWindow window = null;
+            try
+            {
+                // Windows' NOTIFYICONDATAW at its full size, which Windows knows (the one before stopped after the tip)
+                int size = System.Runtime.InteropServices.Marshal.SizeOf(typeof(Tray.NotifyIconData));
+                Check(size == (IntPtr.Size == 8 ? 976 : 956), "NOTIFYICONDATAW should be 976 bytes (956 in 32-bit), not " + size);
+
+                // a hotkey held by one Tray can't be taken by a second; with it held elsewhere, the window says so
+                using (var first = new Tray(NewMain()))
+                using (var second = new Tray(NewMain()))
+                {
+                    Check(first.TryRegisterHotkeyOnly() && first.HotkeyRegistered && !second.TryRegisterHotkeyOnly(),
+                        "while one Tray holds the hotkey, a second shouldn't be able to take it");
+                    window = new MainWindow(new Settings { ScanAnywhere = true });
+                    LayOut(window.Root, MainWidth, MainHeight);
+                    window.StartTray();   // as when the window is on screen (it isn't shown here)
+                    Check(!window.Tray.HotkeyRegistered && window.Tray.IconShown && window.ScanAnywhereNote.Text.Contains("Another program is using " + Tray.HotkeyText),
+                        "with the hotkey held elsewhere, the tray works and the window says so: " + window.ScanAnywhereNote.Text);
+                }
+
+                // b0r3d QR's hidden window is a top-level one (a message-only one never hears Explorer start again),
+                // never shown; when Explorer starts again (TaskbarCreated), the icon is added again
+                IntPtr hidden = window.Tray.Handle;
+                Check(hidden != IntPtr.Zero && GetAncestor(hidden, 1) == GetDesktopWindow() && !IsWindowVisible(hidden),
+                    "the tray's window should be a hidden top-level window");
+                told.Clear();
+                SendMessageW(hidden, (uint)Tray.TaskbarCreated, IntPtr.Zero, IntPtr.Zero);
+                Check(told.SequenceEqual(new uint[] { 0 }) && window.Tray.IconShown, "after Explorer starts again, the icon should be added again: " + string.Join(", ", told));
+
+                // Hide in the tray only with the icon there to come back by: when Windows won't take it, the window stays
+                takes = false;
+                SendMessageW(hidden, (uint)Tray.TaskbarCreated, IntPtr.Zero, IntPtr.Zero);
+                window.OnHideToTray(null, null);
+                Check(!window.Tray.IconShown && !window.HiddenInTray && window.Note.Text == "Windows didn't add the tray icon, so b0r3d QR stays open." &&
+                      window.ScanAnywhereNote.Text.StartsWith("Windows didn't add the tray icon", StringComparison.Ordinal),
+                    "with no icon, Hide in the tray should leave the window open and say why: " + window.Note.Text + " / " + window.ScanAnywhereNote.Text);
+                takes = true;
+                SendMessageW(hidden, (uint)Tray.TaskbarCreated, IntPtr.Zero, IntPtr.Zero);
+                window.OnHideToTray(null, null);
+                Check(window.Tray.IconShown && window.HiddenInTray, "with the icon back, Hide in the tray hides the window");
+                told.Clear();
+                MainWindow closing = window;
+                window = null;
+                closing.Close();
+                Check(told.SequenceEqual(new uint[] { 2 }) && !IsWindow(hidden), "closing should take the icon away and the hidden window with it: " + string.Join(", ", told));
+            }
+            finally
+            {
+                window?.Close();
+                Tray.NotifyStandIn = null;
+                Tray.HotkeyKey = key;
+                DataFolder.Reset(data);
+            }
+        }
+
+        // One b0r3d QR a data folder: the claim is the first copy's alone, by the folder however it's written;
+        // another folder is another copy's; started again, it finds the running one's hidden window and has it
+        // show itself
+        static void OneCopyADataFolder()
+        {
+            string data = DataFolder.Path;
+            string folder = Path.Combine(Work, "one copy");
+            Directory.CreateDirectory(folder);
+            DataFolder.Reset(folder);
+            Check(SingleCopy.Name(folder) == SingleCopy.Name(folder.ToUpperInvariant() + "\\") && SingleCopy.Name(folder) != SingleCopy.Name(folder + " 2") &&
+                  SingleCopy.Name(folder).StartsWith("b0r3dQR ", StringComparison.Ordinal),
+                "a data folder's name: the same however it's written, another for another folder: " + SingleCopy.Name(folder));
+            Check(SingleCopy.Claim(folder), "the first copy for a data folder should get it");
+            try
+            {
+                Check(!SingleCopy.Claim(folder.ToUpperInvariant()), "a second copy for the same data folder shouldn't");
+                // the running copy: its hidden window, titled for the folder, hidden in the tray
+                MainWindow running = NewMain();
+                running.Tray.Open();
+                running.OnHideToTray(null, null);
+                Check(running.HiddenInTray && FindWindowW(null, SingleCopy.WindowTitle) == running.Tray.Handle, "the running copy's hidden window should go by the folder's name");
+                Check(SingleCopy.BringForward(2000), "a copy started again should find the running one's window");
+                Pump(() => !running.HiddenInTray, 3000);
+                Check(!running.HiddenInTray, "the running copy should show itself when another is started");
+                running.Close();
+                Check(!SingleCopy.BringForward(300), "with no copy running, there's nothing to bring forward");
+            }
+            finally
+            {
+                SingleCopy.Release();
+                DataFolder.Reset(data);
+            }
+            Check(SingleCopy.Claim(folder), "once the first copy has ended, the next one gets the folder");
+            SingleCopy.Release();
+            Check(SingleCopy.Claim(folder + " 2"), "a copy with a data folder of its own runs side by side");
+            SingleCopy.Release();
+        }
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern IntPtr GetAncestor(IntPtr hwnd, uint flags);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern IntPtr GetDesktopWindow();
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern bool IsWindowVisible(IntPtr hwnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll")]
+        static extern bool IsWindow(IntPtr hwnd);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern IntPtr SendMessageW(IntPtr hwnd, uint message, IntPtr wParam, IntPtr lParam);
+
+        [System.Runtime.InteropServices.DllImport("user32.dll", CharSet = System.Runtime.InteropServices.CharSet.Unicode)]
+        static extern IntPtr FindWindowW(string className, string windowName);
     }
 }

@@ -57,6 +57,7 @@ namespace B0r3dQR
         internal void StartTray()
         {
             windowOnScreen = true;
+            tray.Open();   // b0r3d QR's hidden window, which a copy started again brings forward (SingleCopy)
             tray.SetActive(scanAnywhere, true);
             ShowScanAnywhereNote();
         }
@@ -82,6 +83,8 @@ namespace B0r3dQR
         {
             ScanAnywhereNote.Text = !scanAnywhere
                 ? "Turn this on to keep an icon in the tray and use " + Tray.HotkeyText + " in any program while b0r3d QR is running."
+                : windowOnScreen && tray != null && !tray.IconShown
+                ? "Windows didn't add the tray icon, so Hide in the tray keeps this window open." + (tray.HotkeyRegistered ? " " + Tray.HotkeyText + " still scans the screen from any program." : "")
                 : windowOnScreen && tray != null && !tray.HotkeyRegistered
                 ? "The tray icon is ready (click it to scan the screen). Another program is using " + Tray.HotkeyText + "."
                 : "While b0r3d QR is running, click its tray icon or press " + Tray.HotkeyText + " in any program to scan the screen without opening this window first.";
@@ -97,6 +100,13 @@ namespace B0r3dQR
         internal void OnHideToTray(object sender, RoutedEventArgs e)
         {
             if (!scanAnywhere) SetScanAnywhere(true);
+            // hidden only with the icon there to come back by: Windows can refuse it (no taskbar yet)
+            if (windowOnScreen && !tray.IconShown)
+            {
+                ShowScanAnywhereNote();
+                Flash("Windows didn't add the tray icon, so b0r3d QR stays open.", "Warn");
+                return;
+            }
             hiddenInTray = true;
             if (IsVisible) Hide();
         }

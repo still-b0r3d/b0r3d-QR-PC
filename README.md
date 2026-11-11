@@ -223,6 +223,10 @@ b0r3dQR.exe --data "D:\Somewhere\b0r3dQR settings"
 That folder can hold other things too: b0r3d QR only ever touches its own `b0r3dQR.ini`,
 `b0r3dQR design.json`, `b0r3dQR recent.json` and `b0r3dQR drag` folder there.
 
+One b0r3d QR runs for each data folder: started again while it's running, it brings the one
+running to the front (from the tray too). A copy with a data folder of its own, such as a
+second portable copy in another folder, runs alongside it.
+
 A code's text is only kept in Recent codes: the codes you saved, copied or dragged out, while
 it's on. That file is plain text (Wi-Fi passwords included), so anyone who can open the data
 folder can read it; turn Recent codes off and Clear all if that matters. A frame's caption is

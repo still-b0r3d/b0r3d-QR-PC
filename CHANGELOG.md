@@ -22,6 +22,13 @@ Fixes for 1.3.
 - **Scan from anywhere** is off until it's turned on: while on, it takes Ctrl+Shift+Q from
   every other program (Firefox's Quit, Outlook's new meeting). A choice already saved in
   `b0r3dQR.ini` stays as it is.
+- **The tray icon comes back after Explorer restarts** (it was gone for good), and **Hide in
+  the tray** keeps the window open, and says so, when Windows didn't take the icon. The tray
+  menu takes the front as it opens, so a click elsewhere closes it.
+- **One b0r3d QR for each data folder:** starting it again while it runs brings the one running
+  to the front (from the tray too), instead of a second copy with a second tray icon, both
+  wanting Ctrl+Shift+Q and both writing `b0r3dQR.ini`. A copy with a data folder of its own (a
+  second portable copy) still runs alongside.
 - **JPG with a partly see-through background:** the colour was painted twice, so it came out
   too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
   white paper, as the website and barcodes do.

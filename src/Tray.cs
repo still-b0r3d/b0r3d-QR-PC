@@ -23,6 +23,17 @@ namespace B0r3dQR
         const uint MOD_CONTROL = 0x02, MOD_SHIFT = 0x04, MOD_NOREPEAT = 0x4000;
         const uint VK_Q = 0x51;
 
+        // Explorer says this to every top-level window when it makes the taskbar again (after it
+        // restarts): every tray icon is gone then, and is added again
+        internal static readonly int TaskbarCreated = (int)RegisterWindowMessageW("TaskbarCreated");
+        // a copy of b0r3d QR started again says this to the one running (SingleCopy): show yourself
+        internal static readonly int ShowMessage = (int)RegisterWindowMessageW("b0r3dQR show");
+
+        // for the tests: the key that goes with Ctrl+Shift (Q, or one no program holds), and what stands
+        // in for Windows' Shell_NotifyIcon (given NIM_ADD, NIM_MODIFY or NIM_DELETE), so no icon is added
+        internal static uint HotkeyKey = VK_Q;
+        internal static Func<uint, bool> NotifyStandIn;
+
         readonly MainWindow window;
         public readonly ContextMenu Menu;
         public readonly MenuItem ScanItem, CameraItem, PasteItem, ShowItem, ExitItem;
@@ -33,6 +44,7 @@ namespace B0r3dQR
         public bool Active { get; private set; }
         public bool IconShown => iconAdded;
         public bool HotkeyRegistered => hotkeyRegistered;
+        internal IntPtr Handle => source?.Handle ?? IntPtr.Zero;
 
         public Tray(MainWindow window)
         {
@@ -57,6 +69,10 @@ namespace B0r3dQR
             Menu.Items.Add(ExitItem);
         }
 
+        // b0r3d QR's hidden window, made once the main window is on screen whether Scan from anywhere is
+        // on or not: a copy started again finds it to bring this one forward
+        public void Open() => EnsureSource();
+
         // turns the tray icon and Ctrl+Shift+Q on or off (`installOs`: true once the window is on screen)
         public void SetActive(bool on, bool installOs)
         {
@@ -70,42 +86,49 @@ namespace B0r3dQR
             EnsureSource();
             if (iconHandle == IntPtr.Zero) iconHandle = MakeIcon(32);
             if (!hotkeyRegistered && source != null)
-                hotkeyRegistered = RegisterHotKey(source.Handle, HotkeyId, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_Q);
-            if (source != null && iconHandle != IntPtr.Zero)
-            {
-                var data = new NotifyIconData
-                {
-                    Size = (uint)Marshal.SizeOf(typeof(NotifyIconData)),
-                    Hwnd = source.Handle,
-                    Id = 1,
-                    Flags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
-                    CallbackMessage = TrayMessage,
-                    Icon = iconHandle,
-                    Tip = hotkeyRegistered ? "b0r3d QR · " + HotkeyText + " to scan the screen" : "b0r3d QR · click to scan the screen",
-                };
-                if (!iconAdded) iconAdded = Shell_NotifyIconW(NIM_ADD, ref data);
-                else Shell_NotifyIconW(NIM_MODIFY, ref data);
-            }
+                hotkeyRegistered = RegisterHotKey(source.Handle, HotkeyId, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, HotkeyKey);
+            ShowIcon();
         }
 
-        // registers only the hotkey on a message-only window, for testing RegisterHotKey without adding a tray icon
+        void ShowIcon()
+        {
+            if (source == null || iconHandle == IntPtr.Zero) return;
+            var data = new NotifyIconData
+            {
+                Size = (uint)Marshal.SizeOf(typeof(NotifyIconData)),
+                Hwnd = source.Handle,
+                Id = 1,
+                Flags = NIF_MESSAGE | NIF_ICON | NIF_TIP,
+                CallbackMessage = TrayMessage,
+                Icon = iconHandle,
+                Tip = hotkeyRegistered ? "b0r3d QR · " + HotkeyText + " to scan the screen" : "b0r3d QR · click to scan the screen",
+            };
+            if (!iconAdded) iconAdded = Notify(NIM_ADD, ref data);
+            else Notify(NIM_MODIFY, ref data);
+        }
+
+        // registers only the hotkey, for testing RegisterHotKey without adding a tray icon
         internal bool TryRegisterHotkeyOnly()
         {
             EnsureSource();
             if (source == null) return false;
             if (!hotkeyRegistered)
-                hotkeyRegistered = RegisterHotKey(source.Handle, HotkeyId, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_Q);
+                hotkeyRegistered = RegisterHotKey(source.Handle, HotkeyId, MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, HotkeyKey);
             return hotkeyRegistered;
         }
 
+        // A top-level window that's never shown and never in the taskbar or Alt+Tab, named for this data
+        // folder's copy of b0r3d QR (SingleCopy). Not a message-only window: those never hear Explorer
+        // making the taskbar again, so after Explorer restarted the icon was gone for good.
         void EnsureSource()
         {
             if (source != null) return;
-            var parameters = new HwndSourceParameters("b0r3dQR tray")
+            var parameters = new HwndSourceParameters(SingleCopy.WindowTitle)
             {
                 Width = 0,
                 Height = 0,
-                ParentWindow = new IntPtr(-3),   // HWND_MESSAGE: a message-only window, never shown
+                WindowStyle = unchecked((int)0x80000000),   // WS_POPUP, without WS_VISIBLE: never shown
+                ExtendedWindowStyle = 0x00000080,           // WS_EX_TOOLWINDOW: not in the taskbar or Alt+Tab
             };
             source = new HwndSource(parameters);
             source.AddHook(WndProc);
@@ -129,10 +152,29 @@ namespace B0r3dQR
                 else if (mouse == WM_RBUTTONUP || mouse == WM_CONTEXTMENU)
                 {
                     handled = true;
-                    Menu.IsOpen = true;
+                    OpenMenu();
                 }
             }
+            else if (msg == TaskbarCreated && msg != 0)
+            {
+                // Explorer started again: the icon it had is gone, so it's added again
+                iconAdded = false;
+                if (Active) ShowIcon();
+            }
+            else if (msg == ShowMessage && msg != 0)
+            {
+                handled = true;
+                TriggerShow();
+            }
             return IntPtr.Zero;
+        }
+
+        // The menu at the mouse, its window brought to the front, as Windows' own tray menus are: a click
+        // anywhere else then closes it (the shell lets the icon's program take the front on a click).
+        void OpenMenu()
+        {
+            Menu.IsOpen = true;
+            if (PresentationSource.FromVisual(Menu) is HwndSource popup) SetForegroundWindow(popup.Handle);
         }
 
         public void TriggerScan() => window.ScanScreenFromAnywhere();
@@ -169,7 +211,7 @@ namespace B0r3dQR
                     Hwnd = source.Handle,
                     Id = 1,
                 };
-                Shell_NotifyIconW(NIM_DELETE, ref data);
+                Notify(NIM_DELETE, ref data);
                 iconAdded = false;
             }
         }
@@ -190,6 +232,8 @@ namespace B0r3dQR
                 iconHandle = IntPtr.Zero;
             }
         }
+
+        static bool Notify(uint message, ref NotifyIconData data) => NotifyStandIn != null ? NotifyStandIn(message) : Shell_NotifyIconW(message, ref data);
 
         // the cup icon from the exe's resources, as a Windows HICON at the size asked for
         internal static IntPtr MakeIcon(int wantedSize = 32)
@@ -227,8 +271,10 @@ namespace B0r3dQR
             return CreateIconFromResourceEx(frame, (uint)frame.Length, true, 0x00030000, wantedSize, wantedSize, 0);
         }
 
+        // Windows' NOTIFYICONDATAW as it is today: its size tells Windows which fields there are (one cut
+        // short after the tip is a size Windows doesn't know)
         [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
-        struct NotifyIconData
+        internal struct NotifyIconData
         {
             public uint Size;
             public IntPtr Hwnd;
@@ -238,6 +284,15 @@ namespace B0r3dQR
             public IntPtr Icon;
             [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 128)]
             public string Tip;
+            public uint State, StateMask;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)]
+            public string Info;
+            public uint TimeoutOrVersion;
+            [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 64)]
+            public string InfoTitle;
+            public uint InfoFlags;
+            public Guid Item;
+            public IntPtr BalloonIcon;
         }
 
         [DllImport("shell32.dll", CharSet = CharSet.Unicode)]
@@ -258,5 +313,12 @@ namespace B0r3dQR
         [DllImport("user32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]
         internal static extern bool DestroyIcon(IntPtr icon);
+
+        [DllImport("user32.dll", CharSet = CharSet.Unicode)]
+        static extern uint RegisterWindowMessageW(string name);
+
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        static extern bool SetForegroundWindow(IntPtr hwnd);
     }
 }

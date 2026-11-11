@@ -44,15 +44,27 @@ namespace B0r3dQR
             }
             DataFolder.Choose(line.DataFolder);
             if (line.SelfTestReport != null) return SelfTest.Run(line.SelfTestReport);
-            DataFolder.CheckWritable();
-
-            var app = new App();
-            app.InitializeComponent();
-            Settings settings = Settings.Load();
-            Theme.Start(settings.Look);
-            int code = app.Run(new MainWindow(settings));
-            Theme.Stop();
-            return code;
+            // one b0r3d QR for each data folder: started again, it brings the one running forward
+            if (!SingleCopy.Claim(DataFolder.Path))
+            {
+                SingleCopy.BringForward();
+                return 0;
+            }
+            try
+            {
+                DataFolder.CheckWritable();
+                var app = new App();
+                app.InitializeComponent();
+                Settings settings = Settings.Load();
+                Theme.Start(settings.Look);
+                int code = app.Run(new MainWindow(settings));
+                Theme.Stop();
+                return code;
+            }
+            finally
+            {
+                SingleCopy.Release();
+            }
         }
     }
 }
