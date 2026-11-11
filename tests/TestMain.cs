@@ -136,6 +136,7 @@ namespace B0r3dQR.Tests
                 Run("fonts: a font name that's a place to load a font from (file://, a path, a #) is never taken as an installed font", FontNamesAreNeverPlaces);
                 Run("design: print size, module size and scan distance as the website works them out", PrintSizeLikeTheWebsite);
                 Run("design: PNG, JPG, PDF and text files at the website's sizes, each read back", ExportsLikeTheWebsite);
+                Run("vector PDF: gradients as shadings, a fade to clear as a soft mask, a see-through group drawn as one, a masked group's opacity once; read back through Windows' PDF reader", VectorPdfSeeThroughLikeWpf);
                 Run("svg pictures: drawn as Chromium draws them for the website, as a logo and a frame's picture, for 70 test pictures", SvgPicturesLikeChromium);
                 Run("svg pictures: XML, path data, colours and CSS read as a browser reads them; broken files refused with the line", SvgReaderLikeABrowser);
                 Run("svg pictures: an SVG logo in PNG, JPG, PDF, copy, print (as shapes), a frame's picture, Recent codes and batch, each read back", SvgLogosInEveryOutput);

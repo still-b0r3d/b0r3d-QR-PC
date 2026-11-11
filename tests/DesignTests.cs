@@ -368,6 +368,61 @@ namespace B0r3dQR.Tests
             Check(QrExport.Text(logoAtL, QrExport.TextStyle.FullBlocks) == QrExport.Text(plainAtQ, QrExport.TextStyle.FullBlocks), "marked text with a logo at L should be the picture's code, at Q");
         }
 
+        // A vector PDF's see-through parts as WPF draws them, each read back through Windows' PDF reader over white:
+        // gradients become shadings (linear and radial, in their colours); a gradient's see-through stops become a soft
+        // mask, so a fade to clear fades (its stops' opacity was averaged: half see-through all over); a see-through
+        // group is drawn as one, so its shapes aren't darker where they overlap (each had the group's opacity); and a
+        // group with an opacity mask has its opacity once (it had it twice)
+        static void VectorPdfSeeThroughLikeWpf()
+        {
+            var canvas = new System.Windows.Rect(0, 0, 200, 100);
+            BitmapSource Read(Drawing drawing, out string text)
+            {
+                byte[] pdf = PdfFile.Make(drawing, canvas, 150, 75, new System.Windows.Rect(0, 0, 150, 75), "see-through");
+                text = Encoding.GetEncoding(28591).GetString(pdf);
+                BitmapSource page = PdfFile.ReadPicture(pdf);
+                Check(page != null && page.PixelWidth == 600 && page.PixelHeight == 300, "Windows' PDF reader should draw the page at 600 × 300: " + page?.PixelWidth + " × " + page?.PixelHeight);
+                return page;
+            }
+            // the grey at a point of the drawing (its px, the page drawn 3 to 1), with what's around it in the message
+            byte Grey(BitmapSource page, double x, double y) => Corner(new CroppedBitmap(page, new System.Windows.Int32Rect((int)(x * 3), (int)(y * 3), 1, 1))).R;
+            var whole = new RectangleGeometry(canvas);
+
+            // a gradient from red to blue: a shading in its colours, never a picture
+            var redToBlue = new LinearGradientBrush(Colors.Red, Colors.Blue, new System.Windows.Point(0, 0.5), new System.Windows.Point(1, 0.5));
+            BitmapSource shaded = Read(new GeometryDrawing(redToBlue, null, whole), out string shadedText);
+            Color left = Corner(new CroppedBitmap(shaded, new System.Windows.Int32Rect(6, 150, 1, 1))), right = Corner(new CroppedBitmap(shaded, new System.Windows.Int32Rect(594, 150, 1, 1)));
+            Check(shadedText.Contains("/ShadingType 2 /ColorSpace /DeviceRGB") && !shadedText.Contains("/Subtype /Image") && left.R > 240 && left.B < 15 && right.B > 240 && right.R < 15,
+                "a linear gradient should be a shading from red to blue: " + left + " to " + right);
+            var radial = new RadialGradientBrush(Colors.White, Colors.Black) { Center = new System.Windows.Point(0.5, 0.5), GradientOrigin = new System.Windows.Point(0.5, 0.5), RadiusX = 0.5, RadiusY = 0.5, MappingMode = BrushMappingMode.Absolute };
+            radial.Center = radial.GradientOrigin = new System.Windows.Point(100, 50);
+            radial.RadiusX = radial.RadiusY = 50;
+            BitmapSource round = Read(new GeometryDrawing(radial, null, whole), out string roundText);
+            Check(roundText.Contains("/ShadingType 3") && Grey(round, 100, 50) > 240 && Grey(round, 100, 99) < 30, "a radial gradient should be a shading from white in its middle: " + Grey(round, 100, 50) + " to " + Grey(round, 100, 99));
+
+            // black fading to clear: dark at its start, white (the page) at its end, mid grey half way
+            var fade = new LinearGradientBrush(Color.FromArgb(255, 0, 0, 0), Color.FromArgb(0, 0, 0, 0), new System.Windows.Point(0, 0.5), new System.Windows.Point(1, 0.5));
+            BitmapSource faded = Read(new GeometryDrawing(fade, null, whole), out string fadeText);
+            byte start = Grey(faded, 4, 50), middle = Grey(faded, 100, 50), end = Grey(faded, 196, 50);
+            Check(fadeText.Contains("/SMask << /Type /Mask /S /Luminosity") && start < 30 && end > 225 && middle > 100 && middle < 156,
+                "a fade to clear should go from black to the page: " + start + ", " + middle + ", " + end);
+
+            // two black squares that overlap in a group at half opacity: mid grey, the overlap too
+            var group = new DrawingGroup { Opacity = 0.5 };
+            group.Children.Add(new GeometryDrawing(Brushes.Black, null, new RectangleGeometry(new System.Windows.Rect(0, 0, 120, 100))));
+            group.Children.Add(new GeometryDrawing(Brushes.Black, null, new RectangleGeometry(new System.Windows.Rect(80, 0, 120, 100))));
+            BitmapSource grouped = Read(group, out string groupText);
+            byte alone = Grey(grouped, 40, 50), overlap = Grey(grouped, 100, 50), other = Grey(grouped, 160, 50);
+            Check(groupText.Contains("/Subtype /Form") && groupText.Contains("/S /Transparency") && Math.Abs(alone - 127) <= 3 && Math.Abs(overlap - 127) <= 3 && Math.Abs(other - 127) <= 3,
+                "a see-through group should be one mid grey, where its shapes overlap too: " + alone + ", " + overlap + ", " + other);
+
+            // a group at half opacity with an opacity mask (all of it shown): mid grey, not a quarter
+            var masked = new DrawingGroup { Opacity = 0.5, OpacityMask = Brushes.Black };
+            masked.Children.Add(new GeometryDrawing(Brushes.Black, null, whole));
+            byte maskedGrey = Grey(Read(masked, out _), 100, 50);
+            Check(Math.Abs(maskedGrey - 127) <= 3, "a masked group at half opacity should be mid grey, not " + maskedGrey);
+        }
+
         static int Find(byte[] bytes, string ascii)
         {
             byte[] what = Encoding.ASCII.GetBytes(ascii);

@@ -28,6 +28,14 @@ namespace B0r3dQR.Qr
             public byte[] Rgb, Alpha;
         }
 
+        // A form XObject: a group's shapes drawn together then made see-through as one (a transparency group),
+        // or the grey shading a gradient's soft mask is made from
+        sealed class Form
+        {
+            public string Content, Group;
+            public Rect Box;
+        }
+
         // `place` is where `canvas` goes on the page, in points from the page's top-left corner
         public static byte[] Make(Drawing drawing, Rect canvas, double pageWidth, double pageHeight, Rect place, string title)
         {
@@ -36,6 +44,17 @@ namespace B0r3dQR.Qr
             var gsEntries = new List<string>();
             var shadings = new List<string>();
             var images = new List<EmbeddedImage>();
+            var forms = new List<Form>();
+
+            // a form, by its number: its object is written "@F3@" until the file's objects are numbered, and its name
+            // in the resources (for Do) is "Fm4"
+            int AddForm(string formContent, Rect box, string group)
+            {
+                forms.Add(new Form { Content = formContent, Box = box, Group = group });
+                return forms.Count - 1;
+            }
+            string FormObject(int form) => "@F" + form.ToString(CultureInfo.InvariantCulture) + "@";
+            string FormName(int form) => "Fm" + (form + 1).ToString(CultureInfo.InvariantCulture);
 
             string AlphaState(double fillAlpha, double strokeAlpha)
             {
@@ -156,11 +175,12 @@ namespace B0r3dQR.Qr
                 if (stops.Count < 2) stops.Add((1, stops[0].Color));
 
                 string Rgb(Color c) => C(c.R / 255.0) + " " + C(c.G / 255.0) + " " + C(c.B / 255.0);
-                string Seg(Color a, Color b) => "<< /FunctionType 2 /Domain [0 1] /C0 [" + Rgb(a) + "] /C1 [" + Rgb(b) + "] /N 1 >>";
-                string func;
-                if (stops.Count == 2) func = Seg(stops[0].Color, stops[1].Color);
-                else
+                string Grey(Color c) => C(c.A / 255.0);
+                // the stops as a PDF function of the gradient's 0 to 1: their colours, or their opacities as greys
+                string Function(Func<Color, string> value)
                 {
+                    string Seg(Color a, Color b) => "<< /FunctionType 2 /Domain [0 1] /C0 [" + value(a) + "] /C1 [" + value(b) + "] /N 1 >>";
+                    if (stops.Count == 2) return Seg(stops[0].Color, stops[1].Color);
                     var funcs = new List<string>();
                     var bounds = new List<string>();
                     var encode = new List<string>();
@@ -170,7 +190,7 @@ namespace B0r3dQR.Qr
                         if (i > 0) bounds.Add(C(stops[i].Offset));
                         encode.Add("0 1");
                     }
-                    func = "<< /FunctionType 3 /Domain [0 1] /Functions [" + string.Join(" ", funcs) + "] /Bounds [" + string.Join(" ", bounds) + "] /Encode [" + string.Join(" ", encode) + "] >>";
+                    return "<< /FunctionType 3 /Domain [0 1] /Functions [" + string.Join(" ", funcs) + "] /Bounds [" + string.Join(" ", bounds) + "] /Encode [" + string.Join(" ", encode) + "] >>";
                 }
 
                 var path = new StringBuilder();
@@ -178,24 +198,34 @@ namespace B0r3dQR.Qr
                 AppendGeometry(path, geometry, Matrix.Identity, ref figures);
                 if (figures == 0) return true;
 
-                string sh = "Sh" + (shadings.Count + 1).ToString(CultureInfo.InvariantCulture);
-                shadings.Add("/" + sh + " << /ShadingType " + type + " /ColorSpace /DeviceRGB /Coords [" + coords + "] /Extend [true true] /Function " + func + " >>");
+                string Shading(string colourSpace, string function)
+                {
+                    string name = "Sh" + (shadings.Count + 1).ToString(CultureInfo.InvariantCulture);
+                    shadings.Add("/" + name + " << /ShadingType " + type + " /ColorSpace " + colourSpace + " /Coords [" + coords + "] /Extend [true true] /Function " + function + " >>");
+                    return name;
+                }
+                string sh = Shading("/DeviceRGB", Function(Rgb));
+                string place = gm.IsIdentity ? "" : N(gm.M11) + " " + N(gm.M12) + " " + N(gm.M21) + " " + N(gm.M22) + " " + N(gm.OffsetX) + " " + N(gm.OffsetY) + " cm\n";
 
-                double alpha = opacity * Clamp01(gb.Opacity) * stops.Average(s => s.Color.A / 255.0);
+                double alpha = opacity * Clamp01(gb.Opacity);
                 content.Append("q\n");
-                if (alpha < 0.9999)
+                if (stops.Any(s => s.Color.A < 255))
+                {
+                    // Stops that can be seen through: their opacities as the same gradient in greys, a soft mask over
+                    // the colours (a fade to clear is clear at its end, not half see-through all over)
+                    int mask = AddForm(place + "/" + Shading("/DeviceGray", Function(Grey)) + " sh\n", geometry.Bounds, "/S /Transparency /CS /DeviceGray");
+                    string gs = "GS" + (gsEntries.Count + 1).ToString(CultureInfo.InvariantCulture);
+                    gsEntries.Add("/" + gs + " << /Type /ExtGState /ca " + C(alpha) + " /CA " + C(alpha) + " /SMask << /Type /Mask /S /Luminosity /G " + FormObject(mask) + " >> >>");
+                    content.Append('/').Append(gs).Append(" gs\n");
+                }
+                else if (alpha < 0.9999)
                 {
                     string gs = AlphaState(alpha, alpha);
                     content.Append('/').Append(gs).Append(" gs\n");
                 }
                 bool evenOdd = !forceNonzero && IsEvenOdd(geometry);
                 content.Append(path).Append(evenOdd ? "W* n\n" : "W n\n");
-                if (!gm.IsIdentity)
-                {
-                    content.Append(N(gm.M11)).Append(' ').Append(N(gm.M12)).Append(' ')
-                           .Append(N(gm.M21)).Append(' ').Append(N(gm.M22)).Append(' ')
-                           .Append(N(gm.OffsetX)).Append(' ').Append(N(gm.OffsetY)).Append(" cm\n");
-                }
+                content.Append(place);
                 content.Append('/').Append(sh).Append(" sh\nQ\n");
                 return true;
             }
@@ -267,16 +297,41 @@ namespace B0r3dQR.Qr
                 content.Append("Q\n");
             }
 
+            // A group's children. A group with an opacity of its own has them drawn together, into a transparency
+            // group that's then made see-through as one, as WPF does: shapes that overlap in it aren't darker where
+            // they meet (each child had the group's opacity, so overlaps were). Without one, one by one.
+            void Children(DrawingGroup group, double own, double opacity)
+            {
+                if (own >= 0.9999)
+                {
+                    foreach (Drawing child in group.Children) Walk(child, opacity);
+                    return;
+                }
+                StringBuilder around = content;
+                content = new StringBuilder();
+                foreach (Drawing child in group.Children) Walk(child, 1);
+                string inside = content.ToString();
+                content = around;
+                if (inside.Length == 0) return;
+                Rect box = Rect.Empty;
+                foreach (Drawing child in group.Children) box.Union(child.Bounds);
+                int form = AddForm(inside, box, "/S /Transparency /I true");
+                string gs = AlphaState(opacity * own, opacity * own);
+                content.Append("q /").Append(gs).Append(" gs /").Append(FormName(form)).Append(" Do Q\n");
+            }
+
             void Walk(Drawing d, double opacity)
             {
                 if (d == null || opacity <= 0) return;
                 if (d is DrawingGroup group)
                 {
-                    double groupOpacity = opacity * Clamp01(group.Opacity);
-                    if (groupOpacity <= 0 || group.Children.Count == 0) return;
+                    double own = Clamp01(group.Opacity);
+                    if (opacity * own <= 0 || group.Children.Count == 0) return;
                     if (group.OpacityMask != null)
                     {
-                        Rasterize(group, groupOpacity);
+                        // drawn as a picture, which has the group's own opacity and mask in it already: only the
+                        // opacity around the group goes on top (it had the group's own opacity twice)
+                        Rasterize(group, opacity);
                         return;
                     }
                     bool hasTransform = group.Transform != null && !group.Transform.Value.IsIdentity;
@@ -304,12 +359,12 @@ namespace B0r3dQR.Qr
                             }
                             content.Append(clipPath).Append(IsEvenOdd(group.ClipGeometry) ? "W* n\n" : "W n\n");
                         }
-                        foreach (Drawing child in group.Children) Walk(child, groupOpacity);
+                        Children(group, own, opacity);
                         content.Append("Q\n");
                     }
                     else
                     {
-                        foreach (Drawing child in group.Children) Walk(child, groupOpacity);
+                        Children(group, own, opacity);
                     }
                 }
                 else if (d is GlyphRunDrawing glyphs)
@@ -352,8 +407,9 @@ namespace B0r3dQR.Qr
             Start(2);
             Text("<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n");
 
-            // Objects: 1 Catalog, 2 Pages, 3 Page, 4 Contents, 5 Info, 6+ Images & SMasks
-            int nextObj = 6;
+            // Objects: 1 Catalog, 2 Pages, 3 Page, 4 Contents, 5 Info, 6 Resources (the page's and every form's),
+            // 7+ Images & SMasks, then forms
+            int nextObj = 7;
             var imageObjects = new List<(EmbeddedImage Img, int Obj, int MaskObj)>();
             foreach (EmbeddedImage img in images)
             {
@@ -361,23 +417,28 @@ namespace B0r3dQR.Qr
                 int maskObj = img.Alpha != null ? nextObj++ : 0;
                 imageObjects.Add((img, obj, maskObj));
             }
+            var formObjects = new int[forms.Count];
+            for (int i = 0; i < forms.Count; i++) formObjects[i] = nextObj++;
+            string Numbered(string text) => Regex.Replace(text, "@F([0-9]+)@", m => formObjects[int.Parse(m.Groups[1].Value, CultureInfo.InvariantCulture)] + " 0 R");
 
             var resources = new StringBuilder("<<");
             if (gsEntries.Count > 0)
-                resources.Append(" /ExtGState << ").Append(string.Join(" ", gsEntries)).Append(" >>");
+                resources.Append(" /ExtGState << ").Append(Numbered(string.Join(" ", gsEntries))).Append(" >>");
             if (shadings.Count > 0)
                 resources.Append(" /Shading << ").Append(string.Join(" ", shadings)).Append(" >>");
-            if (imageObjects.Count > 0)
+            if (imageObjects.Count > 0 || forms.Count > 0)
             {
                 resources.Append(" /XObject <<");
                 foreach (var (img, obj, _) in imageObjects)
                     resources.Append(" /").Append(img.Name).Append(' ').Append(obj).Append(" 0 R");
+                for (int i = 0; i < forms.Count; i++)
+                    resources.Append(" /").Append(FormName(i)).Append(' ').Append(formObjects[i]).Append(" 0 R");
                 resources.Append(" >>");
             }
             resources.Append(" >>");
 
             Start(3);
-            Text("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + N(pageWidth) + " " + N(pageHeight) + "] /Resources " + resources + " /Contents 4 0 R >>\nendobj\n");
+            Text("<< /Type /Page /Parent 2 0 R /MediaBox [0 0 " + N(pageWidth) + " " + N(pageHeight) + "] /Resources 6 0 R /Contents 4 0 R >>\nendobj\n");
 
             byte[] contentBytes = Encoding.ASCII.GetBytes(content.ToString());
             Start(4);
@@ -387,6 +448,9 @@ namespace B0r3dQR.Qr
 
             Start(5);
             Text("<< /Title " + PdfString(title) + " /Producer " + PdfString(Program.Name + " " + Program.Version) + " >>\nendobj\n");
+
+            Start(6);
+            Text(resources + "\nendobj\n");
 
             foreach (var (img, obj, maskObj) in imageObjects)
             {
@@ -402,6 +466,15 @@ namespace B0r3dQR.Qr
                     pdf.Write(img.Alpha, 0, img.Alpha.Length);
                     Text("\nendstream\nendobj\n");
                 }
+            }
+
+            for (int i = 0; i < forms.Count; i++)
+            {
+                byte[] formBytes = Encoding.ASCII.GetBytes(forms[i].Content);
+                Start(formObjects[i]);
+                Text("<< /Type /XObject /Subtype /Form /BBox [" + Box(forms[i].Box) + "] /Group << " + forms[i].Group + " >> /Resources 6 0 R /Length " + formBytes.Length + " >>\nstream\n");
+                pdf.Write(formBytes, 0, formBytes.Length);
+                Text("endstream\nendobj\n");
             }
 
             long xref = pdf.Position;
@@ -563,6 +636,15 @@ namespace B0r3dQR.Qr
             if (double.IsNaN(d) || double.IsInfinity(d)) return "0";
             double r = Math.Round(d, 4);
             return (r == 0 ? 0 : r).ToString("0.####", CultureInfo.InvariantCulture);
+        }
+
+        // a form's box: what's drawn in it and a little more (anti-aliasing), or very big when there's nothing to go by
+        static string Box(Rect r)
+        {
+            if (r.IsEmpty || double.IsNaN(r.X) || double.IsNaN(r.Y) || double.IsInfinity(r.Width) || double.IsInfinity(r.Height))
+                return "-100000 -100000 100000 100000";
+            r.Inflate(2, 2);
+            return N(r.Left) + " " + N(r.Top) + " " + N(r.Right) + " " + N(r.Bottom);
         }
 
         static string C(double d)

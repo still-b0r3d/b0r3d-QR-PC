@@ -36,6 +36,10 @@ Fixes for 1.3.
 - **JPG with a partly see-through background:** the colour was painted twice, so it came out
   too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
   white paper, as the website and barcodes do.
+- **Vector PDFs and see-through parts** (SVG logos and frame pictures): a gradient's stops that
+  can be seen through had their opacity averaged, so a fade to clear came out evenly half
+  see-through; they're a soft mask now. A see-through group is drawn as one (its shapes were
+  darker where they overlapped), and a group with a mask has its opacity once, not twice.
 
 ## 1.3 (released 8 November 2026)
 
