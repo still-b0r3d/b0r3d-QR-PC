@@ -297,18 +297,24 @@ namespace B0r3dQR.Tests
             QrDesign halfClear = d.Clone();
             halfClear.Background = "#ffffff80";
             Check(Corner(QrExport.Picture(new QrArt(halfClear), null, false, true)) == Colors.White, "a JPG of a partly see-through background (#ffffff80) should have white paper under it");
-            // a dark or coloured one is painted once on that paper, as the website and the barcodes paint it: #00000080
-            // is mid grey (127), not twice as dark (63); half see-through blue is (127, 127, 255), not (63, 63, 255)
-            foreach (var (css, want) in new[] { ("#00000080", Color.FromRgb(127, 127, 127)), ("rgba(0,0,255,.5)", Color.FromRgb(127, 127, 255)) })
+            // A dark or coloured one, as the website makes the JPG (qr.b0r3d.org 1.3: white paper and then the background
+            // under the whole picture, and the background again in the code's square): twice as strong in the code as
+            // round a rounded corner. #00000080 on a canvas's 8-bit sums: 255 × 127/255 = 127 once, 127 × 127/255 = 63
+            // twice; half see-through blue (63, 63, 255) and (127, 127, 255). The website's barcode JPG paints it once (127).
+            Color At(BitmapSource picture, int x, int y) => Corner(new CroppedBitmap(picture, new System.Windows.Int32Rect(x, y, 1, 1)));
+            foreach (var (css, twice, once) in new[] { ("#00000080", Color.FromRgb(63, 63, 63), Color.FromRgb(127, 127, 127)), ("rgba(0,0,255,.5)", Color.FromRgb(63, 63, 255), Color.FromRgb(127, 127, 255)) })
             {
                 QrDesign coloured = d.Clone();
                 coloured.Background = css;
-                Color drawn = Corner(QrExport.Picture(new QrArt(coloured), null, false, true));
-                Color saved = Corner(Images.FromBytes(QrExport.Jpg(QrExport.Picture(new QrArt(coloured), null, false, true))));
+                coloured.BorderRadius = 40;
+                BitmapSource picture = QrExport.Picture(new QrArt(coloured), null, false, true);
+                BitmapSource saved = Images.FromBytes(QrExport.Jpg(picture));
+                Color inCode = At(picture, picture.PixelWidth / 2, 2), roundCorner = At(picture, 0, 0), inFile = At(saved, saved.PixelWidth / 2, 2);
                 var look = new Barcodes.BarcodeLook { Background = css };
                 Color barcode = Corner(Barcodes.BarcodeExport.Picture(new Barcodes.BarcodeArt(Barcodes.Barcode.Make("400638133393", Barcodes.BarcodeType.Ean13, look.Options, out _)), look, new PrintSize(), true));
-                Check(Like(drawn, want, 1) && Like(saved, want, 3) && Like(barcode, want, 1),
-                    "a JPG of a " + css + " background should be painted once on white paper, " + want + ": the QR code's is " + drawn + " (" + saved + " in the file), a barcode's " + barcode);
+                Check(Like(inCode, twice, 1) && Like(roundCorner, once, 1) && Like(inFile, twice, 3) && Like(barcode, once, 1),
+                    "a JPG of a " + css + " background should be as the website's: " + twice + " in the code and " + once + " round a rounded corner, not " + inCode + " and " + roundCorner +
+                    " (" + inFile + " in the file); a barcode's " + once + ", not " + barcode);
             }
 
             byte[] pdf = QrExport.Pdf(art, null, false, "b0r3d.org");

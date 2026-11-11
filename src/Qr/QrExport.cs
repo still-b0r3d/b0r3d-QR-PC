@@ -108,15 +108,12 @@ namespace B0r3dQR.Qr
         {
             Size size = PictureSize(art, print, wholePixels);
             Allowed(size.Width, size.Height);
-            // A JPG has no see-through: under it goes the background when it's solid, else white paper. The
-            // drawing paints the background itself, so a partly see-through one is painted once, on the white
-            // (put under it as well, it came out twice as strong: #00000080 at 63 instead of the website's 128).
+            // A JPG has no see-through: as the website's, white paper then the background go under the whole
+            // picture, and the drawing paints the background in the code's square again, so a partly see-through
+            // one is twice as strong there as round a rounded corner (#00000080: 63 and 127). The website's
+            // barcode JPG paints it once; the two stay as they are on both sides until both change.
             Color? under = null;
-            if (forJpg)
-            {
-                Color background = Css.Paint(art.Design.Background);
-                under = art.Design.Transparent || background.A < 255 ? Colors.White : background;
-            }
+            if (forJpg) under = art.Design.Transparent ? Colors.White : Css.Paint(art.Design.Background);
             return art.Render(size.Scale, size.Width, size.Height, under, size.Dpi);
         }
 

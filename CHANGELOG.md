@@ -33,9 +33,6 @@ Fixes for 1.3.
   file failed once the folder and its name passed Windows' 260 characters for a whole path.
   Each name is now cut to fit the folder chosen (its extension kept, and names that meet once
   cut numbered); a folder too far down for names of 12 characters is said, and nothing made.
-- **JPG with a partly see-through background:** the colour was painted twice, so it came out
-  too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
-  white paper, as the website and barcodes do.
 - **Vector PDFs and see-through parts** (SVG logos and frame pictures): a gradient's stops that
   can be seen through had their opacity averaged, so a fade to clear came out evenly half
   see-through; they're a soft mask now. A see-through group is drawn as one (its shapes were
