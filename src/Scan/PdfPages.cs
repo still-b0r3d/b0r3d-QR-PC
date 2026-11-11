@@ -55,6 +55,14 @@ namespace B0r3dQR.Scan
         internal static Func<int, bool> FailPage;
         static int drawingNow;
 
+        // How long Windows' PDF reader may take over one piece of work (opening a file, drawing a page) before
+        // it's given up on as not answering: a page drawn holds the one-page-at-a-time lock, so a reader that
+        // never answered held up every scan after it, and Cancel couldn't free it. (The tests shorten it, and
+        // StallPage stands in for a page whose drawing never ends.)
+        internal static int AnswerMs = 60000;
+        internal static Func<int, bool> StallPage;
+        const string NotAnswering = "Windows' PDF reader stopped answering";
+
         // System.Runtime.WindowsRuntime's stream helpers were built against the Windows.winmd assembly
         // name, whereas System32\WinMetadata splits types by namespace. Binding once as delegates avoids
         // CS0012 at compile time while calling the framework helpers directly at runtime.
@@ -75,6 +83,7 @@ namespace B0r3dQR.Scan
             public int Pages, Read;
             public readonly List<(int Page, string Why)> Failed = new List<(int Page, string Why)>();
             public int Skipped => Math.Max(0, Pages - MaxPages);
+            public int GaveUpAt;   // the page Windows' PDF reader stopped answering at (the rest of the file left), or 0
 
             // what was left out, in words ("page 3 couldn't be read (…); pages 51 to 80 weren't read (…)"), or null
             public string LeftOut
@@ -84,6 +93,9 @@ namespace B0r3dQR.Scan
                     var parts = new List<string>();
                     if (Failed.Count == 1) parts.Add("page " + Failed[0].Page + " couldn't be read (" + Failed[0].Why + ")");
                     else if (Failed.Count > 1) parts.Add("pages " + Numbers(Failed.Select(f => f.Page).ToList()) + " couldn't be read (" + Failed[0].Why + ")");
+                    int last = Math.Min(Pages, MaxPages);
+                    if (GaveUpAt > 0 && GaveUpAt < last)
+                        parts.Add((GaveUpAt + 1 == last ? "page " + last + " wasn't read" : "pages " + (GaveUpAt + 1) + " to " + last + " weren't read") + " (" + NotAnswering + ")");
                     if (Skipped == 1) parts.Add("page " + (MaxPages + 1) + " wasn't read (b0r3d QR reads a PDF's first " + MaxPages + " pages)");
                     else if (Skipped > 1) parts.Add("pages " + (MaxPages + 1) + " to " + Pages + " weren't read (b0r3d QR reads a PDF's first " + MaxPages + " pages)");
                     return parts.Count == 0 ? null : string.Join("; ", parts);
@@ -109,7 +121,7 @@ namespace B0r3dQR.Scan
             {
                 file = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite | FileShare.Delete);
                 stream = AsRandomAccessStream(file);
-                document = Open(stream);
+                document = Open(stream, cancel);
                 reading.Pages = (int)Math.Min(document.PageCount, int.MaxValue);
                 if (reading.Pages == 0) throw new PictureException("it isn't a PDF, or it's damaged");
                 for (int i = 0; i < Math.Min(reading.Pages, MaxPages); i++)
@@ -120,7 +132,15 @@ namespace B0r3dQR.Scan
                     try
                     {
                         if (FailPage != null && FailPage(i + 1)) throw new COMException("a page the tests fail");
-                        gray = Draw(document, i, reading.Pages > 1 ? name + ", page " + (i + 1) : name, 200);
+                        gray = Draw(document, i, reading.Pages > 1 ? name + ", page " + (i + 1) : name, 200, cancel, StallPage != null && StallPage(i + 1));
+                    }
+                    catch (TimeoutException)
+                    {
+                        // the reader stopped answering: this page and the rest of the file are left (each would wait
+                        // as long), and the lock is let go of for the next file
+                        reading.Failed.Add((i + 1, NotAnswering));
+                        reading.GaveUpAt = i + 1;
+                        break;
                     }
                     catch (Exception e) when (!(e is OperationCanceledException))
                     {
@@ -200,11 +220,15 @@ namespace B0r3dQR.Scan
             }
         }
 
-        static PdfDocument Open(IRandomAccessStream stream)
+        static PdfDocument Open(IRandomAccessStream stream, CancellationToken cancel = default)
         {
             try
             {
-                return Wait(PdfDocument.LoadFromStreamAsync(stream));
+                return Wait(PdfDocument.LoadFromStreamAsync(stream), cancel);
+            }
+            catch (TimeoutException)
+            {
+                throw new PictureException(NotAnswering);
             }
             catch (Exception e) when (e.HResult == WrongPasswordHResult)
             {
@@ -218,7 +242,7 @@ namespace B0r3dQR.Scan
 
         // one page drawn and made grey: the picture Windows draws is read a band at a time into the grey
         // levels, never held whole beside them
-        static Gray Draw(PdfDocument document, int index, string name, double dpi)
+        static Gray Draw(PdfDocument document, int index, string name, double dpi, CancellationToken cancel, bool stall)
         {
             PdfPage page = document.GetPage((uint)index);
             int now = Interlocked.Increment(ref drawingNow);
@@ -234,7 +258,7 @@ namespace B0r3dQR.Scan
                 {
                     BitmapFrame frame = BitmapDecoder.Create(read, BitmapCreateOptions.IgnoreColorProfile | BitmapCreateOptions.PreservePixelFormat, BitmapCacheOption.None).Frames[0];
                     gray = Pictures.Grays(frame, name);
-                });
+                }, cancel, stall);
                 return gray;
             }
             finally
@@ -245,8 +269,9 @@ namespace B0r3dQR.Scan
         }
 
         // A page drawn on white by Windows' PDF reader into memory, then handed to `use` as a stream to read it
-        // from (only while `use` runs); everything Windows made for it let go of before this returns.
-        static void Render(PdfPage page, double dpi, int exactWidth, int exactHeight, Action<Stream> use)
+        // from (only while `use` runs); everything Windows made for it let go of before this returns. Waits at
+        // most AnswerMs for the drawing (TimeoutException), and Cancel ends the wait at once.
+        static void Render(PdfPage page, double dpi, int exactWidth, int exactHeight, Action<Stream> use, CancellationToken cancel = default, bool stall = false)
         {
             uint width, height;
             if (exactWidth > 0 && exactHeight > 0)
@@ -279,11 +304,11 @@ namespace B0r3dQR.Scan
             var rendered = new InMemoryRandomAccessStream();
             try
             {
-                Wait(page.RenderToStreamAsync(rendered, options));
+                Wait(page.RenderToStreamAsync(rendered, options), cancel, stall);
                 rendered.Seek(0);
                 using (Stream read = AsStreamForRead(rendered)) use(read);
             }
-            catch (Exception e) when (!(e is OutOfMemoryException) && !(e is OperationCanceledException) && !(e is PictureException))
+            catch (Exception e) when (!(e is OutOfMemoryException) && !(e is OperationCanceledException) && !(e is PictureException) && !(e is TimeoutException))
             {
                 throw new PictureException("it isn't a PDF, or it's damaged");
             }
@@ -319,42 +344,83 @@ namespace B0r3dQR.Scan
             if (winrt != null && Marshal.IsComObject(winrt)) Marshal.FinalReleaseComObject(winrt);
         }
 
-        // waits for Windows' work, then closes it and lets it go
-        static T Wait<T>(IAsyncOperation<T> operation)
+        // waits for Windows' work (at most AnswerMs, and only until Cancel), then closes it and lets it go
+        static T Wait<T>(IAsyncOperation<T> operation, CancellationToken cancel = default)
         {
             try
             {
-                Finished(operation, handler => operation.Completed = (info, status) => handler());
+                Finished(operation, handler => operation.Completed = (info, status) => handler(), cancel, false);
                 return operation.GetResults();
             }
             finally
             {
-                operation.Close();
-                Release(operation);
+                Done(operation);
             }
         }
 
-        static void Wait(IAsyncAction action)
+        static void Wait(IAsyncAction action, CancellationToken cancel = default, bool stall = false)
         {
             try
             {
-                Finished(action, handler => action.Completed = (info, status) => handler());
+                Finished(action, handler => action.Completed = (info, status) => handler(), cancel, stall);
                 action.GetResults();
             }
             finally
             {
-                action.Close();
-                Release(action);
+                Done(action);
             }
         }
 
-        static void Finished(IAsyncInfo work, Action<Action> whenDone)
+        // Waits for the work: OperationCanceledException at once on Cancel, TimeoutException after AnswerMs (each
+        // asking Windows to stop the work too), Windows' error when it failed. `stall`: for the tests, as if it never
+        // ended.
+        static void Finished(IAsyncInfo work, Action<Action> whenDone, CancellationToken cancel, bool stall)
         {
             var done = new TaskCompletionSource<bool>();
             whenDone(() => done.TrySetResult(true));
-            done.Task.Wait();
+            Task ended = stall ? new TaskCompletionSource<bool>().Task : done.Task;
+            bool inTime;
+            try
+            {
+                inTime = ended.Wait(AnswerMs, cancel);
+            }
+            catch (OperationCanceledException)
+            {
+                Stop(work);
+                throw;
+            }
+            if (!inTime)
+            {
+                Stop(work);
+                throw new TimeoutException(NotAnswering);
+            }
             if (work.Status == AsyncStatus.Error) throw work.ErrorCode ?? new COMException("Windows' PDF reader failed");
             if (work.Status != AsyncStatus.Completed) throw new OperationCanceledException();
+        }
+
+        static void Stop(IAsyncInfo work)
+        {
+            try
+            {
+                work.Cancel();
+            }
+            catch (Exception e) when (!(e is OutOfMemoryException))
+            {
+                // finished already, or past stopping
+            }
+        }
+
+        // the work closed (Windows refuses to close work still going, which is then only let go of) and let go of
+        static void Done(IAsyncInfo work)
+        {
+            try
+            {
+                work.Close();
+            }
+            catch (Exception e) when (!(e is OutOfMemoryException))
+            {
+            }
+            Release(work);
         }
     }
 }

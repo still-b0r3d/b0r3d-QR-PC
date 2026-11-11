@@ -373,6 +373,48 @@ namespace B0r3dQR.Tests
                     Check(pages == 2 && PdfPages.Drawn - at == 2, "Cancel on page 2 should leave page 3 undrawn: " + (PdfPages.Drawn - at) + " drawn");
                 }
 
+                // Windows' PDF reader not answering on page 2 (its drawing never ending): given up on after the time it's
+                // allowed, the rest of the file said, page 1's code kept, and the one-page lock let go of, so the next
+                // read goes on; Cancel while it waits ends it at once, the lock let go of too
+                int answer = PdfPages.AnswerMs;
+                try
+                {
+                    PdfPages.AnswerMs = 300;
+                    PdfPages.StallPage = page => page == 2;
+                    var stuck = Stopwatch.StartNew();
+                    var kept = new List<string>();
+                    PdfPages.Reading given = PdfPages.Read(damaged, CancellationToken.None, page => kept.AddRange(Reader.ReadAll(page.Pixels, page.Width, page.Height, page.Name, CancellationToken.None).Select(f => f.Text)));
+                    long stuckMs = stuck.ElapsedMilliseconds;
+                    Check(given.Read == 1 && kept.SequenceEqual(new[] { "first page" }) && given.GaveUpAt == 2 && stuckMs < 5000 &&
+                          given.LeftOut == "page 2 couldn't be read (Windows' PDF reader stopped answering); page 3 wasn't read (Windows' PDF reader stopped answering)",
+                        "a reader that stops answering on page 2, after " + stuckMs + " ms: " + given.Read + " read, " + given.LeftOut);
+                    PdfPages.StallPage = null;
+                    Check(PdfPages.Read(damaged, CancellationToken.None, page => { }).Read == 3, "after a page given up on, the next read should go on (the lock let go of)");
+
+                    PdfPages.AnswerMs = 60000;
+                    PdfPages.StallPage = page => page == 1;
+                    using (var stop = new CancellationTokenSource(300))
+                    {
+                        var waited = Stopwatch.StartNew();
+                        try
+                        {
+                            PdfPages.Read(damaged, stop.Token, page => { });
+                            Check(false, "a read waiting on a reader that doesn't answer went on after Cancel");
+                        }
+                        catch (OperationCanceledException)
+                        {
+                        }
+                        Check(waited.ElapsedMilliseconds < 5000, "Cancel should end the wait at once, not after " + waited.ElapsedMilliseconds + " ms");
+                    }
+                    PdfPages.StallPage = null;
+                    Check(PdfPages.Read(damaged, CancellationToken.None, page => { }).Read == 3, "after Cancel, the next read should go on (the lock let go of)");
+                }
+                finally
+                {
+                    PdfPages.AnswerMs = answer;
+                    PdfPages.StallPage = null;
+                }
+
                 // three PDFs of four pages in a folder: every code read, never two pages drawn at once
                 string three = Path.Combine(folder, "three");
                 Fresh(three);

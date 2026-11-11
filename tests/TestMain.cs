@@ -198,7 +198,7 @@ namespace B0r3dQR.Tests
                 Run("reading: tiny and flat pictures are just pictures with no code", OddPicturesHaveNoCode);
                 Run("reading: a code on a see-through background reads as on white", SeeThroughCountsAsWhite);
                 Run("pictures: PNG, JPEG, BMP, GIF and TIFF pages; a broken or missing file says so", ReadsPictureFiles);
-                Run("PDFs: a page at a time, each read before the next is drawn, one drawn at once, a poster's at 40 million pixels at most; past page 50, a page that can't be read and Cancel", ReadsPdfsPageByPage);
+                Run("PDFs: a page at a time, each read before the next is drawn, one drawn at once, a poster's at 40 million pixels at most; past page 50, a page that can't be read, a reader that stops answering, and Cancel", ReadsPdfsPageByPage);
                 Run("folders: a line for every picture (codes, no code, couldn't open), a summary; Cancel stops it", ReadsFolders);
                 Run("clipboard and drops: a PNG, a bitmap or files; Ctrl+V leaves text to the text boxes", ReadsCopiedAndDropped);
                 Run("screens: every screen in real pixels, numbered left to right, and a picture of one", ScreensInRealPixels);
