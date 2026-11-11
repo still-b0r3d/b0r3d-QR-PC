@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Media.Imaging;
@@ -15,6 +16,27 @@ namespace B0r3dQR.Scan
     {
         public const int MaxPages = 50;
         public const int WrongPasswordHResult = unchecked((int)0x8007052B);
+
+        // Loads Windows' PDF reader (one of its objects made and let go of) and does nothing else; called
+        // first thing, before WPF draws anything. Without a graphics card (a virtual machine, a remote
+        // desktop), Windows draws in software (WARP), for WPF and for the PDF reader, which keeps its
+        // renderer for as long as the program runs. As a program closes, Windows shuts its parts down
+        // newest first: with the PDF reader loaded after WPF started WARP, the reader went first, and
+        // letting go of its renderer then asked WARP for work after the program's threads were gone, so
+        // every run that had read a PDF ended with 0xC000000D once its work was done. Loaded before WPF
+        // draws, the reader is shut down after WARP, which ends cleanly.
+        public static void LoadEarly()
+        {
+            try
+            {
+                var options = new PdfPageRenderOptions();
+                if (Marshal.IsComObject(options)) Marshal.FinalReleaseComObject(options);
+            }
+            catch (Exception e) when (!(e is OutOfMemoryException))
+            {
+                // a Windows without its PDF reader: opening a PDF says so then
+            }
+        }
 
         // System.Runtime.WindowsRuntime's stream helpers were built against the Windows.winmd assembly
         // name, whereas System32\WinMetadata splits types by namespace. Binding once as delegates avoids

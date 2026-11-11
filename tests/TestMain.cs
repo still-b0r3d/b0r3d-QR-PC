@@ -46,6 +46,9 @@ namespace B0r3dQR.Tests
         static int Main(string[] args)
         {
             AppDomain.CurrentDomain.UnhandledException += (s, e) => { Console.WriteLine("FAIL  crashed: " + e.ExceptionObject); Environment.Exit(3); };
+            // as the program does, before WPF draws anything (PdfPages.LoadEarly): without it, every run that
+            // read a PDF back ended with 0xC000000D on PCs without a graphics card, such as GitHub's
+            Scan.PdfPages.LoadEarly();
             using (new Timer(_ => { Console.WriteLine("FAIL  still running after 90 seconds, so stopped (watchdog)"); Environment.Exit(4); }, null, 90000, Timeout.Infinite))
             {
                 // the program's resources and styles, as when it runs; a window that throws is a FAIL line

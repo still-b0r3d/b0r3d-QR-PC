@@ -34,6 +34,8 @@ namespace B0r3dQR
         [STAThread]
         static int Main(string[] args)
         {
+            // before WPF draws anything, so the program closes cleanly on PCs without a graphics card
+            Scan.PdfPages.LoadEarly();
             CommandLine line = CommandLine.Parse(args);
             if (line.Problem != null)
             {

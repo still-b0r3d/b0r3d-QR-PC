@@ -7,6 +7,12 @@ are its stages, built one after the other; 0.8 is the first one released.
 
 Fixes for 1.3.
 
+- **Closing after reading a PDF on a PC without a graphics card** (a virtual machine, some
+  remote desktops): b0r3d QR ended with an error (0xC000000D) as it closed, after its work was
+  done, because of the order Windows shut down its PDF reader and its software renderer in.
+  Windows' PDF reader is now loaded as b0r3d QR starts, which puts that order right. 1.3's
+  build check missed it, as it took a negative exit code for a pass: any code but 0 now fails
+  the build.
 - **JPG with a partly see-through background:** the colour was painted twice, so it came out
   too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
   white paper, as the website and barcodes do.
