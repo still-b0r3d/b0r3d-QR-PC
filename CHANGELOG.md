@@ -18,7 +18,7 @@ Fixes for 1.3.
   50-page Letter PDF peaked at over 1 GB, now under 200 MB. A page that can't be read no longer
   loses the codes on the others, and pages past the 50th are said rather than left out without
   a word (`2 codes in big.pdf; pages 51 to 80 weren't read (b0r3d QR reads a PDF's first 50
-  pages).`). A poster's page is drawn at up to 16 million pixels.
+  pages).`).
 - **Scan from anywhere** is off until it's turned on: while on, it takes Ctrl+Shift+Q from
   every other program (Firefox's Quit, Outlook's new meeting). 1.3 had it on for everyone, so
   this version starts with it off, for those who used 1.3 too, until it's turned on again (Scan

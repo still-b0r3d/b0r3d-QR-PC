@@ -308,7 +308,7 @@ namespace B0r3dQR.Tests
 
         // A PDF's pages are drawn one at a time, each read before the next is drawn and only one drawn at once in
         // a folder scan, so a long PDF takes the memory of one page (a 50-page one took over a gigabyte when every
-        // page was drawn first); a poster's page at 16 million pixels at most. Past page 50, a page that can't be
+        // page was drawn first); a poster's page at 40 million pixels at most, as any picture. Past page 50, a page that can't be
         // read, and Cancel between pages: each said, or the codes on the other pages kept.
         static void ReadsPdfsPageByPage()
         {
@@ -382,13 +382,14 @@ namespace B0r3dQR.Tests
                 MainWindow.ScanOutcome all = MainWindow.ReadFilesNow(new[] { three }, CancellationToken.None, t => { });
                 Check(all.Codes.Count(c => !c.IsProblem) == 12 && PdfPages.MostAtOnce == 1, "three PDFs at once: " + all.Summary + ", " + PdfPages.MostAtOnce + " pages drawn at once at most");
 
-                // a poster's page (A0) at 16 million pixels at most; twelve Letter pages take the memory of one
+                // a poster's page (A0) at 40 million pixels at most, as any picture is (about 160 DPI); twelve Letter
+                // pages take the memory of one
                 string poster = Path.Combine(folder, "poster.pdf");
                 File.WriteAllBytes(poster, TestVectorQrPdf(new[] { "poster" }, 2384, 3370));
                 List<Gray> posterPage = PdfPages.Load(poster);
                 long posterPixels = (long)posterPage[0].Width * posterPage[0].Height;
-                Check(posterPixels <= PdfPages.MaxPagePixels && posterPixels > PdfPages.MaxPagePixels * 0.95 && posterPage[0].Height > posterPage[0].Width,
-                    "an A0 page should be drawn at up to 16 million pixels: " + posterPage[0].Width + " × " + posterPage[0].Height);
+                Check(PdfPages.MaxPagePixels == Pictures.MaxPixels && posterPixels <= PdfPages.MaxPagePixels && posterPixels > PdfPages.MaxPagePixels * 0.95 && posterPage[0].Height > posterPage[0].Width,
+                    "an A0 page should be drawn at up to 40 million pixels: " + posterPage[0].Width + " × " + posterPage[0].Height);
                 posterPage = null;
                 string letters = Path.Combine(folder, "letters.pdf");
                 File.WriteAllBytes(letters, TestVectorQrPdf(Enumerable.Range(1, 12).Select(p => (string)null).ToList(), 612, 792));

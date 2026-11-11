@@ -19,9 +19,10 @@ namespace B0r3dQR.Scan
     static class PdfPages
     {
         public const int MaxPages = 50;
-        // a page is drawn at 200 DPI (300 for a small one), at most this many pixels (a poster's page
-        // comes out at a lower DPI: its codes are big)
-        public const long MaxPagePixels = 16000000;
+        // a page is drawn at 200 DPI (300 for a small one), at most this many pixels, as any picture is (a
+        // poster's page comes out at a lower DPI: an A0 at about 160); one page is drawn at a time, so this is
+        // the most a PDF's pages take at once
+        public const long MaxPagePixels = Pictures.MaxPixels;
         public const int WrongPasswordHResult = unchecked((int)0x8007052B);
 
         // Loads Windows' PDF reader (one of its objects made and let go of) and does nothing else; called
