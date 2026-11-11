@@ -33,15 +33,26 @@ if defined B0R3DQR_BUILD set "BUILD=%B0R3DQR_BUILD:~0,7%"
 
 rem -nodeReuse and UseSharedCompilation off: no SDK helper processes are left running afterwards
 dotnet build tests\b0r3dQRTests.csproj -c Release -nologo -v quiet -nodeReuse:false -p:UseSharedCompilation=false -p:BuildStamp=%BUILD%
-if errorlevel 1 exit /b 1
+call :check "The build" || exit /b 1
 
 echo Built bin\b0r3dQR.exe, build %BUILD%
 if /i not "%~1"=="test" exit /b 0
 rem The tests, in three parts that each finish within 90 seconds (their watchdog), even on a
 rem 2-core CI machine: the exe and making codes, then files and reading codes, then the window.
 bin\tests\b0r3dQRTests.exe --part make
-if errorlevel 1 exit /b 1
+call :check "The make tests" || exit /b 1
 bin\tests\b0r3dQRTests.exe --part scan
-if errorlevel 1 exit /b 1
+call :check "The scan tests" || exit /b 1
 bin\tests\b0r3dQRTests.exe --part window
-exit /b %ERRORLEVEL%
+call :check "The window tests" || exit /b 1
+exit /b 0
+
+rem Any exit code but 0 is a failure. "if errorlevel 1" alone is only true from 1 up, so it
+rem misses a negative code, such as a program that crashes as it closes (0xC000000D is -1073741811).
+:check
+if errorlevel 1 goto failed
+if not errorlevel 0 goto failed
+exit /b 0
+:failed
+echo %~1 ended with exit code %ERRORLEVEL%.
+exit /b 1
