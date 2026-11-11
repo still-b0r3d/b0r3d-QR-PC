@@ -44,12 +44,30 @@ namespace B0r3dQR.Scan
             return Directory.EnumerateFiles(folder).Where(LooksLikePicture).OrderBy(f => f, StringComparer.CurrentCultureIgnoreCase).ToList();
         }
 
+        static bool IsPdf(string path) => Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase);
+
+        // Each picture in a file, handed to `each` in turn: a PDF's pages one at a time (a page is drawn
+        // only once the one before has been handed over, so a long PDF takes the memory of one page),
+        // else the pictures Load gives. Returns what was left out of a PDF, in words (pages that couldn't
+        // be read, pages past the first 50), or null. Safe on any thread.
+        public static string Read(string path, CancellationToken cancel, Action<Gray> each)
+        {
+            if (IsPdf(path))
+            {
+                PdfPages.Reading reading = PdfPages.Read(path, cancel, each);
+                if (reading.Read == 0 && reading.Failed.Count > 0) throw new PictureException(reading.LeftOut);
+                return reading.LeftOut;
+            }
+            foreach (Gray picture in Load(path, cancel)) each(picture);
+            return null;
+        }
+
         // A picture or PDF file's grey levels: every page of a PDF (up to 50) or a TIFF (up to 20),
         // the biggest picture in an icon, otherwise the first (a GIF's first frame). Safe on any thread.
         public static List<Gray> Load(string path, CancellationToken cancel = default)
         {
             string name = Path.GetFileName(path);
-            if (Path.GetExtension(path).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            if (IsPdf(path))
                 return PdfPages.Load(path, cancel);
             try
             {

@@ -485,8 +485,8 @@ namespace B0r3dQR
             bool batch = files.Count > 1 || folderName != null;
 
             var lines = new List<FoundCode>[files.Count];
-            string firstProblem = null;
-            int withCodes = 0, empty = 0, unreadable = 0, online = 0, done = 0;
+            string firstProblem = null, firstLeftOut = null;
+            int withCodes = 0, empty = 0, unreadable = 0, online = 0, partly = 0, done = 0;
             var options = new ParallelOptions { CancellationToken = cancel, MaxDegreeOfParallelism = Math.Max(1, Math.Min(3, Environment.ProcessorCount / 2)) };
             Parallel.For(0, files.Count, options, i =>
             {
@@ -502,16 +502,24 @@ namespace B0r3dQR
                     try
                     {
                         BitmapSource look = null;
-                        foreach (Gray page in Pictures.Load(file, cancel))
+                        // a PDF's pages one at a time, each read before the next is drawn; a page that can't
+                        // be read, and pages past the 50th, are said, and the codes on the others kept
+                        string leftOut = Pictures.Read(file, cancel, page =>
                         {
                             here.AddRange(Reader.ReadAll(page.Pixels, page.Width, page.Height, page.Name, cancel));
                             if (look == null && batch) look = Pictures.Thumbnail(page);
-                        }
+                        });
                         if (here.Count > 0) Interlocked.Increment(ref withCodes);
                         else
                         {
                             Interlocked.Increment(ref empty);
                             here.Add(FoundCode.Problem("No code found", "", name, look));
+                        }
+                        if (leftOut != null)
+                        {
+                            Interlocked.Increment(ref partly);
+                            Interlocked.CompareExchange(ref firstLeftOut, leftOut, null);
+                            here.Add(FoundCode.Problem("Not read in full", leftOut, name));
                         }
                     }
                     catch (OperationCanceledException)
@@ -540,9 +548,10 @@ namespace B0r3dQR
             if (!batch && files.Count == 1)
             {
                 string name = Path.GetFileName(files[0].Path);
+                string leftOut = firstLeftOut != null ? "; " + firstLeftOut + "." : null;
                 outcome.Summary = unreadable > 0 ? "Couldn't open " + firstProblem + "." :
-                    codes == 0 ? "No code in " + name + ". If the code is small in the picture, crop closer to it and try again." :
-                    Count(codes) + " in " + name;
+                    codes == 0 ? "No code in " + name + (leftOut ?? ". If the code is small in the picture, crop closer to it and try again.") :
+                    Count(codes) + " in " + name + leftOut;
             }
             else if (files.Count == 0)
             {
@@ -553,6 +562,7 @@ namespace B0r3dQR
                 var parts = new List<string> { Count(codes) + " in " + withCodes + " of " + files.Count + (files.Count == 1 ? " picture" : " pictures") + inFolder };
                 if (empty > 0) parts.Add("no code in " + empty);
                 if (unreadable > 0) parts.Add(unreadable + " couldn't be opened");
+                if (partly > 0) parts.Add(partly + " not read in full");
                 if (online > 0) parts.Add(online + " only online, not read");
                 outcome.Summary = string.Join("; ", parts) + notListed + "." + inside;
             }

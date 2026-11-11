@@ -13,6 +13,12 @@ Fixes for 1.3.
   Windows' PDF reader is now loaded as b0r3d QR starts, which puts that order right. 1.3's
   build check missed it, as it took a negative exit code for a pass: any code but 0 now fails
   the build.
+- **Scanning PDFs:** a PDF's pages are drawn one at a time, each read before the next is drawn
+  (and one page at a time across a folder scan), so a long PDF takes the memory of one page: a
+  50-page Letter PDF peaked at over 1 GB, now under 200 MB. A page that can't be read no longer
+  loses the codes on the others, and pages past the 50th are said rather than left out without
+  a word (`2 codes in big.pdf; pages 51 to 80 weren't read (b0r3d QR reads a PDF's first 50
+  pages).`). A poster's page is drawn at up to 16 million pixels.
 - **JPG with a partly see-through background:** the colour was painted twice, so it came out
   too dark (`#00000080` gave a grey of 63 where the website gives 128). It's painted once, on
   white paper, as the website and barcodes do.

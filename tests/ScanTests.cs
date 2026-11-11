@@ -306,6 +306,111 @@ namespace B0r3dQR.Tests
             }
         }
 
+        // A PDF's pages are drawn one at a time, each read before the next is drawn and only one drawn at once in
+        // a folder scan, so a long PDF takes the memory of one page (a 50-page one took over a gigabyte when every
+        // page was drawn first); a poster's page at 16 million pixels at most. Past page 50, a page that can't be
+        // read, and Cancel between pages: each said, or the codes on the other pages kept.
+        static void ReadsPdfsPageByPage()
+        {
+            string folder = Path.Combine(Work, "pdfs");
+            Fresh(folder);
+            try
+            {
+                // 52 small pages, codes on pages 1, 2, 50 and 51: each page handed over with only it drawn since
+                // the one before, 50 read and the other 2 said
+                string longPdf = Path.Combine(folder, "long.pdf");
+                File.WriteAllBytes(longPdf, TestVectorQrPdf(Enumerable.Range(1, 52).Select(p => p == 1 || p == 2 || p == 50 || p == 51 ? "page " + p : null).ToList(), 72, 72));
+                int before = PdfPages.Drawn;
+                var handed = new List<(string Name, int Drawn)>();
+                PdfPages.Reading reading = PdfPages.Read(longPdf, CancellationToken.None, page => handed.Add((page.Name, PdfPages.Drawn - before)));
+                Check(reading.Pages == 52 && reading.Read == 50 && reading.Skipped == 2 && reading.Failed.Count == 0,
+                    "52 pages: " + reading.Pages + " counted, " + reading.Read + " read, " + reading.Skipped + " left");
+                Check(handed.Select(h => h.Drawn).SequenceEqual(Enumerable.Range(1, 50)) && handed[0].Name == "long.pdf, page 1" && handed[49].Name == "long.pdf, page 50",
+                    "each page should be handed over before the next is drawn: " + string.Join(", ", handed.Select(h => h.Drawn)));
+                Check(reading.LeftOut == "pages 51 to 52 weren't read (b0r3d QR reads a PDF's first 50 pages)", "what was left out: " + reading.LeftOut);
+                MainWindow.ScanOutcome longOne = MainWindow.ReadFilesNow(new[] { longPdf }, CancellationToken.None, t => { });
+                Check(longOne.Codes.Select(c => c.Text).SequenceEqual(new[] { "page 1", "page 2", "page 50" }) && longOne.Codes[2].Source == "long.pdf, page 50" &&
+                      longOne.Summary == "3 codes in long.pdf; pages 51 to 52 weren't read (b0r3d QR reads a PDF's first 50 pages).",
+                    "the long PDF's codes and summary: " + longOne.Summary);
+
+                // a page that can't be read: the codes on the pages before and after it kept, and it said, alone or in a folder
+                string damaged = Path.Combine(folder, "damaged.pdf");
+                File.WriteAllBytes(damaged, TestVectorQrPdf(new[] { "first page", "second page", "third page" }, 144, 144));
+                PdfPages.FailPage = page => page == 2;
+                MainWindow.ScanOutcome partly = MainWindow.ReadFilesNow(new[] { damaged }, CancellationToken.None, t => { });
+                Check(partly.Codes.Select(c => c.Text).SequenceEqual(new[] { "first page", "third page" }) &&
+                      partly.Summary == "2 codes in damaged.pdf; page 2 couldn't be read (Windows' PDF reader couldn't draw it).",
+                    "a PDF with a page that can't be read: " + partly.Summary);
+                // (page 2 of long.pdf can't be read now either)
+                MainWindow.ScanOutcome inFolder = MainWindow.ReadFilesNow(new[] { folder }, CancellationToken.None, t => { });
+                FoundCode note = inFolder.Codes.SingleOrDefault(c => c.IsProblem && c.Source == "damaged.pdf");
+                FoundCode longNote = inFolder.Codes.SingleOrDefault(c => c.IsProblem && c.Source == "long.pdf");
+                Check(note != null && note.Kind == "Not read in full" && note.Detail == "page 2 couldn't be read (Windows' PDF reader couldn't draw it)" &&
+                      longNote != null && longNote.Detail == "page 2 couldn't be read (Windows' PDF reader couldn't draw it); pages 51 to 52 weren't read (b0r3d QR reads a PDF's first 50 pages)" &&
+                      inFolder.Codes.Where(c => !c.IsProblem).Select(c => c.Text).SequenceEqual(new[] { "first page", "third page", "page 1", "page 50" }) &&
+                      inFolder.Summary == "4 codes in 2 of 2 pictures in pdfs; 2 not read in full.",
+                    "a folder of PDFs read in part: " + inFolder.Summary + " | " + string.Join(" | ", inFolder.Codes.Select(c => c.Source + ": " + c.Kind + " " + c.Detail)));
+                string single = Path.Combine(folder, "single.pdf");
+                File.WriteAllBytes(single, TestVectorQrPdf(new[] { "alone" }, 144, 144));
+                PdfPages.FailPage = page => true;
+                MainWindow.ScanOutcome none = MainWindow.ReadFilesNow(new[] { single }, CancellationToken.None, t => { });
+                Check(none.Codes.Count == 0 && none.Summary == "Couldn't open single.pdf: page 1 couldn't be read (Windows' PDF reader couldn't draw it).", "a PDF none of whose pages can be read: " + none.Summary);
+                PdfPages.FailPage = null;
+                File.Delete(single);
+
+                // Cancel between pages: no page drawn after it
+                using (var stop = new CancellationTokenSource())
+                {
+                    int at = PdfPages.Drawn, pages = 0;
+                    try
+                    {
+                        PdfPages.Read(damaged, stop.Token, page => { if (++pages == 2) stop.Cancel(); });
+                        Check(false, "a PDF read carried on after Cancel");
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    Check(pages == 2 && PdfPages.Drawn - at == 2, "Cancel on page 2 should leave page 3 undrawn: " + (PdfPages.Drawn - at) + " drawn");
+                }
+
+                // three PDFs of four pages in a folder: every code read, never two pages drawn at once
+                string three = Path.Combine(folder, "three");
+                Fresh(three);
+                for (int f = 1; f <= 3; f++)
+                    File.WriteAllBytes(Path.Combine(three, "doc" + f + ".pdf"), TestVectorQrPdf(Enumerable.Range(1, 4).Select(p => "doc " + f + " page " + p).ToList(), 144, 144));
+                PdfPages.MostAtOnce = 0;
+                MainWindow.ScanOutcome all = MainWindow.ReadFilesNow(new[] { three }, CancellationToken.None, t => { });
+                Check(all.Codes.Count(c => !c.IsProblem) == 12 && PdfPages.MostAtOnce == 1, "three PDFs at once: " + all.Summary + ", " + PdfPages.MostAtOnce + " pages drawn at once at most");
+
+                // a poster's page (A0) at 16 million pixels at most; twelve Letter pages take the memory of one
+                string poster = Path.Combine(folder, "poster.pdf");
+                File.WriteAllBytes(poster, TestVectorQrPdf(new[] { "poster" }, 2384, 3370));
+                List<Gray> posterPage = PdfPages.Load(poster);
+                long posterPixels = (long)posterPage[0].Width * posterPage[0].Height;
+                Check(posterPixels <= PdfPages.MaxPagePixels && posterPixels > PdfPages.MaxPagePixels * 0.95 && posterPage[0].Height > posterPage[0].Width,
+                    "an A0 page should be drawn at up to 16 million pixels: " + posterPage[0].Width + " × " + posterPage[0].Height);
+                posterPage = null;
+                string letters = Path.Combine(folder, "letters.pdf");
+                File.WriteAllBytes(letters, TestVectorQrPdf(Enumerable.Range(1, 12).Select(p => (string)null).ToList(), 612, 792));
+                long Held()
+                {
+                    GC.Collect();
+                    GC.WaitForPendingFinalizers();
+                    GC.Collect();
+                    return Process.GetCurrentProcess().PrivateMemorySize64;
+                }
+                long start = Held(), most = 0;
+                int letterPages = 0;
+                PdfPages.Read(letters, CancellationToken.None, page => { letterPages++; most = Math.Max(most, Held() - start); });
+                Console.WriteLine("      (12 Letter pages at 200 DPI read with at most " + most / (1 << 20) + " MB more held; drawn first, they held about 180 MB)");
+                Check(letterPages == 12 && most < 100L << 20, "12 Letter pages held " + most / (1 << 20) + " MB more at most");
+            }
+            finally
+            {
+                PdfPages.FailPage = null;
+            }
+        }
+
         // a folder to check a batch: every picture gets a line, its codes or why there are none
         static void ReadsFolders()
         {
@@ -689,6 +794,8 @@ namespace B0r3dQR.Tests
 
         static byte[] TestVectorQrStream(string text, double pageWidthPt, double pageHeightPt)
         {
+            if (text == null)   // a blank page
+                return System.Text.Encoding.ASCII.GetBytes(string.Format(System.Globalization.CultureInfo.InvariantCulture, "1 1 1 rg 0 0 {0:0.##} {1:0.##} re f\n", pageWidthPt, pageHeightPt));
             QrCode code = QrCode.Make(text, QrLevel.M);
             int quiet = 4, totalModules = code.Size + quiet * 2;
             double boxSize = Math.Min(pageWidthPt, pageHeightPt) * 0.5, cell = boxSize / totalModules;
