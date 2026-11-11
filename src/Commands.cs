@@ -20,7 +20,7 @@ namespace B0r3dQR
         public static readonly RoutedUICommand Print = Make("Print…", nameof(Print), new KeyGesture(Key.P, ModifierKeys.Control));
         public static readonly RoutedUICommand ScanScreen = Make("Scan the screen", nameof(ScanScreen), new KeyGesture(Key.R, ModifierKeys.Control | ModifierKeys.Shift));
         public static readonly RoutedUICommand ScanCamera = Make("Scan with the camera", nameof(ScanCamera), new KeyGesture(Key.A, ModifierKeys.Control | ModifierKeys.Shift));
-        public static readonly RoutedUICommand OpenPicture = Make("Open picture…", nameof(OpenPicture), new KeyGesture(Key.O, ModifierKeys.Control));
+        public static readonly RoutedUICommand OpenPicture = Make("Open picture or PDF…", nameof(OpenPicture), new KeyGesture(Key.O, ModifierKeys.Control));
         public static readonly RoutedUICommand PastePicture = Make("Paste picture", nameof(PastePicture), new KeyGesture(Key.V, ModifierKeys.Control | ModifierKeys.Shift));
         public static readonly RoutedUICommand ScanFolder = Make("Scan a folder…", nameof(ScanFolder), new KeyGesture(Key.O, ModifierKeys.Control | ModifierKeys.Shift));
         public static readonly RoutedUICommand About = Make("About b0r3d QR", nameof(About), new KeyGesture(Key.F1));

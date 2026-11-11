@@ -40,6 +40,10 @@ Fixes for 1.3.
   can be seen through had their opacity averaged, so a fade to clear came out evenly half
   see-through; they're a soft mask now. A see-through group is drawn as one (its shapes were
   darker where they overlapped), and a group with a mask has its opacity once, not twice.
+- **Open picture or PDF…** is what the Scan menu and the Scan tab call it now, as it opens PDFs
+  too. This changelog's 1.3 entry is put right where it didn't match the program: a code's
+  page reads `file.pdf, page 2`; only Batch export's PDFs were read back; a Data Matrix Wi-Fi
+  code is titled `Data Matrix: <network>`; and the replacement character is back in its place.
 
 ## 1.3 (released 8 November 2026)
 
@@ -56,14 +60,14 @@ sheets with printer nudge), plus website parity and bug fixes.
 - **Scan PDFs**: **Open picture or PDF…** (Ctrl+O), dropping a PDF on the window, pasting a
   copied PDF file (Ctrl+V), or **Scan a folder…** reads every page of a PDF (up to 50 pages,
   at 200 DPI) through Windows' built-in PDF reader (`Windows.Data.Pdf`), with the page number
-  on each code found (`file.pdf (page 2)`). Password-protected PDFs say so. Nothing extra is
+  on each code found (`file.pdf, page 2`). Password-protected PDFs say so. Nothing extra is
   installed and b0r3d QR still never goes online.
 - **Vector PDF**: PDF exports (File → Save as PDF… and Batch export) now draw QR codes,
   barcodes, frames, SVG logos (linear and radial gradients included) and captions (their
   letters as outlines, colour emoji as their layers) as vector shapes, so they stay sharp at
   any zoom or print size. Raster logos and frame backgrounds are kept without loss, with a
-  soft mask for see-through parts. Every saved PDF is read back through Windows' PDF reader
-  and scanned.
+  soft mask for see-through parts. Batch export's PDFs are read back through Windows' PDF
+  reader and scanned.
 - **Label sheets**: **Print…** and Batch export's **Print them…** print onto standard Avery
   label sheets (**5160**, **5167**, **5163**, **5164** and **22806** on US Letter; **L7160**,
   **L7163** and **L7165** on A4), one code on every label with a 1.5 mm safe inset and no cut
@@ -81,9 +85,10 @@ sheets with printer nudge), plus website parity and bug fixes.
   - Recent codes: a code whose design can't be read says `That code can't be opened: …`; a
     recent barcode whose entry leaves out some settings keeps the settings currently on the
     Make tab, as on the website; a Data Matrix Wi-Fi code with a password is titled by network
-    name (`WiFi: …`) and shown with a padlock instead of its picture, like a QR code's.
+    name (`Data Matrix: <network>`) and shown with a padlock instead of its picture, like a QR
+    code's.
   - `mailto:`, `sms:` and quoted-printable vCard 2.1 text decode broken UTF-8 with one
-    replacement character (``) per broken byte sequence, as browsers do.
+    replacement character (`�`) per broken byte sequence, as browsers do.
   - Unticking **Include quiet zones** leaves Data Matrix and PDF417 margins alone (the box is
     hidden for them), and **What's in this code** says which codes have quiet zones.
   - Screen readers hear a barcode's error once per mistake rather than on every character count
