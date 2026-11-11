@@ -174,8 +174,8 @@ there are in a picture:
   Settings > Privacy & security > Camera (on Windows 10, Settings > Privacy > Camera).
 - **Open picture or PDF…** (Ctrl+O), Ctrl+V with a picture or PDF copied (or **Paste picture**,
   Ctrl+Shift+V), or drop pictures or PDFs anywhere on the window: PNG, JPEG, BMP, GIF, TIFF
-  (every page) and PDF (every page, through Windows' built-in PDF reader), and WebP or HEIC
-  where Windows can open them.
+  (its first 20 pages) and PDF (its first 50 pages, through Windows' built-in PDF reader; any
+  pages after those are said), and WebP or HEIC where Windows can open them.
 - **Scan a folder…** (Ctrl+Shift+O) reads every picture and PDF in a folder (not the folders inside
   it) and gives each one a line, so a batch can be checked: its codes, or "No code found",
   or "Couldn't open" and why. Pictures that are only online (OneDrive and the like) are
