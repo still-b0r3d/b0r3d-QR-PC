@@ -3,9 +3,9 @@
 What changed in each version of b0r3d QR for Windows, the newest first. The versions before 1.0
 are its stages, built one after the other; 0.8 is the first one released.
 
-## Next version (not released yet)
+## 1.3.1 (released 11 November 2026)
 
-Fixes for 1.3.
+Fixes for 1.3. The website takes the same number, as both always do.
 
 - **Closing after reading a PDF on a PC without a graphics card** (a virtual machine, some
   remote desktops): b0r3d QR ended with an error (0xC000000D) as it closed, after its work was
