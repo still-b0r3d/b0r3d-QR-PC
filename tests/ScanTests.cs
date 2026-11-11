@@ -316,6 +316,12 @@ namespace B0r3dQR.Tests
             Fresh(folder);
             try
             {
+                // Windows' PDF reader is loaded first thing (LoadEarly), its type named only in a method that's never
+                // inlined: so a Windows without it starts, and says so when a PDF is opened
+                System.Reflection.MethodInfo loader = typeof(PdfPages).GetMethod("LoadReader", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static);
+                Check(PdfPages.LoadEarly() && loader != null && (loader.MethodImplementationFlags & System.Reflection.MethodImplAttributes.NoInlining) != 0,
+                    "the reader should load, from a method of its own that's never inlined");
+
                 // 52 small pages, codes on pages 1, 2, 50 and 51: each page handed over with only it drawn since
                 // the one before, 50 read and the other 2 said
                 string longPdf = Path.Combine(folder, "long.pdf");

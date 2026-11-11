@@ -32,18 +32,26 @@ namespace B0r3dQR.Scan
         // newest first: with the PDF reader loaded after WPF started WARP, the reader went first, and
         // letting go of its renderer then asked WARP for work after the program's threads were gone, so
         // every run that had read a PDF ended with 0xC000000D once its work was done. Loaded before WPF
-        // draws, the reader is shut down after WARP, which ends cleanly.
-        public static void LoadEarly()
+        // draws, the reader is shut down after WARP, which ends cleanly. False when Windows has no PDF reader:
+        // b0r3d QR starts all the same, and opening a PDF says so then.
+        public static bool LoadEarly()
         {
             try
             {
-                Release(new PdfPageRenderOptions());
+                LoadReader();
+                return true;
             }
             catch (Exception e) when (!(e is OutOfMemoryException))
             {
-                // a Windows without its PDF reader: opening a PDF says so then
+                return false;
             }
         }
+
+        // The reader's type is named here only, in a method of its own that's never inlined into LoadEarly: the
+        // JIT finds a method's types as it compiles it, before it runs, so a type this Windows doesn't have
+        // would fail LoadEarly itself, where its catch can't see it, and b0r3d QR wouldn't start.
+        [System.Runtime.CompilerServices.MethodImpl(System.Runtime.CompilerServices.MethodImplOptions.NoInlining)]
+        static void LoadReader() => Release(new PdfPageRenderOptions());
 
         // only one page is drawn at a time, whichever file it's in (a folder scan reads a few files at once),
         // so the memory a PDF takes stays that of one page
