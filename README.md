@@ -41,7 +41,7 @@ it scans. The settings on the left fold out like the website's:
   pick one, or **Edit…**, for a form that writes the text for you, filled from the text
   already there when it's that kind. Under it, the website's checks with a one-click fix
   each: spaces at the ends, a web address without https://, tracking parts in a link.
-- **Style:** the presets (Plain, Rounded, Dots, b0r3d Cup, Rukus) and Randomize; the
+- **Style:** the presets (Plain, Rounded, Dots, b0r3d Cup, Ruckus) and Randomize; the
   shapes and colours of the dots, the corner squares and the corner dots; the background,
   or none; rounded corners.
 - **Logo:** choose, paste or drop a picture (an SVG drawing too) onto this section; its size

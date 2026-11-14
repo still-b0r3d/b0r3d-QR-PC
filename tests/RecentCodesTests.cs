@@ -47,9 +47,9 @@ namespace B0r3dQR.Tests
             Says("https://b0r3d.org", "URL", "https://b0r3d.org", false);
             Says("WIFI:T:WPA;S:home;P:secret;;", "WiFi", "home", true);
             Says("WIFI:T:nopass;S:open;;", "WiFi", "open", false);
-            Says("BEGIN:VCARD\nVERSION:3.0\nN:Cat;Rukus;;;\nFN:Rukus Cat\nEND:VCARD", "Contact Card", "Rukus Cat", false);
+            Says("BEGIN:VCARD\nVERSION:3.0\nN:Cat;Ruckus;;;\nFN:Ruckus Cat\nEND:VCARD", "Contact Card", "Ruckus Cat", false);
             Says("BEGIN:VCARD\nFN:Acme\nORG:Acme\nEND:VCARD", "Contact Card", "Acme", false);
-            Says("BCD\n002\n1\nSCT\n\nRukus Cat\nDE89370400440532013000\nEUR12.50", "SEPA Payment", "Rukus Cat, EUR 12.50", false);
+            Says("BCD\n002\n1\nSCT\n\nRuckus Cat\nDE89370400440532013000\nEUR12.50", "SEPA Payment", "Ruckus Cat, EUR 12.50", false);
             Says("b0r3d.org", "URL", "b0r3d.org", false);
             Says("someone@example.com", "Email", "someone@example.com", false);
             Says("+44 20 7946 0958", "Phone Number", "+44 20 7946 0958", false);

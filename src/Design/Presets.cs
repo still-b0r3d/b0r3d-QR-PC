@@ -6,11 +6,11 @@ using B0r3dQR.Qr;
 
 namespace B0r3dQR.Design
 {
-    // The website's presets: Plain, Rounded, Dots, b0r3d Cup and Rukus for the code, three for the
+    // The website's presets: Plain, Rounded, Dots, b0r3d Cup and Ruckus for the code, three for the
     // frame, and Randomize. A preset never touches the data.
     static class Presets
     {
-        public static readonly string[] Names = { "Plain", "Rounded", "Dots", "b0r3d Cup", "Rukus" };
+        public static readonly string[] Names = { "Plain", "Rounded", "Dots", "b0r3d Cup", "Ruckus" };
 
         // The type names, in the order the website offers them.
         public static readonly string[] DotTypes = { "dots", "rounded", "classy", "classy-rounded", "square", "extra-rounded" };
@@ -45,7 +45,7 @@ namespace B0r3dQR.Design
                     d.Level = QrLevel.H;
                     d.Logo = LogoUrl("b0r3d-cup.png");
                     break;
-                case "Rukus":
+                case "Ruckus":
                     Look(d, "rounded", "#2b2b2b", "extra-rounded", "#2b2b2b", "dot", "#c0396b");
                     d.Level = QrLevel.H;
                     d.Logo = LogoUrl("rukus.png");

@@ -21,14 +21,14 @@ namespace B0r3dQR.Tests
         {
             MainWindow window = NewMain();
             Type(window, "https://b0r3d.org");
-            window.PresetBox.SelectedItem = "Rukus";
+            window.PresetBox.SelectedItem = "Ruckus";
             WaitForCheck(window);
-            Check(window.Art.Cleared > 0 && window.Code.Level == QrLevel.H && window.CurrentDesign.CornersDotColor == "#c0396b", "the Rukus preset: " + window.InfoLine.Text);
-            Check(window.CheckResult == "ok", "Rukus should scan: " + window.CheckLine.Text);
+            Check(window.Art.Cleared > 0 && window.Code.Level == QrLevel.H && window.CurrentDesign.CornersDotColor == "#c0396b", "the Ruckus preset: " + window.InfoLine.Text);
+            Check(window.CheckResult == "ok", "Ruckus should scan: " + window.CheckLine.Text);
             window.FrameCheck.IsChecked = true;
             WaitForCheck(window);
             Check(window.CurrentDesign.Frame != null && Math.Abs(window.Art.W - 234) < 1e-9 && window.CheckResult == "ok", "the frame: " + window.Art.W + " wide, " + window.CheckResult);
-            Check((string)window.PresetBox.SelectedItem == "Rukus", "a frame shouldn't unselect the preset");
+            Check((string)window.PresetBox.SelectedItem == "Ruckus", "a frame shouldn't unselect the preset");
             int drawn = window.Refreshes;
             window.CaptionBox.Text = "Two\r\nlines";
             Check(window.CurrentDesign.Frame.Text == "Two\nlines" && window.Refreshes == drawn, "the caption should be drawn after a pause in the typing, like the data");

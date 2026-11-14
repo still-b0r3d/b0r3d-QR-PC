@@ -78,7 +78,7 @@ namespace B0r3dQR.Tests
                 Check(!TemplateForms.AmountOk(bad), "the amount " + Show(bad) + " should be asked about, not guessed");
             foreach (string good in new[] { "", "25", "25.00", "12,50", ".5", "25.", "999999999.99", " 7 " })
                 Check(TemplateForms.AmountOk(good), "the amount " + Show(good) + " should do");
-            pay["name"] = "Rukus Cat";
+            pay["name"] = "Ruckus Cat";
             pay["bic"] = "DEUTDEFF";
             pay["amount"] = "1.234,56";
             Check(Says(TemplateKind.Epc, pay).SequenceEqual(new[] { "amount: " + TemplateForms.AmountCheck }), "an amount it can't read: " + string.Join(" | ", Says(TemplateKind.Epc, pay)));
@@ -174,7 +174,7 @@ namespace B0r3dQR.Tests
 
             TemplateWindow example = window.TemplateFor(TemplateKind.Epc);
             example.ExampleButton.RaiseEvent(new RoutedEventArgs(System.Windows.Controls.Primitives.ButtonBase.ClickEvent));
-            Check(((TextBox)example.Input("name")).Text == "Rukus Cat" && example.Save() && example.Result.StartsWith("BCD\n002\n1\nSCT\nCOBADEFFXXX\nRukus Cat\nDE89370400440532013000\nEUR12.50", StringComparison.Ordinal),
+            Check(((TextBox)example.Input("name")).Text == "Ruckus Cat" && example.Save() && example.Result.StartsWith("BCD\n002\n1\nSCT\nCOBADEFFXXX\nRuckus Cat\nDE89370400440532013000\nEUR12.50", StringComparison.Ordinal),
                 "Use example fills in the example: " + Show(example.Result));
             Check(((TextBox)example.Input("remittanceText")).IsEnabled, "the payment reference is on while there's no structured one");
             ((TextBox)example.Input("remittanceReference")).Text = "RF18";

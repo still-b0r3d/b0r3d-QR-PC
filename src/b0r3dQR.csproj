@@ -19,7 +19,7 @@
     <Page Include="App.xaml" />
     <Resource Include="..\assets\b0r3dQR.ico" Link="assets\b0r3dQR.ico" />
     <Resource Include="..\art\cup.png" Link="assets\cup.png" />
-    <!-- the b0r3d Cup and Rukus presets' logos: the website's own PNG files, byte for byte -->
+    <!-- the b0r3d Cup and Ruckus presets' logos: the website's own PNG files, byte for byte -->
     <Resource Include="..\assets\presets\b0r3d-cup.png" Link="assets\presets\b0r3d-cup.png" />
     <Resource Include="..\assets\presets\rukus.png" Link="assets\presets\rukus.png" />
     <!-- the website's 18 caption fonts, one TrueType file per subset (made by gen-website-fonts.mjs, outside this repo) -->

@@ -274,7 +274,7 @@ The third stage: the full QR designer, as qr.b0r3d.org has it.
 - The Make tab's settings fold out in sections like the website's: Data, Style, Logo, Frame,
   and Size and print.
 - The website's shapes for the dots, corner squares and corner dots; colours; a background
-  or none; rounded corners; the presets Plain, Rounded, Dots, b0r3d Cup and Rukus (their
+  or none; rounded corners; the presets Plain, Rounded, Dots, b0r3d Cup and Ruckus (their
   logos byte for byte), and Randomize.
 - A logo from a file, the clipboard or a drop, with the website's room for it, its size and
   space, and L or M raised to Q. Photos saved sideways are turned upright, as browsers show

@@ -79,7 +79,7 @@ namespace B0r3dQR.Tests
             QrDesign cup = Presets.Apply("b0r3d Cup", Sample());
             QrArt cupArt = new QrArt(cup);
             Check(cupArt.Code.Size == 29 && cupArt.Cleared == 7 && cupArt.LogoModules == 5 && cupArt.LevelUsed == QrLevel.H, "b0r3d Cup: " + cupArt.Code.Size + " modules, " + cupArt.Cleared + " cleared, logo " + cupArt.LogoModules);
-            Check(ReadArt(cupArt, 2) == cup.Data && ReadArt(new QrArt(Presets.Apply("Rukus", Sample())), 2) == cup.Data, "the b0r3d Cup and Rukus presets should read back with their logos");
+            Check(ReadArt(cupArt, 2) == cup.Data && ReadArt(new QrArt(Presets.Apply("Ruckus", Sample())), 2) == cup.Data, "the b0r3d Cup and Ruckus presets should read back with their logos");
             QrDesign low = Sample();
             low.Level = QrLevel.L;
             low.Logo = Presets.LogoUrl("rukus.png");
@@ -572,7 +572,7 @@ namespace B0r3dQR.Tests
         {
             QrDesign d = Sample();
             Check(Checks.Warnings(d).Count == 0, "black on white with a 4-module quiet zone shouldn't warn");
-            Check(Checks.Warnings(Presets.Apply("b0r3d Cup", d)).Count == 0 && Checks.Warnings(Presets.Apply("Rukus", d)).Count == 0, "the brand presets shouldn't warn");
+            Check(Checks.Warnings(Presets.Apply("b0r3d Cup", d)).Count == 0 && Checks.Warnings(Presets.Apply("Ruckus", d)).Count == 0, "the brand presets shouldn't warn");
             QrDesign inverted = d.Clone();
             inverted.Background = "#000000";
             inverted.DotsColor = inverted.CornersSquareColor = inverted.CornersDotColor = "#ffffff";

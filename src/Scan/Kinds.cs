@@ -212,7 +212,7 @@ namespace B0r3dQR.Scan
             return fields;
         }
 
-        // the value of a vCard or iCalendar line ("FN:Rukus", "SUMMARY;LANGUAGE=en:Party")
+        // the value of a vCard or iCalendar line ("FN:Ruckus", "SUMMARY;LANGUAGE=en:Party")
         static string Line(string text, string name)
         {
             Match m = Regex.Match(text, "(?im)^" + name + @"(?:;[^:\r\n]*)?:(.*)$", RegexOptions.CultureInvariant);

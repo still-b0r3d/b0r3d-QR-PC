@@ -119,7 +119,7 @@ namespace B0r3dQR.Design
                     return new List<TemplateField>
                     {
                         new TemplateField { Name = "version", Label = "vCard Version", Kind = FieldKind.Choice, Wide = true, Choices = new[] { ("2", "vCard 2.1"), ("3", "vCard 3.0"), ("4", "vCard 4.0") } },
-                        F("firstName", "First Name", "Rukus"), F("lastName", "Last Name", "Cat"),
+                        F("firstName", "First Name", "Ruckus"), F("lastName", "Last Name", "Cat"),
                         F("org", "Organization", "b0r3d.org"), F("position", "Position", "Chief napper"),
                         F("phoneWork", "Phone (Work)", "+1 202 555 0100"), F("phonePrivate", "Phone (Private)", "+1 202 555 0142"),
                         F("phoneMobile", "Phone (Mobile)", "+1 202 555 0199"), Address(F("email", "Email", "rukus@example.com")),
@@ -149,7 +149,7 @@ namespace B0r3dQR.Design
                     return new List<TemplateField>
                     {
                         new TemplateField { Name = "version", Label = "EPC QR Version", Kind = FieldKind.Choice, Choices = new[] { ("002", "Version 2 (the BIC can be left out)"), ("001", "Version 1 (the BIC is needed)") } },
-                        F("name", "Beneficiary Name", "Rukus Cat", FieldKind.Line, 70),
+                        F("name", "Beneficiary Name", "Ruckus Cat", FieldKind.Line, 70),
                         // the example IBAN banks' own documents use, and the BIC of its bank
                         F("iban", "IBAN", "DE89 3704 0044 0532 0130 00", FieldKind.Line, 34),
                         F("bic", "BIC", "COBADEFFXXX", FieldKind.Line, 11),
@@ -309,13 +309,13 @@ namespace B0r3dQR.Design
                         ("subject", "My bowl"), ("body", "It's empty again. Please see to it."),
                     };
                 case TemplateKind.Phone: return new[] { ("phone", "+1-202-555-0100") };
-                case TemplateKind.Sms: return new[] { ("phone", "+1-202-555-0100"), ("message", "Dinner at six? Rukus says yes.") };
+                case TemplateKind.Sms: return new[] { ("phone", "+1-202-555-0100"), ("message", "Dinner at six? Ruckus says yes.") };
                 case TemplateKind.Wifi: return new[] { ("encryption", "WPA"), ("ssid", "b0r3d guest"), ("password", "naps-all-day"), ("hidden", "false") };
                 case TemplateKind.VCard:
                     // the contact in the batch example (assets/batch/batch-example-contacts.csv), with whole phone numbers
                     return new[]
                     {
-                        ("firstName", "Rukus"), ("lastName", "Cat"), ("org", "b0r3d.org"), ("position", "Chief napper"),
+                        ("firstName", "Ruckus"), ("lastName", "Cat"), ("org", "b0r3d.org"), ("position", "Chief napper"),
                         ("phoneWork", "+1 202 555 0100"), ("phonePrivate", ""), ("phoneMobile", "+1 202 555 0199"),
                         ("email", "rukus@example.com"), ("website", "https://b0r3d.org"), ("street", "1 Loaf Lane"),
                         ("zipcode", "12345"), ("city", "Breadville"), ("state", "CA"), ("country", "USA"),
@@ -329,10 +329,10 @@ namespace B0r3dQR.Design
                 case TemplateKind.Epc:
                     return new[]
                     {
-                        ("version", "002"), ("name", "Rukus Cat"), ("iban", "DE89 3704 0044 0532 0130 00"), ("bic", "COBADEFFXXX"),
+                        ("version", "002"), ("name", "Ruckus Cat"), ("iban", "DE89 3704 0044 0532 0130 00"), ("bic", "COBADEFFXXX"),
                         ("amount", "12.50"), ("purpose", ""), ("remittanceText", "Cat food"), ("remittanceReference", ""), ("originatorInfo", ""),
                     };
-                default: return new[] { ("text", "Rukus was here.") };
+                default: return new[] { ("text", "Ruckus was here.") };
             }
         }
 

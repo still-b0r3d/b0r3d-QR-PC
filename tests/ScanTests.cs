@@ -650,7 +650,7 @@ namespace B0r3dQR.Tests
         static void MakeAgainKeepsTheText()
         {
             MainWindow window = NewMain();
-            var vcard = new FoundCode { Text = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Rukus\r\nEND:VCARD", Kind = "Contact", Format = "QR code", CanMakeAgain = true };
+            var vcard = new FoundCode { Text = "BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Ruckus\r\nEND:VCARD", Kind = "Contact", Format = "QR code", CanMakeAgain = true };
             vcard.Level = QrLevel.M;
             window.MakeAgain(vcard);
             Check(window.Code?.Text == vcard.Text, "the code made again holds \"" + (window.Code?.Text ?? "").Replace("\r", "\\r").Replace("\n", "\\n") + "\"");
@@ -697,15 +697,15 @@ namespace B0r3dQR.Tests
             Expect("WIFI:T:WPA;S:home;P:secret;;", BarcodeFormat.QR_CODE, "Wi-Fi network", "network home, WPA");
             Expect("WIFI:S:cafe;T:nopass;H:true;;", BarcodeFormat.QR_CODE, "Wi-Fi network", "network cafe, no password, hidden");
             Expect("WIFI:T:SAE;S:my\\;net;P:x;;", BarcodeFormat.QR_CODE, "Wi-Fi network", "network my;net, WPA3");
-            Expect("BEGIN:VCARD\nVERSION:3.0\nN:Cat;Rukus\nFN:Rukus the Cat\nEND:VCARD", BarcodeFormat.QR_CODE, "Contact", "Rukus the Cat");
-            Expect("MECARD:N:Cat,Rukus;TEL:123;;", BarcodeFormat.QR_CODE, "Contact", "Cat Rukus");
+            Expect("BEGIN:VCARD\nVERSION:3.0\nN:Cat;Ruckus\nFN:Ruckus the Cat\nEND:VCARD", BarcodeFormat.QR_CODE, "Contact", "Ruckus the Cat");
+            Expect("MECARD:N:Cat,Ruckus;TEL:123;;", BarcodeFormat.QR_CODE, "Contact", "Cat Ruckus");
             Expect("BEGIN:VEVENT\nSUMMARY:Party\nEND:VEVENT", BarcodeFormat.QR_CODE, "Calendar event", "Party");
             Expect("mailto:someone@example.com?subject=Hi", BarcodeFormat.QR_CODE, "Email", "someone@example.com");
             Expect("MATMSG:TO:a@example.com;SUB:Hi;;", BarcodeFormat.QR_CODE, "Email", "a@example.com");
             Expect("tel:+15555550123", BarcodeFormat.QR_CODE, "Phone number", "+15555550123");
             Expect("SMSTO:+15555550123:hello", BarcodeFormat.QR_CODE, "Text message", "+15555550123");
             Expect("geo:51.5,-0.12", BarcodeFormat.QR_CODE, "Location", "51.5,-0.12");
-            Expect("BCD\n002\n1\nSCT\nBIC\nRukus Ltd\nDE89370400440532013000\nEUR12.50", BarcodeFormat.QR_CODE, "Payment (EPC)", "to Rukus Ltd, EUR 12.50");
+            Expect("BCD\n002\n1\nSCT\nBIC\nRuckus Ltd\nDE89370400440532013000\nEUR12.50", BarcodeFormat.QR_CODE, "Payment (EPC)", "to Ruckus Ltd, EUR 12.50");
             Expect("otpauth://totp/b0r3d:rukus?secret=JBSWY3DPEHPK3PXP&issuer=b0r3d", BarcodeFormat.QR_CODE, "Sign-in code (two-factor)", "b0r3d:rukus");
             Expect("rtsp://camera/stream", BarcodeFormat.QR_CODE, "Address (rtsp)", "");
             Expect("Just some words", BarcodeFormat.QR_CODE, "Text", "");
